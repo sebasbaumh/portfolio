@@ -94,6 +94,8 @@ public class Messages extends NLS
     public static String LabelAssetAllocation;
     public static String LabelDefaultReferenceAccountName;
     public static String LabelDeposits;
+    public static String LabelFinanztreffDe;
+    public static String LabelFinanztreffDeSingleQuote;
     public static String LabelEuropeanCentralBank;
     public static String LabelHTMLTable;
     public static String LabelInterest;
