@@ -2,11 +2,13 @@ package name.abuchen.portfolio.online.impl;
 
 import java.io.*;
 import java.net.URL;
+import java.time.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.json.simple.*;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 
 import name.abuchen.portfolio.Messages;
 import name.abuchen.portfolio.model.*;
@@ -73,10 +75,11 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            key
      * @return {@link Date} value on success, else null
      */
-    private static Date getDate(JSONObject o, String key)
+    private static LocalDateTime getDate(JSONObject o, String key)
     {
         Long l = getLong(o, key);
-        if (l != null) { return new Date(l.longValue()); }
+        if (l != null) { return LocalDateTime.ofInstant(Instant.ofEpochMilli(l.longValue()),
+                        TimeZone.getDefault().toZoneId()); }
         return null;
     }
 
@@ -149,7 +152,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * @return list of security prices
      * @throws IOException
      */
-    protected static CombinedQuoteResult getQuotes(InputStream is, Security s, Date dateStart, List<Exception> errors)
+    protected static CombinedQuoteResult getQuotes(InputStream is, Security s, LocalDate dateStart,
+                    List<Exception> errors)
     {
         CombinedQuoteResult result = new CombinedQuoteResult();
         try
@@ -184,7 +188,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                                     Long high = getPrice(ojIntraday, "high"); //$NON-NLS-1$
                                     Long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
                                     Long previousClose = getPrice(ojIntraday, "yesterdayPrice"); //$NON-NLS-1$
-                                    Date lastTimeStamp = getDate(ojIntraday, "lastTimestamp"); //$NON-NLS-1$
+                                    LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp").toLocalDate(); //$NON-NLS-1$
                                     // if at least time and price are there,
                                     // construct a latest quote
                                     if ((lastTimeStamp != null) && (lastPrice != null))
@@ -217,7 +221,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                                 // get a unix timestamp and value
                                 long lTime = Long.parseLong(sTime);
                                 double dValue = Double.parseDouble(sValue);
-                                Date date = new Date(lTime);
+                                LocalDate date = LocalDateTime.ofInstant(Instant.ofEpochMilli(lTime),
+                                                TimeZone.getDefault().toZoneId()).toLocalDate();
                                 // check if start date is given and if so, if
                                 // current
                                 // date is not before it
@@ -251,7 +256,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            errors list
      * @return list of security prices
      */
-    protected static CombinedQuoteResult getQuotes(Security s, Date dateStart, List<Exception> errors)
+    protected static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
     {
         String isin = s.getIsin();
         if ((isin != null) && !isin.isEmpty())
@@ -289,7 +294,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     @Override
-    public List<LatestSecurityPrice> getHistoricalQuotes(Security security, Date start, List<Exception> errors)
+    public List<LatestSecurityPrice> getHistoricalQuotes(Security security, LocalDate start, List<Exception> errors)
     {
         return getQuotes(security, start, errors).prices;
     }
