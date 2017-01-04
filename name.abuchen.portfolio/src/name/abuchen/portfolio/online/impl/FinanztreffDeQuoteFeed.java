@@ -1,9 +1,17 @@
 package name.abuchen.portfolio.online.impl;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
-import java.time.*;
-import java.util.*;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,7 +19,10 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import name.abuchen.portfolio.Messages;
-import name.abuchen.portfolio.model.*;
+import name.abuchen.portfolio.model.Exchange;
+import name.abuchen.portfolio.model.LatestSecurityPrice;
+import name.abuchen.portfolio.model.Security;
+import name.abuchen.portfolio.model.SecurityPrice;
 import name.abuchen.portfolio.online.QuoteFeed;
 
 /**
@@ -64,7 +75,44 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      */
     public static final String ID_EXCHANGE = "FINANZTREFF_DE.SINGLEQUOTE"; //$NON-NLS-1$
 
-    private static final String QUERY_URL = "http://www.finanztreff.de/kurse_einzelkurs_suche.htn?suchbegriff={isin}"; //$NON-NLS-1$
+    private static final String QUERY_URL = "http://www.finanztreff.de/ftreffNG/ajax/get_search.htn?suchbegriff={isin}"; //$NON-NLS-1$
+
+    /**
+     * Collects all query results from the given {@link InputStream}.
+     * 
+     * @param is
+     *            {@link InputStream}
+     * @return list of query result URLs
+     * @throws IOException
+     */
+    private static List<String> collectQueryResults(InputStream is) throws IOException
+    {
+        ArrayList<String> results = new ArrayList<String>();
+        // <button type="submit"
+        // onclick="location.href='http://etf.finanztreff.de/etf_einzelkurs_uebersicht.htn?i=33851047';">db
+        // x-trackers Harvest CSI 300 Index UCITS ETF<span
+        // class="typ">ETF</span><span class="wkn">DBX0NK</span></button>
+        Pattern pLine = Pattern.compile("<button.*location\\.href='([^']+).*"); //$NON-NLS-1$
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is)))
+        {
+            String line;
+            while ((line = br.readLine()) != null)
+            {
+                line = line.trim();
+                if (!line.isEmpty())
+                {
+                    Matcher m = pLine.matcher(line);
+                    if (m.matches())
+                    {
+                        // remember url
+                        String url = m.group(1);
+                        results.add(url);
+                    }
+                }
+            }
+        }
+        return results;
+    }
 
     /**
      * Gets a {@link Date} value.
@@ -78,8 +126,10 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static LocalDateTime getDate(JSONObject o, String key)
     {
         Long l = getLong(o, key);
-        if (l != null) { return LocalDateTime.ofInstant(Instant.ofEpochMilli(l.longValue()),
-                        TimeZone.getDefault().toZoneId()); }
+        if (l != null)
+        {
+            return LocalDateTime.ofInstant(Instant.ofEpochMilli(l.longValue()), TimeZone.getDefault().toZoneId());
+        }
         return null;
     }
 
@@ -106,7 +156,10 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             catch (NumberFormatException ex)
             {}
         }
-        if (value instanceof Long) { return (Long) value; }
+        if (value instanceof Long)
+        {
+            return (Long) value;
+        }
         return null;
     }
 
@@ -133,8 +186,14 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             catch (NumberFormatException ex)
             {}
         }
-        if (value instanceof Long) { return ((Long) value) * 100; }
-        if (value instanceof Double) { return (long) (Math.round(((Double) value) * 100)); }
+        if (value instanceof Long)
+        {
+            return ((Long) value) * 100;
+        }
+        if (value instanceof Double)
+        {
+            return (long) (Math.round(((Double) value) * 100));
+        }
         return null;
     }
 
@@ -261,13 +320,28 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         String isin = s.getIsin();
         if ((isin != null) && !isin.isEmpty())
         {
-            try (InputStream is = openStream(isin))
+            List<String> results = null;
+            // execute query
+            try (InputStream is = openQueryStream(isin))
             {
-                return getQuotes(is, s, dateStart, errors);
+                results = collectQueryResults(is);
             }
             catch (IOException ex)
             {
                 errors.add(ex);
+            }
+            // check for a single result
+            if ((results != null) && (results.size() == 1))
+            {
+                String url = results.get(0);
+                try (InputStream is = new URL(url).openStream())
+                {
+                    return getQuotes(is, s, dateStart, errors);
+                }
+                catch (IOException ex)
+                {
+                    errors.add(ex);
+                }
             }
         }
         // return empty result
@@ -282,7 +356,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * @return {@link InputStream}
      * @throws IOException
      */
-    protected static InputStream openStream(String isin) throws IOException
+    protected static InputStream openQueryStream(String isin) throws IOException
     {
         return new URL(QUERY_URL.replace("{isin}", isin)).openStream(); //$NON-NLS-1$
     }
