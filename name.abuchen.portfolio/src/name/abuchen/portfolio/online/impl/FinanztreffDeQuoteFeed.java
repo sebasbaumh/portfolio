@@ -9,7 +9,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
@@ -88,10 +87,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static List<String> collectQueryResults(InputStream is) throws IOException
     {
         ArrayList<String> results = new ArrayList<String>();
-        // <button type="submit"
-        // onclick="location.href='http://etf.finanztreff.de/etf_einzelkurs_uebersicht.htn?i=33851047';">db
-        // x-trackers Harvest CSI 300 Index UCITS ETF<span
-        // class="typ">ETF</span><span class="wkn">DBX0NK</span></button>
         Pattern pLine = Pattern.compile("<button.*location\\.href='([^']+).*"); //$NON-NLS-1$
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is)))
         {
@@ -115,21 +110,20 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     /**
-     * Gets a {@link Date} value.
+     * Gets a {@link LocalDate} value.
      * 
      * @param o
      *            {@link JSONObject}
      * @param key
      *            key
-     * @return {@link Date} value on success, else null
+     * @return {@link LocalDate} value on success, else null
      */
-    private static LocalDateTime getDate(JSONObject o, String key)
+    private static LocalDate getDate(JSONObject o, String key)
     {
         Long l = getLong(o, key);
-        if (l != null)
-        {
-            return LocalDateTime.ofInstant(Instant.ofEpochMilli(l.longValue()), TimeZone.getDefault().toZoneId());
-        }
+        if (l != null) { return LocalDateTime
+                        .ofInstant(Instant.ofEpochMilli(l.longValue()), TimeZone.getDefault().toZoneId())
+                        .toLocalDate(); }
         return null;
     }
 
@@ -156,10 +150,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             catch (NumberFormatException ex)
             {}
         }
-        if (value instanceof Long)
-        {
-            return (Long) value;
-        }
+        if (value instanceof Long) { return (Long) value; }
         return null;
     }
 
@@ -186,14 +177,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             catch (NumberFormatException ex)
             {}
         }
-        if (value instanceof Long)
-        {
-            return ((Long) value) * 100;
-        }
-        if (value instanceof Double)
-        {
-            return (long) (Math.round(((Double) value) * 100));
-        }
+        if (value instanceof Long) { return ((Long) value) * 100; }
+        if (value instanceof Double) { return (long) (Math.round(((Double) value) * 100)); }
         return null;
     }
 
@@ -247,7 +232,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                                     Long high = getPrice(ojIntraday, "high"); //$NON-NLS-1$
                                     Long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
                                     Long previousClose = getPrice(ojIntraday, "yesterdayPrice"); //$NON-NLS-1$
-                                    LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp").toLocalDate(); //$NON-NLS-1$
+                                    LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp"); //$NON-NLS-1$
                                     // if at least time and price are there,
                                     // construct a latest quote
                                     if ((lastTimeStamp != null) && (lastPrice != null))
@@ -295,7 +280,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
             errors.add(ex);
         }
