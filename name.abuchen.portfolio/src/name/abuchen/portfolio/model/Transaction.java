@@ -27,33 +27,6 @@ public abstract class Transaction implements Annotated
             GROSS_VALUE, TAX, FEE
         }
 
-        public Unit(Type type, Money amount)
-        {
-            this.type = Objects.requireNonNull(type);
-            this.amount = Objects.requireNonNull(amount);
-            this.forex = null;
-            this.exchangeRate = null;
-        }
-
-        public Unit(Type type, Money amount, Money forex, BigDecimal exchangeRate)
-        {
-            this.type = Objects.requireNonNull(type);
-            this.amount = Objects.requireNonNull(amount);
-            this.forex = Objects.requireNonNull(forex);
-            this.exchangeRate = Objects.requireNonNull(exchangeRate);
-
-            // check whether given amount is in range of converted amount
-            long upper = Math.round(exchangeRate.add(BigDecimal.valueOf(0.0001))
-                            .multiply(BigDecimal.valueOf(forex.getAmount())).doubleValue());
-            long lower = Math.round(exchangeRate.add(BigDecimal.valueOf(-0.0001))
-                            .multiply(BigDecimal.valueOf(forex.getAmount())).doubleValue());
-
-            if (amount.getAmount() < lower || amount.getAmount() > upper)
-                throw new IllegalArgumentException(
-                                MessageFormat.format(Messages.MsgErrorIllegalForexUnit, type.toString(),
-                                                Values.Money.format(forex), exchangeRate, Values.Money.format(amount)));
-        }
-
         /**
          * Type of transaction unit
          */
@@ -74,6 +47,33 @@ public abstract class Transaction implements Annotated
          * Exchange rate used to convert forex amount to amount
          */
         private final BigDecimal exchangeRate;
+
+        public Unit(Type type, Money amount)
+        {
+            this.type = Objects.requireNonNull(type);
+            this.amount = Objects.requireNonNull(amount);
+            this.forex = null;
+            this.exchangeRate = null;
+        }
+
+        public Unit(Type type, Money amount, Money forex, BigDecimal exchangeRate)
+        {
+            this.type = Objects.requireNonNull(type);
+            this.amount = Objects.requireNonNull(amount);
+            this.forex = Objects.requireNonNull(forex);
+            this.exchangeRate = Objects.requireNonNull(exchangeRate);
+
+            // check whether given amount is in range of converted amount
+            long upper = Math.round(exchangeRate.add(BigDecimal.valueOf(0.001))
+                            .multiply(BigDecimal.valueOf(forex.getAmount())).doubleValue());
+            long lower = Math.round(exchangeRate.add(BigDecimal.valueOf(-0.001))
+                            .multiply(BigDecimal.valueOf(forex.getAmount())).doubleValue());
+
+            if (amount.getAmount() < lower || amount.getAmount() > upper)
+                throw new IllegalArgumentException(
+                                MessageFormat.format(Messages.MsgErrorIllegalForexUnit, type.toString(),
+                                                Values.Money.format(forex), exchangeRate, Values.Money.format(amount)));
+        }
 
         public Type getType()
         {
@@ -274,7 +274,7 @@ public abstract class Transaction implements Annotated
     public Money getUnitSum(Unit.Type type)
     {
         return getUnits().filter(u -> u.getType() == type) //
-                        .collect(MoneyCollectors.sum(getCurrencyCode(), u -> u.getAmount()));
+                        .collect(MoneyCollectors.sum(getCurrencyCode(), Unit::getAmount));
     }
 
     /**
