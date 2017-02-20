@@ -134,7 +134,11 @@ public class ClientFactory
         @Override
         public void save(Client client, OutputStream output) throws IOException
         {
-            new XmlSerialization().save(client, output);
+            try (Writer writer = new OutputStreamWriter(output, StandardCharsets.UTF_8))
+            {
+                xstream().toXML(client, writer);
+                writer.flush();
+            }
         }
     }
 
@@ -346,7 +350,10 @@ public class ClientFactory
         }
         catch (FileNotFoundException e)
         {
-            throw new IOException(MessageFormat.format(Messages.MsgFileNotFound, file.getAbsolutePath()), e);
+            FileNotFoundException fnf = new FileNotFoundException(
+                            MessageFormat.format(Messages.MsgFileNotFound, file.getAbsolutePath()));
+            fnf.initCause(e);
+            throw fnf;
         }
         finally
         {
@@ -378,18 +385,9 @@ public class ClientFactory
         if (isEncrypted(file) && password == null && client.getSecret() == null)
             throw new IOException(Messages.MsgPasswordMissing);
 
-        OutputStream output = null;
-
-        try
+        try (OutputStream output = new FileOutputStream(file))
         {
-            output = new FileOutputStream(file);
-
             buildPersister(file, method, password).save(client, output);
-        }
-        finally
-        {
-            if (output != null)
-                output.close();
         }
     }
 
