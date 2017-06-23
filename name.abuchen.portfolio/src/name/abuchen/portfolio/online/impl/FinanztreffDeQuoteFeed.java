@@ -22,6 +22,7 @@ import name.abuchen.portfolio.model.Exchange;
 import name.abuchen.portfolio.model.LatestSecurityPrice;
 import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.model.SecurityPrice;
+import name.abuchen.portfolio.money.Values;
 import name.abuchen.portfolio.online.QuoteFeed;
 
 /**
@@ -161,25 +162,48 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            {@link JSONObject}
      * @param key
      *            key
-     * @return price on success, else null
+     * @return price on success, else -1
+     */
+    private static long getPrice(JSONObject o, String key)
+    {
+        return getPrice(o.get(key));
+    }
+
+    /**
+     * Gets a price as a long value.
+     * 
+     * @param value
+     *            value
+     * @return price on success, else -1
      */
     @SuppressWarnings("boxing")
-    private static Long getPrice(JSONObject o, String key)
+    private static long getPrice(Object value)
     {
-        Object value = o.get(key);
-        // handle strings
-        if (value instanceof String)
+        if (value != null)
         {
-            try
+            double v = Double.NaN;
+            // handle strings
+            if (value instanceof String)
             {
-                value = Double.parseDouble((String) value);
+                try
+                {
+                    v = Double.parseDouble((String) value);
+                }
+                catch (NumberFormatException ex)
+                {}
             }
-            catch (NumberFormatException ex)
-            {}
+            else if (value instanceof Long)
+            {
+                v = (Long) value;
+            }
+            else if (value instanceof Double)
+            {
+                v = (Double) value;
+            }
+            // if value is found, adjust it and return it
+            if (!Double.isNaN(v)) { return Math.round(v * Values.Quote.factor()); }
         }
-        if (value instanceof Long) { return ((Long) value) * 100; }
-        if (value instanceof Double) { return (long) (Math.round(((Double) value) * 100)); }
-        return null;
+        return -1;
     }
 
     /**
@@ -228,30 +252,17 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                                 if (ojIntraday != null)
                                 {
                                     // get individual values
-                                    Long low = getPrice(ojIntraday, "low"); //$NON-NLS-1$
-                                    Long high = getPrice(ojIntraday, "high"); //$NON-NLS-1$
-                                    Long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
-                                    Long previousClose = getPrice(ojIntraday, "yesterdayPrice"); //$NON-NLS-1$
+                                    long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
                                     LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp"); //$NON-NLS-1$
                                     // if at least time and price are there,
                                     // construct a latest quote
-                                    if ((lastTimeStamp != null) && (lastPrice != null))
+                                    if ((lastTimeStamp != null) && (lastPrice != -1))
                                     {
-                                        LatestSecurityPrice latest = new LatestSecurityPrice(lastTimeStamp,
-                                                        lastPrice.longValue());
+                                        LatestSecurityPrice latest = new LatestSecurityPrice(lastTimeStamp, lastPrice);
                                         // set all known properties
-                                        if (low != null)
-                                        {
-                                            latest.setLow(low.longValue());
-                                        }
-                                        if (high != null)
-                                        {
-                                            latest.setHigh(high.longValue());
-                                        }
-                                        if (previousClose != null)
-                                        {
-                                            latest.setPreviousClose(previousClose.longValue());
-                                        }
+                                        latest.setLow(getPrice(ojIntraday, "low"));//$NON-NLS-1$
+                                        latest.setHigh(getPrice(ojIntraday, "high"));//$NON-NLS-1$
+                                        latest.setPreviousClose(getPrice(ojIntraday, "yesterdayPrice"));//$NON-NLS-1$
                                         // add latest quote to returned result
                                         result.setLatest(latest);
                                     }
@@ -272,7 +283,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                                 // date is not before it
                                 if ((dateStart == null) || (date.compareTo(dateStart) >= 0))
                                 {
-                                    result.prices.add(new LatestSecurityPrice(date, (long) (dValue * 100)));
+                                    result.prices.add(new LatestSecurityPrice(date, getPrice(dValue)));
                                 }
                             }
                         }
