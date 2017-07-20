@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
@@ -52,7 +53,18 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
          */
         public LatestSecurityPrice getLatest()
         {
-            return latest;
+            // short cut
+            if (latest != null) { return latest; }
+            // try to find latest price from list of prices
+            if (!prices.isEmpty())
+            {
+                // sort prices
+                Collections.sort(prices);
+                // take the last one
+                return prices.get(prices.size() - 1);
+            }
+            // no price was found
+            return null;
         }
 
         /**
