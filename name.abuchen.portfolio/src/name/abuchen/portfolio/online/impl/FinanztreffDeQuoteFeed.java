@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.net.URLConnection;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -218,7 +219,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * @param errors
      *            errors list
      * @return list of security prices
-     * @throws IOException
      */
     protected static CombinedQuoteResult getQuotes(InputStream is, Security s, LocalDate dateStart,
                     List<Exception> errors)
@@ -301,8 +301,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     /**
      * Gets quotes for the given security.
      * 
-     * @param is
-     *            {@link InputStream}
      * @param s
      *            {@link Security}
      * @param dateStart
@@ -311,7 +309,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            errors list
      * @return list of security prices
      */
-    protected static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
+    private static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
     {
         String isin = s.getIsin();
         if ((isin != null) && !isin.isEmpty())
@@ -330,7 +328,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             if ((results != null) && (results.size() == 1))
             {
                 String url = results.get(0);
-                try (InputStream is = new URL(url).openStream())
+                try (InputStream is = openUrlStream(new URL(url)))
                 {
                     return getQuotes(is, s, dateStart, errors);
                 }
@@ -352,9 +350,26 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * @return {@link InputStream}
      * @throws IOException
      */
-    protected static InputStream openQueryStream(String isin) throws IOException
+    private static InputStream openQueryStream(String isin) throws IOException
     {
-        return new URL(QUERY_URL.replace("{isin}", isin)).openStream(); //$NON-NLS-1$
+        return openUrlStream(new URL(QUERY_URL.replace("{isin}", isin))); //$NON-NLS-1$
+    }
+    
+    /**
+     * Open a stream to the given {@link URL}.
+     * 
+     * @param url
+     *            {@link URL}
+     * @return {@link InputStream}
+     * @throws IOException
+     */
+    private static InputStream openUrlStream(URL url) throws IOException
+    {
+        URLConnection c = url.openConnection();
+        // use a different user agent
+        c.setRequestProperty("User-Agent", OnlineHelper.getUserAgent()); //$NON-NLS-1$
+        c.connect();
+        return c.getInputStream();
     }
 
     @Override
