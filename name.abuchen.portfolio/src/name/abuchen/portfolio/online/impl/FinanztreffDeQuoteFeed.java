@@ -29,56 +29,11 @@ import name.abuchen.portfolio.online.QuoteFeed;
 
 /**
  * A quote feed for finanztreff.de.
- * 
+ *
  * @author SB
  */
 public class FinanztreffDeQuoteFeed implements QuoteFeed
 {
-    /**
-     * Combination of quotes and latest quote.
-     */
-    private static class CombinedQuoteResult
-    {
-        private LatestSecurityPrice latest;
-
-        /**
-         * All prices.
-         */
-        public final List<LatestSecurityPrice> prices = new ArrayList<LatestSecurityPrice>();
-
-        /**
-         * Gets the latest quote.
-         * 
-         * @return latest quote on success, else null
-         */
-        public LatestSecurityPrice getLatest()
-        {
-            // short cut
-            if (latest != null) { return latest; }
-            // try to find latest price from list of prices
-            if (!prices.isEmpty())
-            {
-                // sort prices
-                Collections.sort(prices);
-                // take the last one
-                return prices.get(prices.size() - 1);
-            }
-            // no price was found
-            return null;
-        }
-
-        /**
-         * Sets the latest quote.
-         * 
-         * @param latest
-         *            latest quote
-         */
-        public void setLatest(LatestSecurityPrice latest)
-        {
-            this.latest = latest;
-        }
-    }
-
     /**
      * ID of the provider.
      */
@@ -87,12 +42,11 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * ID of the exchange.
      */
     public static final String ID_EXCHANGE = "FINANZTREFF_DE.SINGLEQUOTE"; //$NON-NLS-1$
-
     private static final String QUERY_URL = "http://www.finanztreff.de/ftreffNG/ajax/get_search.htn?suchbegriff={isin}"; //$NON-NLS-1$
 
     /**
      * Collects all query results from the given {@link InputStream}.
-     * 
+     *
      * @param is
      *            {@link InputStream}
      * @return list of query result URLs
@@ -125,7 +79,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
 
     /**
      * Gets a {@link LocalDate} value.
-     * 
+     *
      * @param o
      *            {@link JSONObject}
      * @param key
@@ -143,7 +97,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
 
     /**
      * Gets a long value.
-     * 
+     *
      * @param o
      *            {@link JSONObject}
      * @param key
@@ -170,7 +124,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
 
     /**
      * Gets a price as a long value.
-     * 
+     *
      * @param o
      *            {@link JSONObject}
      * @param key
@@ -184,7 +138,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
 
     /**
      * Gets a price as a long value.
-     * 
+     *
      * @param value
      *            value
      * @return price on success, else -1
@@ -221,7 +175,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
 
     /**
      * Parses the given {@link InputStream} into a list of security prices.
-     * 
+     *
      * @param is
      *            {@link InputStream}
      * @param s
@@ -312,7 +266,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
 
     /**
      * Gets quotes for the given security.
-     * 
+     *
      * @param s
      *            {@link Security}
      * @param dateStart
@@ -328,7 +282,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         {
             List<String> results = null;
             // execute query
-            try (InputStream is = openQueryStream(isin))
+            String sQueryUrl = QUERY_URL.replace("{isin}", isin); //$NON-NLS-1$
+            try (InputStream is = openUrlStream(new URL(sQueryUrl), null))
             {
                 results = collectQueryResults(is);
             }
@@ -340,7 +295,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             if ((results != null) && (results.size() == 1))
             {
                 String url = results.get(0);
-                try (InputStream is = openUrlStream(new URL(url)))
+                try (InputStream is = openUrlStream(new URL(url), sQueryUrl))
                 {
                     return getQuotes(is, s, dateStart, errors);
                 }
@@ -355,31 +310,24 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     /**
-     * Open a stream for the given ISIN.
-     * 
-     * @param isin
-     *            ISIN
-     * @return {@link InputStream}
-     * @throws IOException
-     */
-    private static InputStream openQueryStream(String isin) throws IOException
-    {
-        return openUrlStream(new URL(QUERY_URL.replace("{isin}", isin))); //$NON-NLS-1$
-    }
-    
-    /**
      * Open a stream to the given {@link URL}.
-     * 
+     *
      * @param url
      *            {@link URL}
+     * @param referrer
+     *            referrer URL (can be null)
      * @return {@link InputStream}
      * @throws IOException
      */
-    private static InputStream openUrlStream(URL url) throws IOException
+    private static InputStream openUrlStream(URL url, String referrer) throws IOException
     {
         URLConnection c = url.openConnection();
         // use a different user agent
         c.setRequestProperty("User-Agent", OnlineHelper.getUserAgent()); //$NON-NLS-1$
+        if (referrer != null)
+        {
+            c.setRequestProperty("Referer", referrer); //$NON-NLS-1$
+        }
         c.connect();
         return c.getInputStream();
     }
@@ -460,5 +408,50 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             }
         }
         return isUpdated;
+    }
+
+    /**
+     * Combination of quotes and latest quote.
+     */
+    private static class CombinedQuoteResult
+    {
+        private LatestSecurityPrice latest;
+
+        /**
+         * All prices.
+         */
+        public final List<LatestSecurityPrice> prices = new ArrayList<LatestSecurityPrice>();
+
+        /**
+         * Gets the latest quote.
+         *
+         * @return latest quote on success, else null
+         */
+        public LatestSecurityPrice getLatest()
+        {
+            // short cut
+            if (latest != null) { return latest; }
+            // try to find latest price from list of prices
+            if (!prices.isEmpty())
+            {
+                // sort prices
+                Collections.sort(prices);
+                // take the last one
+                return prices.get(prices.size() - 1);
+            }
+            // no price was found
+            return null;
+        }
+
+        /**
+         * Sets the latest quote.
+         *
+         * @param latest
+         *            latest quote
+         */
+        public void setLatest(LatestSecurityPrice latest)
+        {
+            this.latest = latest;
+        }
     }
 }
