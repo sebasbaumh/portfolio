@@ -66,8 +66,8 @@
           <children xsi:type="menu:HandledMenuItem" xmi:id="_x6DOEPr6EeS4ucTlYYYvbw" elementId="name.abuchen.portfolio.ui.menu.file.import.dab" label="%command.import.pdf.dab" tooltip="%command.import.pdf.dab.tooltip" command="_pgC00EYREeSRXYVe298mXg">
             <parameters xmi:id="_x6DOEfr6EeS4ucTlYYYvbw" elementId="" name="name.abuchen.portfolio.ui.param.pdf-type" value="dab"/>
           </children>
-          <children xsi:type="menu:HandledMenuItem" xmi:id="_VDIBcALOEeW4ucTlYYYvbw" elementId="name.abuchen.portfolio.ui.menu.file.import.flatex" label="%command.import.pdf.flatex" tooltip="%command.import.pdf.flatex.tooltip" command="_pgC00EYREeSRXYVe298mXg">
-            <parameters xmi:id="_VDIBcQLOEeW4ucTlYYYvbw" elementId="" name="name.abuchen.portfolio.ui.param.pdf-type" value="flatex"/>
+          <children xsi:type="menu:HandledMenuItem" xmi:id="_VDIBcALOEeW4ucTlYYYvbw" elementId="name.abuchen.portfolio.ui.menu.file.import.fintechgroupbank" label="%command.import.pdf.fintechgroupbank" tooltip="%command.import.pdf.fintechgroupbank.tooltip" command="_pgC00EYREeSRXYVe298mXg">
+            <parameters xmi:id="_VDIBcQLOEeW4ucTlYYYvbw" elementId="" name="name.abuchen.portfolio.ui.param.pdf-type" value="fintechgroupbank"/>
           </children>
           <children xsi:type="menu:HandledMenuItem" xmi:id="_Lka2kEZrEeaGlO28N5cZQA" elementId="name.abuchen.portfolio.ui.menu.file.import.ingdiba" label="%command.import.pdf.ingdiba" tooltip="%command.import.pdf.ingdiba.tooltip" command="_pgC00EYREeSRXYVe298mXg">
             <parameters xmi:id="_Lka2kUZrEeaGlO28N5cZQA" elementId="" name="name.abuchen.portfolio.ui.param.pdf-type" value="ingdiba"/>
@@ -77,6 +77,9 @@
           </children>
           <children xsi:type="menu:HandledMenuItem" xmi:id="_ylDyMKWZEeWIXKZIF66Dag" elementId="name.abuchen.portfolio.ui.menu.file.import.sbroker" label="%command.import.pdf.sbroker" tooltip="%command.import.pdf.sbroker.tooltip" command="_pgC00EYREeSRXYVe298mXg">
             <parameters xmi:id="_FeCqYKWaEeWIXKZIF66Dag" elementId="" name="name.abuchen.portfolio.ui.param.pdf-type" value="sbroker"/>
+          </children>
+          <children xsi:type="menu:HandledMenuItem" xmi:id="_LJwK0IQwEee3oMLxWtvl2Q" elementId="name.abuchen.portfolio.ui.menu.file.import.unicredit" label="%command.import.pdf.unicredit" tooltip="%command.import.pdf.unicredit.tooltip" command="_pgC00EYREeSRXYVe298mXg">
+            <parameters xmi:id="_dVZb4IQwEee3oMLxWtvl2Q" elementId="" name="name.abuchen.portfolio.ui.param.pdf-type" value="unicredit"/>
           </children>
           <children xsi:type="menu:MenuSeparator" xmi:id="_30NnAAtvEeW4ucTlYYYvbw" elementId="name.abuchen.portfolio.bootstrap.menuseparator.2"/>
           <children xsi:type="menu:DirectMenuItem" xmi:id="_24C5sAtvEeW4ucTlYYYvbw" elementId="name.abuchen.portfolio.ui.menu.file.import.import-xml" label="%command.import.xml.import-xml" tooltip="" enabled="false"/>

@@ -30,10 +30,11 @@ import name.abuchen.portfolio.datatransfer.pdf.ConsorsbankPDFExctractor;
 import name.abuchen.portfolio.datatransfer.pdf.DABPDFExctractor;
 import name.abuchen.portfolio.datatransfer.pdf.DeutscheBankPDFExctractor;
 import name.abuchen.portfolio.datatransfer.pdf.DkbPDFExtractor;
-import name.abuchen.portfolio.datatransfer.pdf.FlatexPDFExtractor;
+import name.abuchen.portfolio.datatransfer.pdf.FinTechGroupBankPDFExtractor;
 import name.abuchen.portfolio.datatransfer.pdf.INGDiBaExtractor;
 import name.abuchen.portfolio.datatransfer.pdf.OnvistaPDFExtractor;
 import name.abuchen.portfolio.datatransfer.pdf.SBrokerPDFExtractor;
+import name.abuchen.portfolio.datatransfer.pdf.UnicreditPDFExtractor;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.PortfolioPart;
@@ -113,14 +114,16 @@ public class ImportPDFHandler
                 return new DeutscheBankPDFExctractor(client);
             case "dkb": //$NON-NLS-1$
                 return new DkbPDFExtractor(client);
-            case "flatex": //$NON-NLS-1$
-                return new FlatexPDFExtractor(client);
+            case "fintechgroupbank": //$NON-NLS-1$
+                return new FinTechGroupBankPDFExtractor(client);
             case "ingdiba": //$NON-NLS-1$
                 return new INGDiBaExtractor(client);
             case "onvista": //$NON-NLS-1$
                 return new OnvistaPDFExtractor(client);
             case "sbroker": //$NON-NLS-1$
                 return new SBrokerPDFExtractor(client);
+            case "unicredit": //$NON-NLS-1$
+                return new UnicreditPDFExtractor(client);
             case "ib": //$NON-NLS-1$
                 return new IBFlexStatementExtractor(client);
             default:
