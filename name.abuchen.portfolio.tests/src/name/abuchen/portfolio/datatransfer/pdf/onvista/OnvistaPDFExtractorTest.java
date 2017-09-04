@@ -72,6 +72,17 @@ public class OnvistaPDFExtractorTest
         return security;
     }
     
+    private Security assertSecurityBuySparplan(List<Item> results)
+    {
+        Optional<Item> item = results.stream().filter(i -> i instanceof SecurityItem).findFirst();
+        assertThat(item.isPresent(), is(true));
+        Security security = ((SecurityItem) item.get()).getSecurity();
+        assertThat(security.getIsin(), is("DE0006289473"));
+        assertThat(security.getName(), is("iS.eb.r.Go.G.1.5-2.5y U.ETF DE Inhaber-Anteile"));
+
+        return security;
+    }
+    
     private Security assertSecurityBuyBezugsrechte(List<Item> results)
     {
         Optional<Item> item = results.stream().filter(i -> i instanceof SecurityItem).findFirst();
@@ -514,6 +525,48 @@ public class OnvistaPDFExtractorTest
         assertThat(entry.getPortfolioTransaction().getShares(), is(Values.Share.factorize(5)));
         assertThat(entry.getPortfolioTransaction().getUnitSum(Unit.Type.FEE),
                         is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(7.05))));
+    }
+    
+    @Test
+    public void testWertpapierKaufSparplanMitSteuerausgleich() throws IOException // Aktien
+    {
+        OnvistaPDFExtractor extractor = new OnvistaPDFExtractor(new Client())
+        {
+            @Override
+            protected String strip(File file) throws IOException
+            {
+                return from("OnvistaKaufSparplanMitSteuerausgleich.txt");
+            }
+        };
+        List<Exception> errors = new ArrayList<Exception>();
+
+        List<Item> results = extractor.extract(Arrays.asList(new File("t")), errors);
+
+        assertThat(errors, empty());
+        assertThat(results.size(), is(3));
+
+        assertSecurityBuySparplan(results);
+
+        // check buy sell transaction
+        Optional<Item> item = results.stream().filter(i -> i instanceof BuySellEntryItem).findFirst();
+        assertThat(item.isPresent(), is(true));
+        assertThat(item.get().getSubject(), instanceOf(BuySellEntry.class));
+        BuySellEntry entry = (BuySellEntry) item.get().getSubject();
+
+        assertThat(entry.getPortfolioTransaction().getType(), is(PortfolioTransaction.Type.BUY));
+        assertThat(entry.getAccountTransaction().getType(), is(AccountTransaction.Type.BUY));
+
+        assertThat(entry.getPortfolioTransaction().getCurrencyCode(), is(CurrencyUnit.EUR));
+        assertThat(entry.getPortfolioTransaction().getMonetaryAmount(),
+                        is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(50.00))));
+        assertThat(entry.getPortfolioTransaction().getDate(), is(LocalDate.parse("2017-07-17")));
+        assertThat(entry.getPortfolioTransaction().getShares(), is(Values.Share.factorize(0.5638)));
+        
+        // check Steuererstattung
+        item = results.stream().filter(i -> i instanceof TransactionItem).findFirst();
+        AccountTransaction entryTaxReturn = (AccountTransaction) item.get().getSubject();
+        assertThat(entryTaxReturn.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(0.06))));
+        assertThat(entryTaxReturn.getDate(), is(is(LocalDate.parse("2017-07-18"))));
     }
 
     @Test
@@ -1217,6 +1270,45 @@ public class OnvistaPDFExtractorTest
         assertThat(transaction.getDate(), is(LocalDate.parse("2015-04-03")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(0.62))));
 
+    }
+    
+    @Test
+    public void testKontoauszugMehrereBuchungen2017() throws IOException
+    {
+        OnvistaPDFExtractor extractor = new OnvistaPDFExtractor(new Client())
+        {
+            @Override
+            protected String strip(File file) throws IOException
+            {
+                return from("OnvistaKontoauszugMehrereBuchungen2017.txt");
+            }
+        };
+        List<Exception> errors = new ArrayList<Exception>();
+        List<Item> results = extractor.extract(Arrays.asList(new File("t")), errors);
+
+        assertThat(errors, empty());
+        assertThat(results.size(), is(7));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        assertTransaction(results, 0, "2017-04-04", AccountTransaction.Type.DEPOSIT, CurrencyUnit.EUR, 200.00);
+        assertTransaction(results, 1, "2017-04-10", AccountTransaction.Type.REMOVAL, CurrencyUnit.EUR,   0.89);
+        assertTransaction(results, 2, "2017-05-03", AccountTransaction.Type.DEPOSIT, CurrencyUnit.EUR, 200.00);
+        assertTransaction(results, 3, "2017-06-01", AccountTransaction.Type.DEPOSIT, CurrencyUnit.EUR, 100.00);
+        assertTransaction(results, 4, "2017-06-02", AccountTransaction.Type.DEPOSIT, CurrencyUnit.EUR, 200.00);
+        assertTransaction(results, 5, "2017-06-26", AccountTransaction.Type.DEPOSIT, CurrencyUnit.EUR, 300.00);
+        assertTransaction(results, 6, "2017-06-26", AccountTransaction.Type.DEPOSIT, CurrencyUnit.EUR, 200.00);
+
+    }
+    
+    private void assertTransaction(List<Item> results, int j, String date, AccountTransaction.Type type, String unit, double amount)
+    {
+        Item item = results.stream().filter(i -> i instanceof TransactionItem).collect(Collectors.toList()).get(j);
+        assertThat(item.getSubject(), instanceOf(AccountTransaction.class));
+        AccountTransaction transaction = (AccountTransaction) item.getSubject();
+        
+        assertThat(transaction.getType(), is(type));
+        assertThat(transaction.getDate(), is(LocalDate.parse(date)));
+        assertThat(transaction.getMonetaryAmount(), is(Money.of(unit, Values.Amount.factorize(amount))));
     }
     
     @Test
