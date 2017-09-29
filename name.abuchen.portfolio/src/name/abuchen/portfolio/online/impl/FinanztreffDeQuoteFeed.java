@@ -230,7 +230,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                                         latest.setHigh(getPrice(ojIntraday, "high"));//$NON-NLS-1$
                                         latest.setPreviousClose(getPrice(ojIntraday, "yesterdayPrice"));//$NON-NLS-1$
                                         // add latest quote to returned result
-                                        result.setLatest(latest);
+                                        result.latest = latest;
                                     }
                                 }
                             }
@@ -254,6 +254,45 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                             }
                         }
                     }
+                }
+            }
+            // now try to refine the data a bit...
+            if (!result.prices.isEmpty())
+            {
+                // first sort prices to make sure they are in order
+                Collections.sort(result.prices);
+                // now try to find the previous close etc.
+                LocalDate lastDay = null;
+                long prevClose = -1;
+                long nextClose = -1;
+                for (LatestSecurityPrice price : result.prices)
+                {
+                    // first one, just remember values
+                    if (lastDay == null)
+                    {
+                        lastDay = price.getTime();
+                        nextClose = price.getValue();
+                        continue;
+                    }
+                    // check if this is a new day
+                    if (lastDay.isBefore(price.getTime()))
+                    {
+                        // switch close prices
+                        prevClose = nextClose;
+                    }
+                    // remember the price as the next one one
+                    nextClose = price.getValue();
+                    // check if previous close is missing and set it then
+                    if ((price.getPreviousClose() <= 0) && (prevClose > 0))
+                    {
+                        price.setPreviousClose(prevClose);
+                    }
+                }
+                // set the latest price from list of prices?
+                if (result.latest == null)
+                {
+                    // take the last one
+                    result.latest = result.prices.get(result.prices.size() - 1);
                 }
             }
         }
@@ -376,7 +415,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             }
         }
         // get latest price if possible
-        LatestSecurityPrice latest = result.getLatest();
+        LatestSecurityPrice latest = result.latest;
         if (latest != null)
         {
             // set it
@@ -397,7 +436,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             // get standard quotes
             CombinedQuoteResult result = getQuotes(security, null, errors);
             // get latest price if possible
-            LatestSecurityPrice latest = result.getLatest();
+            LatestSecurityPrice latest = result.latest;
             if (latest != null)
             {
                 // set it
@@ -415,43 +454,14 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      */
     private static class CombinedQuoteResult
     {
-        private LatestSecurityPrice latest;
+        /**
+         * Latest quote.
+         */
+        public LatestSecurityPrice latest;
 
         /**
          * All prices.
          */
         public final List<LatestSecurityPrice> prices = new ArrayList<LatestSecurityPrice>();
-
-        /**
-         * Gets the latest quote.
-         *
-         * @return latest quote on success, else null
-         */
-        public LatestSecurityPrice getLatest()
-        {
-            // short cut
-            if (latest != null) { return latest; }
-            // try to find latest price from list of prices
-            if (!prices.isEmpty())
-            {
-                // sort prices
-                Collections.sort(prices);
-                // take the last one
-                return prices.get(prices.size() - 1);
-            }
-            // no price was found
-            return null;
-        }
-
-        /**
-         * Sets the latest quote.
-         *
-         * @param latest
-         *            latest quote
-         */
-        public void setLatest(LatestSecurityPrice latest)
-        {
-            this.latest = latest;
-        }
     }
 }
