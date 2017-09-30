@@ -9,6 +9,8 @@ public class Messages extends NLS
     public static String AttributesAcquisitionFeeName;
     public static String AttributesAUMColumn;
     public static String AttributesAUMName;
+    public static String AttributesManagementFeeColumn;
+    public static String AttributesManagementFeeName;
     public static String AttributesTERColumn;
     public static String AttributesTERName;
     public static String AttributesVendorColumn;
@@ -147,6 +149,7 @@ public class Messages extends NLS
     public static String MsgErrorNotAValidDate;
     public static String MsgErrorsConvertingValue;
     public static String MsgErrorUnexpectedStatusCode;
+    public static String MsgErrorUnexpectedZipEntry;
     public static String MsgErrorUnitCurrencyMismatch;
     public static String MsgFileNotFound;
     public static String MsgIncorrectPassword;
