@@ -34,6 +34,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
@@ -203,21 +204,6 @@ public class ClientFactory
             this.keyLength = "AES256".equals(method) ? AES256_KEYLENGTH : AES128_KEYLENGTH; //$NON-NLS-1$
         }
         
-        /**
-         * Reads all data in the given {@link InputStream}.
-         * 
-         * @param is
-         *            {@link InputStream}
-         * @throws IOException
-         */
-        private static void readStreamUntilEnd(InputStream is) throws IOException
-        {
-            // use an appropriate buffer (64 KB here)
-            byte[] data = new byte[65536];
-            while (is.read(data) != -1)
-            {}
-        }
-
         @Override
         public Client load(final InputStream input) throws IOException
         {
@@ -270,12 +256,21 @@ public class ClientFactory
 
                         client = new XmlSerialization().load(new InputStreamReader(zipin, StandardCharsets.UTF_8));
 
-                        // starting with a later jdk 1.8.0 (for example
-                        // 1.8.0_25), a
-                        // javax.crypto.BadPaddingException
-                        // "Given final block not properly padded" is thrown if
-                        // we do not read the complete stream
-                        readStreamUntilEnd(decrypted);
+                        try
+                        {
+                            // explicitly close the stream to force bad padding
+                            // exceptions to occur inside this try-catch-block
+                            decrypted.close();
+                        }
+                        catch (IOException ex)
+                        {
+                            // starting with a later jdk 1.8.0 (for example
+                            // 1.8.0_25), a javax.crypto.BadPaddingException
+                            // "Given final block not properly padded" is thrown
+                            // if we do not read the stream - so ignore that
+                            // kind of exception
+                            if (!(ex.getCause() instanceof BadPaddingException)) { throw ex; }
+                        }
                     }
                 }
 
@@ -394,7 +389,9 @@ public class ClientFactory
             long bytesTotal = file.length();
             int increment = (int) Math.min(bytesTotal / 20L, Integer.MAX_VALUE);
             monitor.beginTask(MessageFormat.format(Messages.MsgReadingFile, file.getName()), 20);
-            try (InputStream input = new ProgressMonitorInputStream(new BufferedInputStream(new FileInputStream(file)),
+            // open an input stream for the file using a 64 KB buffer to speed
+            // up reading
+            try (InputStream input = new ProgressMonitorInputStream(new BufferedInputStream(new FileInputStream(file),65536),
                             increment, monitor))
             {
                 return buildPersister(file, null, password).load(input);
@@ -431,8 +428,9 @@ public class ClientFactory
     {
         if (isEncrypted(file) && password == null && client.getSecret() == null)
             throw new IOException(Messages.MsgPasswordMissing);
-
-        try (OutputStream output = new BufferedOutputStream(new FileOutputStream(file)))
+        // open an output stream for the file using a 64 KB buffer to speed up
+        // writing
+        try (OutputStream output = new BufferedOutputStream(new FileOutputStream(file), 65536))
         {
             buildPersister(file, method, password).save(client, output);
         }
