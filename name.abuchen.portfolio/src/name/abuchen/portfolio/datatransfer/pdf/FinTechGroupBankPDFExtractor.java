@@ -2,7 +2,6 @@ package name.abuchen.portfolio.datatransfer.pdf;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -969,6 +968,6 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
     @Override
     public String getLabel()
     {
-        return "fintechgroupbank"; //$NON-NLS-1$
+        return "FinTech Group Bank AG / flatex / Whitebox"; //$NON-NLS-1$
     }
 }

@@ -49,6 +49,7 @@ public class Messages extends NLS
     public static String ChartSeriesPickerRemove;
     public static String ChartSeriesPickerShowArea;
     public static String ChartSeriesPickerTitle;
+    public static String ChartSeriesReplaceSeriesByOtherChart;
     public static String ClientEditorLabelChart;
     public static String ClientEditorLabelClientMasterData;
     public static String ClientEditorLabelGeneralData;
@@ -424,6 +425,7 @@ public class Messages extends NLS
     public static String LabelDividendPerShare;    
     public static String LabelDividends;
     public static String LabelDividendsByMonthAndVehicle;
+    public static String LabelDividendsByYearAndVehicle;
     public static String LabelDividendsPerMonth;
     public static String LabelDividendsPerYear;
     public static String LabelDividendsSelectStartYear;
@@ -595,6 +597,10 @@ public class Messages extends NLS
     public static String PDFImportWizardDescription;
     public static String PDFImportWizardMsgExtracting;
     public static String PDFImportWizardTitle;
+    public static String PDFImportWizardAssistant;
+    public static String PDFImportWizardExtractor;
+    public static String PDFImportDebugAuthor;
+    public static String PDFImportErrorParsingDocument;  
     public static String PerformanceChartLabelEntirePortfolio;
     public static String PerformanceChartLabelCPI;
     public static String PerformanceHeatmapToolTip;

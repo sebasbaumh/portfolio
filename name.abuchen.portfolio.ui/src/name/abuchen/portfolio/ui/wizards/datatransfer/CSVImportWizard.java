@@ -44,11 +44,13 @@ public class CSVImportWizard extends Wizard
         }
 
         @Override
-        public List<Item> extract(List<File> files, List<Exception> errors)
+        public List<Item> extract(List<Extractor.InputFile> files, List<Exception> errors)
         {
             return this.importer.createItems(errors);
         }
     }
+
+    /* package */static final String REVIEW_PAGE_ID = "reviewitems"; //$NON-NLS-1$
 
     private Client client;
     private IPreferenceStore preferences;
@@ -90,7 +92,8 @@ public class CSVImportWizard extends Wizard
         addPage(definitionPage);
 
         reviewPage = new ReviewExtractedItemsPage(client, new ExtractorProxy(importer), preferences,
-                        Arrays.asList(importer.getInputFile()));
+                        Arrays.asList(new Extractor.InputFile(importer.getInputFile())), REVIEW_PAGE_ID);
+        reviewPage.setDoExtractBeforeEveryPageDisplay(true);
         addPage(reviewPage);
 
         selectSecurityPage = new SelectSecurityPage(client);
