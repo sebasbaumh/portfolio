@@ -428,25 +428,18 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     @Override
-    public boolean updateLatestQuotes(List<Security> securities, List<Exception> errors)
+    public boolean updateLatestQuotes(Security security, List<Exception> errors)
     {
-        boolean isUpdated = false;
-        for (Security security : securities)
+        // get standard quotes
+        CombinedQuoteResult result = getQuotes(security, null, errors);
+        // get latest price if possible
+        LatestSecurityPrice latest = result.latest;
+        if (latest != null)
         {
-            // get standard quotes
-            CombinedQuoteResult result = getQuotes(security, null, errors);
-            // get latest price if possible
-            LatestSecurityPrice latest = result.latest;
-            if (latest != null)
-            {
-                // set it
-                if (security.setLatest(latest))
-                {
-                    isUpdated = true;
-                }
-            }
+            // set it
+            return security.setLatest(latest);
         }
-        return isUpdated;
+        return false;
     }
 
     /**
