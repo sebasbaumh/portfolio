@@ -270,12 +270,12 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                     // first one, just remember values
                     if (lastDay == null)
                     {
-                        lastDay = price.getTime();
+                        lastDay = price.getDate();
                         nextClose = price.getValue();
                         continue;
                     }
                     // check if this is a new day
-                    if (lastDay.isBefore(price.getTime()))
+                    if (lastDay.isBefore(price.getDate()))
                     {
                         // switch close prices
                         prevClose = nextClose;
