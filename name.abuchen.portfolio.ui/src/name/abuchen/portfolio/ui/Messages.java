@@ -195,6 +195,7 @@ public class Messages extends NLS
     public static String ColumnSymbol;
     public static String ColumnTargetValue;
     public static String ColumnTaxes;
+    public static String ColumnTaxes_Description;
     public static String ColumnTaxonomy;
     public static String ColumnTermCurrency;
     public static String ColumnTicker;
@@ -348,6 +349,8 @@ public class Messages extends NLS
     public static String LabelAvailableAttributes;
     public static String LabelChartDetailCompactView;
     public static String LabelChartDetailDividends;
+    public static String LabelChartDetailShowDataLabel;
+    public static String LabelChartDetailShowMarkerLines;
     public static String LabelChartDetailSMA50;
     public static String LabelChartDetailSMA200;
     public static String LabelChartDetailEvents;
@@ -459,6 +462,9 @@ public class Messages extends NLS
     public static String LabelTaxonomies;
     public static String LabelTaxonomyTemplates;
     public static String LabelToday;
+    public static String LabelToolTipDividendDetails;
+    public static String LabelToolTipInvestmentDetails;
+    public static String LabelToolTipTransactionSummary;
     public static String LabelTotalSum;
     public static String LabelTotalValuePercent;
     public static String LabelTransactions;
