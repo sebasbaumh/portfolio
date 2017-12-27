@@ -19,11 +19,11 @@ import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
 
-public class BankSLMPDFExctractor extends AbstractPDFExtractor
+public class BankSLMPDFExtractor extends AbstractPDFExtractor
 {
     private final NumberFormat swissNumberFormat = NumberFormat.getInstance(new Locale("de", "CH")); //$NON-NLS-1$ //$NON-NLS-2$
 
-    public BankSLMPDFExctractor(Client client) throws IOException
+    public BankSLMPDFExtractor(Client client) throws IOException
     {
         super(client);
 
@@ -191,7 +191,7 @@ public class BankSLMPDFExctractor extends AbstractPDFExtractor
                         .match("^Valor: (?<wkn>[^ ]*)$") //
                         .match("Brutto \\((?<shares>[\\d.']+) \\* ... ([\\d.']+)\\) (?<currency>\\w{3}+) ([\\d.']+)") //
                         .assign((t, v) -> {
-                            t.setDate(asDate(v.get("date")));
+                            t.setDateTime(asDate(v.get("date")));
                             t.setShares(asShares(v.get("shares")));
                             t.setSecurity(getOrCreateSecurity(v));
                         })

@@ -14,9 +14,9 @@ import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.MutableMoney;
 
-public class DeutscheBankPDFExctractor extends AbstractPDFExtractor
+public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
 {
-    public DeutscheBankPDFExctractor(Client client) throws IOException
+    public DeutscheBankPDFExtractor(Client client) throws IOException
     {
         super(client);
 
@@ -192,7 +192,7 @@ public class DeutscheBankPDFExctractor extends AbstractPDFExtractor
                         .section("date", "amount", "currency")
                         .match("Gutschrift mit Wert (?<date>\\d+.\\d+.\\d{4}+) (?<amount>[\\d.]+,\\d+) (?<currency>\\w{3}+)")
                         .assign((t, v) -> {
-                            t.setDate(asDate(v.get("date")));
+                            t.setDateTime(asDate(v.get("date")));
                             t.setAmount(asAmount(v.get("amount")));
                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                         })

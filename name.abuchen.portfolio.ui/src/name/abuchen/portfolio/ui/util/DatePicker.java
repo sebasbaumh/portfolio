@@ -22,11 +22,11 @@ import org.eclipse.swt.widgets.DateTime;
  * And on Windows, I prefer the DateTime widget. Keep in mind that the behavior
  * slightly differs because CDateTime allows a null selection.
  */
-public class DateTimePicker
+public class DatePicker
 {
-    private Control control;
+    protected Control control;
 
-    public DateTimePicker(Composite parent)
+    public DatePicker(Composite parent)
     {
         boolean isLinux = Platform.OS_LINUX.equals(Platform.getOS());
 
@@ -72,7 +72,6 @@ public class DateTimePicker
         {
             Date d = ((CDateTime) control).getSelection();
             return LocalDateTime.ofInstant(d.toInstant(), ZoneId.systemDefault()).toLocalDate();
-
         }
         else
         {

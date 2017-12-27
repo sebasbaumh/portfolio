@@ -115,7 +115,7 @@ public class AccountListView extends AbstractListView implements ModificationLis
 
         isFiltered = part.getPreferenceStore().getBoolean(FILTER_INACTIVE_ACCOUNTS);
     }
-    
+
     @Override
     protected int getSashStyle()
     {
@@ -383,8 +383,7 @@ public class AccountListView extends AbstractListView implements ModificationLis
             @Override
             public String getText(Object e)
             {
-                AccountTransaction t = (AccountTransaction) e;
-                return Values.Date.format(t.getDate());
+                return Values.DateTime.format(((AccountTransaction) e).getDateTime());
             }
 
             @Override
@@ -771,8 +770,8 @@ public class AccountListView extends AbstractListView implements ModificationLis
             Collections.sort(tx, new Transaction.ByDate());
 
             LocalDate now = LocalDate.now();
-            LocalDate start = tx.get(0).getDate();
-            LocalDate end = tx.get(tx.size() - 1).getDate();
+            LocalDate start = tx.get(0).getDateTime().toLocalDate();
+            LocalDate end = tx.get(tx.size() - 1).getDateTime().toLocalDate();
             if (now.isAfter(end))
                 end = now;
             if (now.isBefore(start))

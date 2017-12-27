@@ -1,6 +1,7 @@
 package name.abuchen.portfolio.model;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +26,7 @@ public class InvestmentPlan implements Named, Adaptable
      */
     private boolean autoGenerate = false;
 
-    private LocalDate start;
+    private LocalDateTime start;
     private int interval = 1;
 
     private long amount;
@@ -109,10 +110,15 @@ public class InvestmentPlan implements Named, Adaptable
 
     public LocalDate getStart()
     {
-        return start;
+        return start.toLocalDate();
     }
 
     public void setStart(LocalDate start)
+    {
+        this.start = start.atStartOfDay();
+    }
+    
+    public void setStart(LocalDateTime start)
     {
         this.start = start;
     }
@@ -183,7 +189,7 @@ public class InvestmentPlan implements Named, Adaptable
         LocalDate last = null;
         for (PortfolioTransaction t : transactions)
         {
-            LocalDate date = t.getDate();
+            LocalDate date = t.getDateTime().toLocalDate();
             if (last == null || last.isBefore(date))
                 last = date;
         }
@@ -240,7 +246,7 @@ public class InvestmentPlan implements Named, Adaptable
 
     public LocalDate getDateOfNextTransactionToBeGenerated()
     {
-        return transactions.isEmpty() ? start : next(getLastDate());
+        return transactions.isEmpty() ? start.toLocalDate() : next(getLastDate());
     }
 
     public List<PortfolioTransaction> generateTransactions(CurrencyConverter converter)
@@ -292,7 +298,7 @@ public class InvestmentPlan implements Named, Adaptable
 
             BuySellEntry entry = new BuySellEntry(portfolio, account);
             entry.setType(PortfolioTransaction.Type.BUY);
-            entry.setDate(tDate);
+            entry.setDate(tDate.atStartOfDay());
             entry.setShares(shares);
             entry.setCurrencyCode(targetCurrencyCode);
             entry.setAmount(amount);
@@ -313,7 +319,7 @@ public class InvestmentPlan implements Named, Adaptable
             // create inbound delivery
 
             PortfolioTransaction transaction = new PortfolioTransaction();
-            transaction.setDate(tDate);
+            transaction.setDateTime(tDate.atStartOfDay());
             transaction.setType(PortfolioTransaction.Type.DELIVERY_INBOUND);
             transaction.setSecurity(security);
             transaction.setCurrencyCode(targetCurrencyCode);
