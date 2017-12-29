@@ -318,6 +318,73 @@ public final class SecurityPerformanceRecord implements Adaptable
     {
         return periodicity.ordinal();
     }
+    
+    /**
+     * Gets the rate of return of dividends per year as a percentage of
+     * invested.
+     * 
+     * @return rate of return per year on success, else 0
+     */
+    public double getRateOfReturnPerYear()
+    {
+        // get the total rate of return of dividends as a base
+        double totalRateOfReturnDiv = getTotalRateOfReturnDiv();
+        // only do a calculation if there are shares held and a rate is
+        // calculated
+        if (totalRateOfReturnDiv > 0)
+        {
+
+            int eventsPerYear;
+            // get periodicity
+            Periodicity p = getPeriodicity();
+            switch (p)
+            {
+                case ANNUAL:
+                {
+                    eventsPerYear = 1;
+                }
+                    break;
+                case SEMIANNUAL:
+                {
+                    eventsPerYear = 2;
+                }
+                    break;
+                case QUARTERLY:
+                {
+                    eventsPerYear = 4;
+                }
+                    break;
+                case MONTHLY:
+                {
+                    eventsPerYear = 12;
+                }
+                    break;
+                case UNKNOWN:
+                {
+                    // check if there is just a single dividend (treat it like a
+                    // annual dividend)
+                    if (dividendEventCount == 1)
+                    {
+                        eventsPerYear = 1;
+                    }
+                    else
+                    {
+                        return 0;
+                    }
+                }
+                    break;
+                // quit if periodicity is unknown or if there are no dividends
+                default:
+                {
+                    return 0;
+                }
+            }
+            // dividend per year is average dividend multiplied by number of
+            // expected events per year
+            return totalRateOfReturnDiv * eventsPerYear / dividendEventCount;
+        }
+        return 0;
+    }
 
     public double getTotalRateOfReturnDiv()
     {
