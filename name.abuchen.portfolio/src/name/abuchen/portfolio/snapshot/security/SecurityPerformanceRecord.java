@@ -336,8 +336,7 @@ public final class SecurityPerformanceRecord implements Adaptable
             }
             // dividend per year is average dividend multiplied by number of
             // expected events per year
-            double rate = totalRateOfReturnDiv;
-            return rate * eventsPerYear / dividendEventCount;
+            return totalRateOfReturnDiv * eventsPerYear / dividendEventCount;
         }
         return 0;
     }
