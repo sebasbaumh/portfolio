@@ -55,7 +55,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static List<String> collectQueryResults(InputStream is) throws IOException
     {
         ArrayList<String> results = new ArrayList<String>();
-        Pattern pLine = Pattern.compile("<button.*location\\.href='([^']+).*"); //$NON-NLS-1$
+        Pattern pLine = Pattern.compile("location\\.href='([^']+)"); //$NON-NLS-1$
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is)))
         {
             String line;
@@ -65,7 +65,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                 if (!line.isEmpty())
                 {
                     Matcher m = pLine.matcher(line);
-                    if (m.matches())
+                    while(m.find())
                     {
                         // remember url
                         String url = m.group(1);
@@ -330,8 +330,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             {
                 errors.add(ex);
             }
-            // check for a single result
-            if ((results != null) && (results.size() == 1))
+            // get first result
+            if ((results != null) && (!results.isEmpty()))
             {
                 String url = results.get(0);
                 try (InputStream is = openUrlStream(new URL(url), sQueryUrl))
