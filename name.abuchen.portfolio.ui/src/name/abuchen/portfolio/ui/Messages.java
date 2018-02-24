@@ -40,6 +40,12 @@ public class Messages extends NLS
     public static String BtnLabelRestartLater;
     public static String BtnLabelRestartNow;
     public static String CellEditor_NotANumber;
+    public static String ChartBringForward;
+    public static String ChartBringToFront;
+    public static String ChartMenuPosition;
+    public static String ChartMenuSorting;
+    public static String ChartSendBackwards;
+    public static String ChartSendToBack;
     public static String ChartSeriesBenchmarkSuffix;
     public static String ChartSeriesCopySeriesFromOtherChart;
     public static String ChartSeriesPickerAddBenchmark;
@@ -51,6 +57,8 @@ public class Messages extends NLS
     public static String ChartSeriesPickerShowArea;
     public static String ChartSeriesPickerTitle;
     public static String ChartSeriesReplaceSeriesByOtherChart;
+    public static String ChartSortAZ;
+    public static String ChartSortZA;
     public static String ClientEditorLabelChart;
     public static String ClientEditorLabelClientMasterData;
     public static String ClientEditorLabelGeneralData;
@@ -586,6 +594,7 @@ public class Messages extends NLS
     public static String MsgIncorrectTotal;
     public static String MsgInfoChangingCurrencyNotPossible;
     public static String MsgInfoRetiredSecurities;
+    public static String MsgJavaVersionTooOldForLetsEncrypt;
     public static String MsgLoadingFile;
     public static String MsgMissingAccount;
     public static String MsgMissingPortfolio;
