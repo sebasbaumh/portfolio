@@ -35,6 +35,22 @@ import name.abuchen.portfolio.online.QuoteFeed;
 public class FinanztreffDeQuoteFeed implements QuoteFeed
 {
     /**
+     * Combination of quotes and latest quote.
+     */
+    private static class CombinedQuoteResult
+    {
+        /**
+         * Latest quote.
+         */
+        public LatestSecurityPrice latest;
+
+        /**
+         * All prices.
+         */
+        public final List<LatestSecurityPrice> prices = new ArrayList<LatestSecurityPrice>();
+    }
+
+    /**
      * ID of the provider.
      */
     public static final String ID = "FINANZTREFF_DE"; //$NON-NLS-1$
@@ -43,6 +59,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      */
     public static final String ID_EXCHANGE = "FINANZTREFF_DE.SINGLEQUOTE"; //$NON-NLS-1$
     private static final String QUERY_URL = "http://www.finanztreff.de/ftreffNG/ajax/get_search.htn?suchbegriff={isin}"; //$NON-NLS-1$
+    private static final String REFERRER_URL = "http://www.finanztreff.de"; //$NON-NLS-1$
 
     /**
      * Collects all query results from the given {@link InputStream}.
@@ -65,7 +82,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                 if (!line.isEmpty())
                 {
                     Matcher m = pLine.matcher(line);
-                    while(m.find())
+                    while (m.find())
                     {
                         // remember url
                         String url = m.group(1);
@@ -75,6 +92,48 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             }
         }
         return results;
+    }
+
+    /**
+     * Collects all available quote pages.
+     *
+     * @param lines
+     *            lines
+     * @return quote pages
+     */
+    private static List<String> collectQuotePages(Iterable<String> lines)
+    {
+        // USFchangeSnap[^ ]+ href="([^"]+)
+        Pattern pLine = Pattern.compile("USFchangeSnap[^ ]+ href=\"([^\"]+)"); //$NON-NLS-1$
+        ArrayList<String> results = new ArrayList<String>();
+        for (String line : lines)
+        {
+            Matcher m = pLine.matcher(line);
+            while (m.find())
+            {
+                results.add(m.group(1));
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Gets the currency from the given data.
+     *
+     * @param lines
+     *            lines
+     * @return currency code like "USD" on success, else null
+     */
+    private static String getCurrency(Iterable<String> lines)
+    {
+        // <div class="whrg" title="US-Dollar">Währung: USD</div>
+        Pattern pCur = Pattern.compile("<div class=\"whrg\" [^>]+>[^:]+: ([A-Z]+)<");
+        for (String line : lines)
+        {
+            Matcher m = pCur.matcher(line);
+            if (m.find()) { return m.group(1); }
+        }
+        return null;
     }
 
     /**
@@ -174,10 +233,10 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     /**
-     * Parses the given {@link InputStream} into a list of security prices.
+     * Parses the given data into a list of security prices.
      *
-     * @param is
-     *            {@link InputStream}
+     * @param lines
+     *            lines
      * @param s
      *            {@link Security}
      * @param dateStart
@@ -186,119 +245,109 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            errors list
      * @return list of security prices
      */
-    protected static CombinedQuoteResult getQuotes(InputStream is, Security s, LocalDate dateStart,
+    protected static CombinedQuoteResult getQuotes(Iterable<String> lines, Security s, LocalDate dateStart,
                     List<Exception> errors)
     {
         CombinedQuoteResult result = new CombinedQuoteResult();
-        try
+        Pattern pLine = Pattern.compile("\\$\\.extend\\(true,\\ss\\.USFdata\\.(\\w+).*"); //$NON-NLS-1$
+        Pattern pSingleQuote = Pattern.compile("\\[(\\d+),([0-9.]+)\\]"); //$NON-NLS-1$
+        for (String line : lines)
         {
-            Pattern pLine = Pattern.compile("\\$\\.extend\\(true,\\ss\\.USFdata\\.(\\w+).*"); //$NON-NLS-1$
-            Pattern pSingleQuote = Pattern.compile("\\[(\\d+),([0-9.]+)\\]"); //$NON-NLS-1$
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(is)))
+            line = line.trim();
+            if (!line.isEmpty())
             {
-                String line;
-                while ((line = br.readLine()) != null)
+                Matcher m = pLine.matcher(line);
+                if (m.matches())
                 {
-                    line = line.trim();
-                    if (!line.isEmpty())
+                    // get time range for this block
+                    String range = m.group(1);
+                    // get additional price information
+                    if ("intraday".equalsIgnoreCase(range)) //$NON-NLS-1$
                     {
-                        Matcher m = pLine.matcher(line);
-                        if (m.matches())
+                        // cut out JSON string and parse it
+                        int iJsonStart = line.indexOf('{');
+                        int iJsonEnd = line.indexOf('}');
+                        String sJson = line.substring(iJsonStart, iJsonEnd + 1);
+                        JSONObject ojIntraday = (JSONObject) JSONValue.parse(sJson);
+                        if (ojIntraday != null)
                         {
-                            // get time range for this block
-                            String range = m.group(1);
-                            // get additional price information
-                            if ("intraday".equalsIgnoreCase(range)) //$NON-NLS-1$
+                            // get individual values
+                            long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
+                            LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp"); //$NON-NLS-1$
+                            // if at least time and price are there,
+                            // construct a latest quote
+                            if ((lastTimeStamp != null) && (lastPrice != -1))
                             {
-                                // cut out JSON string and parse it
-                                int iJsonStart = line.indexOf('{');
-                                int iJsonEnd = line.indexOf('}');
-                                String sJson = line.substring(iJsonStart, iJsonEnd + 1);
-                                JSONObject ojIntraday = (JSONObject) JSONValue.parse(sJson);
-                                if (ojIntraday != null)
-                                {
-                                    // get individual values
-                                    long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
-                                    LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp"); //$NON-NLS-1$
-                                    // if at least time and price are there,
-                                    // construct a latest quote
-                                    if ((lastTimeStamp != null) && (lastPrice != -1))
-                                    {
-                                        LatestSecurityPrice latest = new LatestSecurityPrice(lastTimeStamp, lastPrice);
-                                        // set all known properties
-                                        latest.setLow(getPrice(ojIntraday, "low"));//$NON-NLS-1$
-                                        latest.setHigh(getPrice(ojIntraday, "high"));//$NON-NLS-1$
-                                        latest.setPreviousClose(getPrice(ojIntraday, "yesterdayPrice"));//$NON-NLS-1$
-                                        // add latest quote to returned result
-                                        result.latest = latest;
-                                    }
-                                }
+                                LatestSecurityPrice latest = new LatestSecurityPrice(lastTimeStamp, lastPrice);
+                                // set all known properties
+                                latest.setLow(getPrice(ojIntraday, "low"));//$NON-NLS-1$
+                                latest.setHigh(getPrice(ojIntraday, "high"));//$NON-NLS-1$
+                                latest.setPreviousClose(getPrice(ojIntraday, "yesterdayPrice"));//$NON-NLS-1$
+                                // add latest quote to returned result
+                                result.latest = latest;
                             }
-                            m = pSingleQuote.matcher(line);
-                            while (m.find())
-                            {
-                                String sTime = m.group(1);
-                                String sValue = m.group(2);
-                                // get a unix timestamp and value
-                                long lTime = Long.parseLong(sTime);
-                                double dValue = Double.parseDouble(sValue);
-                                LocalDate date = LocalDateTime.ofInstant(Instant.ofEpochMilli(lTime),
-                                                TimeZone.getDefault().toZoneId()).toLocalDate();
-                                // check if start date is given and if so, if
-                                // current
-                                // date is not before it
-                                if ((dateStart == null) || (date.compareTo(dateStart) >= 0))
-                                {
-                                    result.prices.add(new LatestSecurityPrice(date, getPrice(dValue)));
-                                }
-                            }
+                        }
+                    }
+                    m = pSingleQuote.matcher(line);
+                    while (m.find())
+                    {
+                        String sTime = m.group(1);
+                        String sValue = m.group(2);
+                        // get a unix timestamp and value
+                        long lTime = Long.parseLong(sTime);
+                        double dValue = Double.parseDouble(sValue);
+                        LocalDate date = LocalDateTime
+                                        .ofInstant(Instant.ofEpochMilli(lTime), TimeZone.getDefault().toZoneId())
+                                        .toLocalDate();
+                        // check if start date is given and if so, if
+                        // current
+                        // date is not before it
+                        if ((dateStart == null) || (date.compareTo(dateStart) >= 0))
+                        {
+                            result.prices.add(new LatestSecurityPrice(date, getPrice(dValue)));
                         }
                     }
                 }
             }
-            // now try to refine the data a bit...
-            if (!result.prices.isEmpty())
+        }
+        // now try to refine the data a bit...
+        if (!result.prices.isEmpty())
+        {
+            // first sort prices to make sure they are in order
+            Collections.sort(result.prices);
+            // now try to find the previous close etc.
+            LocalDate lastDay = null;
+            long prevClose = -1;
+            long nextClose = -1;
+            for (LatestSecurityPrice price : result.prices)
             {
-                // first sort prices to make sure they are in order
-                Collections.sort(result.prices);
-                // now try to find the previous close etc.
-                LocalDate lastDay = null;
-                long prevClose = -1;
-                long nextClose = -1;
-                for (LatestSecurityPrice price : result.prices)
+                // first one, just remember values
+                if (lastDay == null)
                 {
-                    // first one, just remember values
-                    if (lastDay == null)
-                    {
-                        lastDay = price.getDate();
-                        nextClose = price.getValue();
-                        continue;
-                    }
-                    // check if this is a new day
-                    if (lastDay.isBefore(price.getDate()))
-                    {
-                        // switch close prices
-                        prevClose = nextClose;
-                    }
-                    // remember the price as the next one one
+                    lastDay = price.getDate();
                     nextClose = price.getValue();
-                    // check if previous close is missing and set it then
-                    if ((price.getPreviousClose() <= 0) && (prevClose > 0))
-                    {
-                        price.setPreviousClose(prevClose);
-                    }
+                    continue;
                 }
-                // set the latest price from list of prices?
-                if (result.latest == null)
+                // check if this is a new day
+                if (lastDay.isBefore(price.getDate()))
                 {
-                    // take the last one
-                    result.latest = result.prices.get(result.prices.size() - 1);
+                    // switch close prices
+                    prevClose = nextClose;
+                }
+                // remember the price as the next one one
+                nextClose = price.getValue();
+                // check if previous close is missing and set it then
+                if ((price.getPreviousClose() <= 0) && (prevClose > 0))
+                {
+                    price.setPreviousClose(prevClose);
                 }
             }
-        }
-        catch (IOException ex)
-        {
-            errors.add(ex);
+            // set the latest price from list of prices?
+            if (result.latest == null)
+            {
+                // take the last one
+                result.latest = result.prices.get(result.prices.size() - 1);
+            }
         }
         return result;
     }
@@ -322,7 +371,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             List<String> results = null;
             // execute query
             String sQueryUrl = QUERY_URL.replace("{isin}", isin); //$NON-NLS-1$
-            try (InputStream is = openUrlStream(new URL(sQueryUrl), null))
+            try (InputStream is = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
             {
                 results = collectQueryResults(is);
             }
@@ -334,13 +383,52 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             if ((results != null) && (!results.isEmpty()))
             {
                 String url = results.get(0);
+                List<String> lines = null;
                 try (InputStream is = openUrlStream(new URL(url), sQueryUrl))
                 {
-                    return getQuotes(is, s, dateStart, errors);
+                    // cache data
+                    lines = readToLines(is);
                 }
                 catch (IOException ex)
                 {
                     errors.add(ex);
+                }
+                if (lines != null)
+                {
+                    // check if currency matches
+                    String securityCurrency = s.getCurrencyCode();
+                    String currency = getCurrency(lines);
+                    if ((currency != null) && !currency.equals(securityCurrency))
+                    {
+                        // collect all available pages
+                        List<String> lQuoteUrls = collectQuotePages(lines);
+                        // try to get the correct currency page
+                        if (!lQuoteUrls.isEmpty())
+                        {
+                            for (String sQuoteUrl : lQuoteUrls)
+                            {
+                                List<String> lines2 = null;
+                                try (InputStream is = openUrlStream(new URL(sQuoteUrl), url))
+                                {
+                                    // cache data
+                                    lines2 = readToLines(is);
+                                    String currency2 = getCurrency(lines2);
+                                    // if currency matches, use that page data
+                                    if (securityCurrency.equals(currency2))
+                                    {
+                                        lines = lines2;
+                                        break;
+                                    }
+                                }
+                                catch (IOException ex)
+                                {
+                                    errors.add(ex);
+                                }
+                            }
+                        }
+                    }
+                    // now get the quotes
+                    return getQuotes(lines, s, dateStart, errors);
                 }
             }
         }
@@ -369,6 +457,28 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         }
         c.connect();
         return c.getInputStream();
+    }
+
+    /**
+     * Reads the given {@link InputStream} to a list of lines.
+     *
+     * @param is
+     *            {@link InputStream}
+     * @return list of lines
+     * @throws IOException
+     */
+    private static List<String> readToLines(InputStream is) throws IOException
+    {
+        ArrayList<String> lines = new ArrayList<String>();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is)))
+        {
+            String line;
+            while ((line = br.readLine()) != null)
+            {
+                lines.add(line);
+            }
+        }
+        return lines;
     }
 
     @Override
@@ -440,21 +550,5 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             return security.setLatest(latest);
         }
         return false;
-    }
-
-    /**
-     * Combination of quotes and latest quote.
-     */
-    private static class CombinedQuoteResult
-    {
-        /**
-         * Latest quote.
-         */
-        public LatestSecurityPrice latest;
-
-        /**
-         * All prices.
-         */
-        public final List<LatestSecurityPrice> prices = new ArrayList<LatestSecurityPrice>();
     }
 }
