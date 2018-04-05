@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.time.Instant;
@@ -411,24 +412,27 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         // get content for quotes then check for exchange
         if (forQuotes)
         {
+            // check if ticker symbol is there
             String exchangeUrl = s.getTickerSymbol();
             if ((exchangeUrl != null) && !exchangeUrl.isEmpty())
             {
                 // just retrieve exactly this url
-                List<String> lines = null;
                 try (InputStream is = openUrlStream(new URL(exchangeUrl), null))
                 {
-                    // cache data
-                    lines = readToLines(is);
+                    // read data to lines
+                    return readToLines(is);
+                }
+                catch (MalformedURLException ex)
+                {
+                    // ignore if this is not an actual URL
                 }
                 catch (IOException ex)
                 {
                     errors.add(ex);
                 }
-                if (lines != null) { return lines; }
             }
         }
-
+        // retrieve data using the ISIN
         String isin = s.getIsin();
         if ((isin != null) && !isin.isEmpty())
         {
