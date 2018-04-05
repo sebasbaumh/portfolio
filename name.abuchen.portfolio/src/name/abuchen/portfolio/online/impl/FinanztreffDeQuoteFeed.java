@@ -11,6 +11,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
@@ -315,6 +317,46 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         {
             // first sort prices to make sure they are in order
             Collections.sort(result.prices);
+
+            // FIX: does not work with different timespans between data points
+            // (<1 day and >1 day)
+            // // apply a filter to the prices to ignore corrupt data from some
+            // // market places
+            // // always check 3 days before/ after current data point
+            // final int daysToCheck = 3;
+            // // only work if there are enough data points
+            // if (result.prices.size() > (2 * daysToCheck + 1))
+            // {
+            // HashSet<LatestSecurityPrice> hsToRemove = new
+            // HashSet<LatestSecurityPrice>();
+            // for (int i = daysToCheck; i < result.prices.size() - daysToCheck
+            // - 1; i++)
+            // {
+            // int start = i - daysToCheck;
+            // int end = i + daysToCheck;
+            // double sum = 0;
+            // int count = 0;
+            // // calculate average
+            // for (int j = start; j <= end; j++)
+            // {
+            // sum += result.prices.get(j).getValue();
+            // count++;
+            // }
+            // double avg = sum / count;
+            // // now check for deviations
+            // for (int j = start; j <= end; j++)
+            // {
+            // LatestSecurityPrice p = result.prices.get(j);
+            // double dev = Math.abs((p.getValue() / avg) - 1.0);
+            // if (dev > 0.7)
+            // {
+            // hsToRemove.add(p);
+            // }
+            // }
+            // }
+            // // remove filtered prices
+            // result.prices.removeAll(hsToRemove);
+            // }
             // now try to find the previous close etc.
             LocalDate lastDay = null;
             long prevClose = -1;
@@ -334,7 +376,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                     // switch close prices
                     prevClose = nextClose;
                 }
-                // remember the price as the next one one
+                // remember the price as the next one
                 nextClose = price.getValue();
                 // check if previous close is missing and set it then
                 if ((price.getPreviousClose() <= 0) && (prevClose > 0))
@@ -353,18 +395,40 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     /**
-     * Gets quotes for the given security.
-     *
+     * Gets the content of the web page for the given {@link Security}.
+     * 
      * @param s
      *            {@link Security}
-     * @param dateStart
-     *            start date (can be null)
+     * @param forQuotes
+     *            return content for getting quotes? (should match currency and
+     *            selected exchange)
      * @param errors
      *            errors list
-     * @return list of security prices
+     * @return content lines on success, else null
      */
-    private static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
+    private static List<String> getContentOfSecurityPage(Security s, boolean forQuotes, List<Exception> errors)
     {
+        // get content for quotes then check for exchange
+        if (forQuotes)
+        {
+            String exchangeUrl = s.getTickerSymbol();
+            if ((exchangeUrl != null) && !exchangeUrl.isEmpty())
+            {
+                // just retrieve exactly this url
+                List<String> lines = null;
+                try (InputStream is = openUrlStream(new URL(exchangeUrl), null))
+                {
+                    // cache data
+                    lines = readToLines(is);
+                }
+                catch (IOException ex)
+                {
+                    errors.add(ex);
+                }
+                if (lines != null) { return lines; }
+            }
+        }
+
         String isin = s.getIsin();
         if ((isin != null) && !isin.isEmpty())
         {
@@ -393,7 +457,9 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                 {
                     errors.add(ex);
                 }
-                if (lines != null)
+
+                // try to match currency of security?
+                if ((lines != null) && forQuotes)
                 {
                     // check if currency matches
                     String securityCurrency = s.getCurrencyCode();
@@ -427,10 +493,31 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                             }
                         }
                     }
-                    // now get the quotes
-                    return getQuotes(lines, s, dateStart, errors);
                 }
+                return lines;
             }
+        }
+        return null;
+    }
+
+    /**
+     * Gets quotes for the given security.
+     *
+     * @param s
+     *            {@link Security}
+     * @param dateStart
+     *            start date (can be null)
+     * @param errors
+     *            errors list
+     * @return list of security prices
+     */
+    private static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
+    {
+        List<String> lines = getContentOfSecurityPage(s, true, errors);
+        if (lines != null)
+        {
+            // now get the quotes
+            return getQuotes(lines, s, dateStart, errors);
         }
         // return empty result
         return new CombinedQuoteResult();
@@ -484,6 +571,27 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     @Override
     public List<Exchange> getExchanges(Security subject, List<Exception> errors)
     {
+        // try to get list of exchanges from security page
+        List<String> lines = getContentOfSecurityPage(subject, false, errors);
+        if (lines != null)
+        {
+            List<Exchange> exchanges = new ArrayList<Exchange>();
+            // <a onclick="USFchangeSnapqoute('frankfurt');"
+            // href="http://fonds.finanztreff.de/fonds_einzelkurs_uebersicht.htn?i=2401356">Frankfurt</a>
+            Pattern pLine = Pattern.compile("USFchangeSnapqoute[^ ]+ href=\"([^\"]+)\">([^<]+)"); //$NON-NLS-1$
+            for (String line : lines)
+            {
+                Matcher m = pLine.matcher(line);
+                while (m.find())
+                {
+                    String url = m.group(1);
+                    String name = m.group(2);
+                    Exchange exchange = new Exchange(url, name);
+                    exchanges.add(exchange);
+                }
+            }
+            if (!exchanges.isEmpty()) { return exchanges; }
+        }
         return null;
     }
 

@@ -38,6 +38,7 @@ import name.abuchen.portfolio.model.Exchange;
 import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.online.QuoteFeed;
 import name.abuchen.portfolio.online.impl.AlphavantageQuoteFeed;
+import name.abuchen.portfolio.online.impl.FinanztreffDeQuoteFeed;
 import name.abuchen.portfolio.online.impl.HTMLTableQuoteFeed;
 import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.PortfolioPlugin;
@@ -207,7 +208,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
         QuoteFeed feed = (QuoteFeed) ((IStructuredSelection) comboProvider.getSelection()).getFirstElement();
         setFeed(feed.getId());
 
-        if (comboExchange != null && feed.getId() != null && feed.getId().startsWith(YAHOO))
+        if (comboExchange != null && feed.getId() != null && (feed.getId().startsWith(YAHOO) || (feed instanceof FinanztreffDeQuoteFeed)))
         {
             Exchange exchange = (Exchange) ((IStructuredSelection) comboExchange.getSelection()).getFirstElement();
             if (exchange != null)
@@ -295,7 +296,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
 
     private void createDetailDataWidgets(QuoteFeed feed)
     {
-        boolean dropDown = feed != null && feed.getId() != null && feed.getId().startsWith(YAHOO);
+        boolean dropDown = feed != null && feed.getId() != null && (feed.getId().startsWith(YAHOO) || (feed instanceof FinanztreffDeQuoteFeed));
         boolean feedURL = feed != null && feed.getId() != null && feed.getId().equals(HTMLTableQuoteFeed.ID);
         boolean needsTicker = feed != null && feed.getId() != null && feed.getId().equals(AlphavantageQuoteFeed.ID);
 
