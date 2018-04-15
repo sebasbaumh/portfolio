@@ -627,7 +627,6 @@ public class SecuritiesPerformanceView extends AbstractListView implements Repor
         recordColumns.addColumn(column);
 
         // Rendite insgesamt, nach gleitendem Durchschnitt
-        // Rendite pro Jahr
         column = new Column("d%mvavg", Messages.ColumnDividendMovingAverageTotalRateOfReturn, SWT.RIGHT, 80); //$NON-NLS-1$
         column.setGroupLabel(Messages.GroupLabelDividends);
         column.setMenuLabel(Messages.ColumnDividendMovingAverageTotalRateOfReturn_MenuLabel);
@@ -644,6 +643,7 @@ public class SecuritiesPerformanceView extends AbstractListView implements Repor
         column.setSorter(ColumnViewerSorter.create(SecurityPerformanceRecord.class, "totalRateOfReturnDivMovingAverage")); //$NON-NLS-1$
         recordColumns.addColumn(column);
 
+        // Rendite pro Jahr
         column = new Column("d%peryear", Messages.ColumnDividendRateOfReturnPerYear, SWT.RIGHT, 80); //$NON-NLS-1$
         column.setGroupLabel(Messages.GroupLabelDividends);
         column.setDescription(Messages.ColumnDividendRateOfReturnPerYear_Description);
