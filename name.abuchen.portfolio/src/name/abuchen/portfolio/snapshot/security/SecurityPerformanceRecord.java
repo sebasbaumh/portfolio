@@ -354,6 +354,11 @@ public final class SecurityPerformanceRecord implements Adaptable
                     eventsPerYear = 4;
                 }
                     break;
+                case MONTHLY:
+                {
+                    eventsPerYear = 12;
+                }
+                    break;
                 case UNKNOWN:
                 {
                     // check if there is just a single dividend (treat it like a
