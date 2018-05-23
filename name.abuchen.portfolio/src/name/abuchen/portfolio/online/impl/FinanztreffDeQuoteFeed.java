@@ -7,13 +7,12 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
@@ -561,7 +560,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static List<String> readToLines(InputStream is) throws IOException
     {
         ArrayList<String> lines = new ArrayList<String>();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(is)))
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)))
         {
             String line;
             while ((line = br.readLine()) != null)
