@@ -236,9 +236,10 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
             return transaction;
         });
         block.set(pdfTransaction);
-        pdfTransaction.section("shares", "name", "isin", "wkn") //
+        pdfTransaction.section("shares", "name", "nameContinued", "isin", "wkn") //
                         .find("Nominale Wertpapierbezeichnung ISIN \\(WKN\\)")
                         .match("(^St\\Dck) (?<shares>[\\d,.]*) (?<name>.*) (?<isin>[^ ]*) (\\((?<wkn>.*)\\).*)$")
+                        .match("(?<nameContinued>.*)") //
                         .assign((t, v) -> {
                             t.setShares(asShares(v.get("shares")));
                             t.setSecurity(getOrCreateSecurity(v));
@@ -285,14 +286,26 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
         });
         block.set(pdfTransaction);
 
-        pdfTransaction.section("shares", "name", "isin", "wkn", "currency")
-                        .find("Nominale Wertpapierbezeichnung ISIN \\(WKN\\)")
-                        .match("(^St\\Dck) (?<shares>[\\d,.]*) (?<name>.*)$").match(".*") //
-                        .match("(?<isin>[^ ]*) \\((?<wkn>.*)\\)$") //
-                        .match("^Ertrag pro St. [\\d,.]* (?<currency>\\w{3}+)").assign((t, v) -> {
-                            t.setShares(asShares(v.get("shares")));
-                            t.setSecurity(getOrCreateSecurity(v));
-                        })
+        pdfTransaction.oneOf(
+                        section -> section.attributes("shares", "name", "isin", "wkn", "currency")
+                                        .find("Nominale Wertpapierbezeichnung ISIN \\(WKN\\)")
+                                        .match("(^St\\Dck) (?<shares>[\\d,.]*) (?<name>.*)$") //
+                                        .match(".*") //
+                                        .match("(?<isin>[^ ]*) \\((?<wkn>.*)\\)$") //
+                                        .match("^Ertrag pro St. [\\d,.]* (?<currency>\\w{3}+)") //
+                                        .assign((t, v) -> {
+                                            t.setShares(asShares(v.get("shares")));
+                                            t.setSecurity(getOrCreateSecurity(v));
+                                        }),
+
+                        section -> section.attributes("shares", "name", "nameContinued", "isin", "wkn")
+                                        .find("Nominale Wertpapierbezeichnung ISIN \\(WKN\\)")
+                                        .match("(^St\\Dck) (?<shares>[\\d,.]*) (?<name>.*) (?<isin>[^ ]*) \\((?<wkn>.*)\\)$")
+                                        .match("(?<nameContinued>.*)") //
+                                        .assign((t, v) -> {
+                                            t.setShares(asShares(v.get("shares")));
+                                            t.setSecurity(getOrCreateSecurity(v));
+                                        }))
 
                         .section("date", "amount")
                         .match("(^Ausmachender Betrag) (?<amount>[\\d,.]*)(.*) (?<currency>\\w{3}+)")
