@@ -60,7 +60,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * ID of the exchange.
      */
     public static final String ID_EXCHANGE = "FINANZTREFF_DE.SINGLEQUOTE"; //$NON-NLS-1$
-    private static final String QUERY_URL = "http://www.finanztreff.de/ftreffNG/ajax/get_search.htn?suchbegriff={isin}"; //$NON-NLS-1$
+    private static final String QUERY_URL = "http://www.finanztreff.de/ftreffNG/ajax/get_search.htn?suchbegriff={key}"; //$NON-NLS-1$
     private static final String REFERRER_URL = "http://www.finanztreff.de"; //$NON-NLS-1$
 
     /**
@@ -431,13 +431,23 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                 }
             }
         }
-        // retrieve data using the ISIN
-        String isin = s.getIsin();
-        if ((isin != null) && !isin.isEmpty())
+        // retrieve data using the ISIN?
+        String key = s.getIsin();
+        if ((key == null) || key.isEmpty())
+        {
+            // then try WKN
+            key = s.getWkn();
+            if ((key == null) || key.isEmpty())
+            {
+                // then ticker symbol
+                key = s.getTickerSymbol();
+            }
+        }
+        if ((key != null) && !key.isEmpty())
         {
             List<String> results = null;
             // execute query
-            String sQueryUrl = QUERY_URL.replace("{isin}", isin); //$NON-NLS-1$
+            String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
             try (InputStream is = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
             {
                 results = collectQueryResults(is);
