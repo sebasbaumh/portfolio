@@ -104,7 +104,7 @@ public class PerformanceChartView extends AbstractHistoricView
         picker.addListener(this::updateChart);
         picker.setToolBarManager(getViewToolBarManager());
 
-        DataSeriesChartLegend legend = new DataSeriesChartLegend(composite, picker);
+        DataSeriesChartLegend legend = new DataSeriesChartLegend(composite, picker, seriesBuilder);
 
         updateTitle(Messages.LabelPerformanceChart + " (" + picker.getConfigurationName() + ")"); //$NON-NLS-1$ //$NON-NLS-2$
         chart.getTitle().setText(getTitle());

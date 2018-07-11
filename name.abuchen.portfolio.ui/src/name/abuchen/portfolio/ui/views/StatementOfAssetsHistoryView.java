@@ -97,7 +97,7 @@ public class StatementOfAssetsHistoryView extends AbstractHistoricView
         configurator.addListener(this::updateChart);
         configurator.setToolBarManager(getViewToolBarManager());
 
-        DataSeriesChartLegend legend = new DataSeriesChartLegend(composite, configurator);
+        DataSeriesChartLegend legend = new DataSeriesChartLegend(composite, configurator, seriesBuilder);
 
         updateTitle(Messages.LabelStatementOfAssetsHistory + " (" + configurator.getConfigurationName() + ")"); //$NON-NLS-1$ //$NON-NLS-2$
         chart.getTitle().setText(getTitle());

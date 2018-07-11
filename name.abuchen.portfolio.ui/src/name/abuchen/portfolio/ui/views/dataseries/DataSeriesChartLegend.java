@@ -34,6 +34,7 @@ import name.abuchen.portfolio.ui.util.SimpleAction;
  */
 public class DataSeriesChartLegend extends Composite
 {
+    private final AbstractChartSeriesBuilder builder;
     private final DataSeriesConfigurator configurator;
     private final LocalResourceManager resources;
 
@@ -44,11 +45,15 @@ public class DataSeriesChartLegend extends Composite
      *            the parent composite
      * @param configurator
      *            the chart configurator
+     * @param builder
+     *            chart series builder (can be null)
      */
-    public DataSeriesChartLegend(Composite parent, DataSeriesConfigurator configurator)
+    public DataSeriesChartLegend(Composite parent, DataSeriesConfigurator configurator,
+                    AbstractChartSeriesBuilder builder)
     {
         super(parent, SWT.NONE);
 
+        this.builder = builder;
         this.configurator = configurator;
         this.resources = new LocalResourceManager(JFaceResources.getResources(), parent);
 
@@ -63,7 +68,12 @@ public class DataSeriesChartLegend extends Composite
         for (DataSeries series : configurator.getSelectedDataSeries())
             new PaintItem(this, series);
 
+        // add listeners
         this.configurator.addListener(this::onUpdate);
+        if (builder != null)
+        {
+            builder.addValuesListener(this::onUpdateValues);
+        }
     }
 
     private void onUpdate()
@@ -78,9 +88,43 @@ public class DataSeriesChartLegend extends Composite
         getParent().layout();
     }
 
+    private void onUpdateValues(double[] values)
+    {
+        // collect min/max
+        double dMin = Double.MAX_VALUE;
+        double dMax = Double.MIN_VALUE;
+        if (values.length > 0)
+        {
+            for (double d : values)
+            {
+                if (d < dMin)
+                {
+                    dMin = d;
+                }
+                if (d > dMax)
+                {
+                    dMax = d;
+                }
+            }
+        }
+        else
+        {
+            dMin = dMax = Double.NaN;
+        }
+
+        for (Control child : getChildren())
+        {
+            if (child instanceof PaintItem)
+            {
+                ((PaintItem) child).setToolTipData(dMin, dMax);
+            }
+        }
+    }
+
     private static final class PaintItem extends Canvas implements Listener // NOSONAR
     {
         private static final ResourceBundle LABELS = ResourceBundle.getBundle("name.abuchen.portfolio.ui.views.labels"); //$NON-NLS-1$
+        private static final String TOOLTIP_TEMPLATE = "%s\nMin: %.4f Max: %.4f"; //$NON-NLS-1$
 
         private final DataSeries series;
 
@@ -157,6 +201,26 @@ public class DataSeriesChartLegend extends Composite
             gc.dispose();
 
             return new Point(extentText.x + extentText.y + 12, extentText.y + 2);
+        }
+
+        /**
+         * Sets data for the tooltip.
+         * 
+         * @param dMin
+         *            minimum value (can be {@link Double#NaN})
+         * @param dMax
+         *            maximum value (can be {@link Double#NaN})
+         */
+        public void setToolTipData(double dMin, double dMax)
+        {
+            if (!Double.isNaN(dMin) && !Double.isNaN(dMax))
+            {
+                setToolTipText(String.format(TOOLTIP_TEMPLATE, series.getLabel(), dMin, dMax));
+            }
+            else
+            {
+                setToolTipText(null);
+            }
         }
 
         private void seriesMenuAboutToShow(IMenuManager manager) // NOSONAR

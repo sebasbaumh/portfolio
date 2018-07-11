@@ -157,7 +157,7 @@ public class ReturnsVolatilityChartView extends AbstractHistoricView
         configurator.addListener(this::updateChart);
         configurator.setToolBarManager(getViewToolBarManager());
 
-        DataSeriesChartLegend legend = new DataSeriesChartLegend(composite, configurator);
+        DataSeriesChartLegend legend = new DataSeriesChartLegend(composite, configurator, null);
 
         updateTitle(Messages.LabelHistoricalReturnsAndVolatiltity + " (" + configurator.getConfigurationName() + ")"); //$NON-NLS-1$ //$NON-NLS-2$
         chart.getTitle().setText(getTitle());
