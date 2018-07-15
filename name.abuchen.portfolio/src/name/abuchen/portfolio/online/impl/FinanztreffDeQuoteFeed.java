@@ -32,7 +32,7 @@ import name.abuchen.portfolio.online.QuoteFeed;
 /**
  * A quote feed for finanztreff.de.
  *
- * @author SB
+ * @author Sebastian Baumhekel
  */
 public class FinanztreffDeQuoteFeed implements QuoteFeed
 {
@@ -129,7 +129,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static String getCurrency(Iterable<String> lines)
     {
         // <div class="whrg" title="US-Dollar">Währung: USD</div>
-        Pattern pCur = Pattern.compile("<div class=\"whrg\" [^>]+>[^:]+: ([A-Z]+)<");
+        Pattern pCur = Pattern.compile("<div class=\"whrg\" [^>]+>[^:]+: ([A-Z]+)<"); //$NON-NLS-1$
         for (String line : lines)
         {
             Matcher m = pCur.matcher(line);
@@ -232,166 +232,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             if (!Double.isNaN(v)) { return Math.round(v * Values.Quote.factor()); }
         }
         return -1;
-    }
-
-    /**
-     * Parses the given data into a list of security prices.
-     *
-     * @param lines
-     *            lines
-     * @param s
-     *            {@link Security}
-     * @param dateStart
-     *            start date (can be null)
-     * @param errors
-     *            errors list
-     * @return list of security prices
-     */
-    protected static CombinedQuoteResult getQuotes(Iterable<String> lines, Security s, LocalDate dateStart,
-                    List<Exception> errors)
-    {
-        CombinedQuoteResult result = new CombinedQuoteResult();
-        Pattern pLine = Pattern.compile("\\$\\.extend\\(true,\\ss\\.USFdata\\.(\\w+).*"); //$NON-NLS-1$
-        Pattern pSingleQuote = Pattern.compile("\\[(\\d+),([0-9.]+)\\]"); //$NON-NLS-1$
-        for (String line : lines)
-        {
-            line = line.trim();
-            if (!line.isEmpty())
-            {
-                Matcher m = pLine.matcher(line);
-                if (m.matches())
-                {
-                    // get time range for this block
-                    String range = m.group(1);
-                    // get additional price information
-                    if ("intraday".equalsIgnoreCase(range)) //$NON-NLS-1$
-                    {
-                        // cut out JSON string and parse it
-                        int iJsonStart = line.indexOf('{');
-                        int iJsonEnd = line.indexOf('}');
-                        String sJson = line.substring(iJsonStart, iJsonEnd + 1);
-                        JSONObject ojIntraday = (JSONObject) JSONValue.parse(sJson);
-                        if (ojIntraday != null)
-                        {
-                            // get individual values
-                            long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
-                            LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp"); //$NON-NLS-1$
-                            // if at least time and price are there,
-                            // construct a latest quote
-                            if ((lastTimeStamp != null) && (lastPrice != -1))
-                            {
-                                LatestSecurityPrice latest = new LatestSecurityPrice(lastTimeStamp, lastPrice);
-                                // set all known properties
-                                latest.setLow(getPrice(ojIntraday, "low"));//$NON-NLS-1$
-                                latest.setHigh(getPrice(ojIntraday, "high"));//$NON-NLS-1$
-                                latest.setPreviousClose(getPrice(ojIntraday, "yesterdayPrice"));//$NON-NLS-1$
-                                // add latest quote to returned result
-                                result.latest = latest;
-                            }
-                        }
-                    }
-                    m = pSingleQuote.matcher(line);
-                    while (m.find())
-                    {
-                        String sTime = m.group(1);
-                        String sValue = m.group(2);
-                        // get a unix timestamp and value
-                        long lTime = Long.parseLong(sTime);
-                        double dValue = Double.parseDouble(sValue);
-                        LocalDate date = LocalDateTime
-                                        .ofInstant(Instant.ofEpochMilli(lTime), TimeZone.getDefault().toZoneId())
-                                        .toLocalDate();
-                        // check if start date is given and if so, if
-                        // current
-                        // date is not before it
-                        if ((dateStart == null) || (date.compareTo(dateStart) >= 0))
-                        {
-                            result.prices.add(new LatestSecurityPrice(date, getPrice(dValue)));
-                        }
-                    }
-                }
-            }
-        }
-        // now try to refine the data a bit...
-        if (!result.prices.isEmpty())
-        {
-            // first sort prices to make sure they are in order
-            Collections.sort(result.prices);
-
-            // FIX: does not work with different timespans between data points
-            // (<1 day and >1 day)
-            // // apply a filter to the prices to ignore corrupt data from some
-            // // market places
-            // // always check 3 days before/ after current data point
-            // final int daysToCheck = 3;
-            // // only work if there are enough data points
-            // if (result.prices.size() > (2 * daysToCheck + 1))
-            // {
-            // HashSet<LatestSecurityPrice> hsToRemove = new
-            // HashSet<LatestSecurityPrice>();
-            // for (int i = daysToCheck; i < result.prices.size() - daysToCheck
-            // - 1; i++)
-            // {
-            // int start = i - daysToCheck;
-            // int end = i + daysToCheck;
-            // double sum = 0;
-            // int count = 0;
-            // // calculate average
-            // for (int j = start; j <= end; j++)
-            // {
-            // sum += result.prices.get(j).getValue();
-            // count++;
-            // }
-            // double avg = sum / count;
-            // // now check for deviations
-            // for (int j = start; j <= end; j++)
-            // {
-            // LatestSecurityPrice p = result.prices.get(j);
-            // double dev = Math.abs((p.getValue() / avg) - 1.0);
-            // if (dev > 0.7)
-            // {
-            // hsToRemove.add(p);
-            // }
-            // }
-            // }
-            // // remove filtered prices
-            // result.prices.removeAll(hsToRemove);
-            // }
-            // now try to find the previous close etc.
-            LocalDate lastDay = null;
-            long prevClose = -1;
-            long nextClose = -1;
-            for (LatestSecurityPrice price : result.prices)
-            {
-                // first one, just remember values
-                if (lastDay == null)
-                {
-                    lastDay = price.getDate();
-                    nextClose = price.getValue();
-                    continue;
-                }
-                // check if this is a new day
-                if (lastDay.isBefore(price.getDate()))
-                {
-                    // switch close prices
-                    prevClose = nextClose;
-                }
-                // remember the price as the next one
-                nextClose = price.getValue();
-                // check if previous close is missing and set it then
-                if ((price.getPreviousClose() <= 0) && (prevClose > 0))
-                {
-                    price.setPreviousClose(prevClose);
-                }
-            }
-            // set the latest price from list of prices?
-            if (result.latest == null)
-            {
-                // take the last one
-                result.latest = result.prices.get(result.prices.size() - 1);
-            }
-        }
-        return result;
     }
 
     /**
@@ -527,13 +367,121 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
     {
         List<String> lines = getContentOfSecurityPage(s, true, errors);
-        if (lines != null)
+        if (lines == null)
         {
-            // now get the quotes
-            return getQuotes(lines, s, dateStart, errors);
+            // return empty result
+            return new CombinedQuoteResult();
         }
-        // return empty result
-        return new CombinedQuoteResult();
+        LatestSecurityPrice latest = null;
+        // now get the quotes
+        CombinedQuoteResult result = new CombinedQuoteResult();
+        Pattern pLine = Pattern.compile("\\$\\.extend\\(true,\\ss\\.USFdata\\.(\\w+).*"); //$NON-NLS-1$
+        Pattern pSingleQuote = Pattern.compile("\\[(\\d+),([0-9.]+)\\]"); //$NON-NLS-1$
+        for (String line : lines)
+        {
+            line = line.trim();
+            if (!line.isEmpty())
+            {
+                Matcher m = pLine.matcher(line);
+                if (m.matches())
+                {
+                    // get time range for this block
+                    String range = m.group(1);
+                    // get additional price information
+                    if ("intraday".equalsIgnoreCase(range)) //$NON-NLS-1$
+                    {
+                        // cut out JSON string and parse it
+                        int iJsonStart = line.indexOf('{');
+                        int iJsonEnd = line.indexOf('}');
+                        String sJson = line.substring(iJsonStart, iJsonEnd + 1);
+                        JSONObject ojIntraday = (JSONObject) JSONValue.parse(sJson);
+                        if (ojIntraday != null)
+                        {
+                            // get individual values
+                            long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
+                            LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp"); //$NON-NLS-1$
+                            // if at least time and price are there,
+                            // construct a latest quote
+                            if ((lastTimeStamp != null) && (lastPrice != -1))
+                            {
+                                LatestSecurityPrice price = new LatestSecurityPrice(lastTimeStamp, lastPrice);
+                                // check if latest security price should be set
+                                if ((latest == null) || (latest.compareTo(price) <= 0))
+                                {
+                                    // set all known properties
+                                    price.setLow(getPrice(ojIntraday, "low"));//$NON-NLS-1$
+                                    price.setHigh(getPrice(ojIntraday, "high"));//$NON-NLS-1$
+                                    price.setPreviousClose(getPrice(ojIntraday, "yesterdayPrice"));//$NON-NLS-1$
+                                    // add latest quote to returned result
+                                    latest = price;
+                                }
+                            }
+                        }
+                    }
+                    m = pSingleQuote.matcher(line);
+                    while (m.find())
+                    {
+                        String sTime = m.group(1);
+                        String sValue = m.group(2);
+                        // get a unix timestamp and value
+                        long lTime = Long.parseLong(sTime);
+                        double dValue = Double.parseDouble(sValue);
+                        LocalDate date = LocalDateTime
+                                        .ofInstant(Instant.ofEpochMilli(lTime), TimeZone.getDefault().toZoneId())
+                                        .toLocalDate();
+                        // check if start date is given and if so, if
+                        // current
+                        // date is not before it
+                        if ((dateStart == null) || (date.compareTo(dateStart) >= 0))
+                        {
+                            LatestSecurityPrice price = new LatestSecurityPrice(date, getPrice(dValue));
+                            if ((latest == null) || (latest.compareTo(price) <= 0))
+                            {
+                                // add latest quote to returned result
+                                latest = price;
+                            }
+                            result.prices.add(price);
+                        }
+                    }
+                }
+            }
+        }
+        // now try to refine the data a bit...
+        if (!result.prices.isEmpty())
+        {
+            // first sort prices to make sure they are in order
+            Collections.sort(result.prices);
+            // now try to find the previous close etc.
+            LocalDate lastDay = null;
+            long prevClose = -1;
+            long nextClose = -1;
+            for (LatestSecurityPrice price : result.prices)
+            {
+                // first one, just remember values
+                if (lastDay == null)
+                {
+                    lastDay = price.getDate();
+                    nextClose = price.getValue();
+                    continue;
+                }
+                // check if this is a new day
+                if (lastDay.isBefore(price.getDate()))
+                {
+                    // switch close prices
+                    prevClose = nextClose;
+                }
+                // remember the price as the next one
+                nextClose = price.getValue();
+                // check if previous close is missing and set it then
+                if ((price.getPreviousClose() <= 0) && (prevClose > 0))
+                {
+                    price.setPreviousClose(prevClose);
+                }
+            }
+            // set the latest price
+            result.latest = latest;
+        }
+        return result;
     }
 
     /**
