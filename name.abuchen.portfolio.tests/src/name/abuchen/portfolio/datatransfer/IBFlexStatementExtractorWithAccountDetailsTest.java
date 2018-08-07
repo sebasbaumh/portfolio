@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.pdfbox.io.IOUtils;
 import org.junit.Test;
@@ -21,6 +23,7 @@ import org.junit.Test;
 import name.abuchen.portfolio.datatransfer.Extractor.BuySellEntryItem;
 import name.abuchen.portfolio.datatransfer.Extractor.Item;
 import name.abuchen.portfolio.datatransfer.Extractor.SecurityItem;
+import name.abuchen.portfolio.datatransfer.Extractor.TransactionItem;
 import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
@@ -30,11 +33,12 @@ import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Quote;
 import name.abuchen.portfolio.money.Values;
+import name.abuchen.portfolio.online.impl.YahooFinanceQuoteFeed;
 
 @SuppressWarnings("nls")
 public class IBFlexStatementExtractorWithAccountDetailsTest
 {
-    @Test
+    @Test 
     public void testIBAcitvityStatement() throws IOException
     {
         InputStream activityStatement = getClass().getResourceAsStream("IBActivityStatementWithAccountDetails.xml");
@@ -46,15 +50,42 @@ public class IBFlexStatementExtractorWithAccountDetailsTest
         List<Exception> errors = new ArrayList<Exception>();
         List<Item> results = extractor.extract(Collections.singletonList(tempFile), errors);
 
+        assertTrue(errors.isEmpty());
+
         results.stream().filter(i -> !(i instanceof SecurityItem))
                         .forEach(i -> assertThat(i.getAmount(), notNullValue()));
+        
+        List<Extractor.Item> securityItems = results.stream().filter( i -> i instanceof SecurityItem ).collect(Collectors.toList());
 
-        assertThat(results.size(), is(6));
+        assertThat(securityItems.size(), is(4));
+        
+        assertOptionSecurity((SecurityItem) securityItems.get(2));
+ 
+        List<Extractor.Item> buySellTransactions = results.stream().filter( i -> i instanceof BuySellEntryItem ).collect(Collectors.toList());
+
+        assertThat(buySellTransactions.size(), is(5));
+        assertOptionBuySellTransaction((BuySellEntryItem) buySellTransactions.get(2));
+        
+        List<Extractor.Item> accountTransactions = results.stream().filter( i -> i instanceof TransactionItem ).collect(Collectors.toList());
+        
+        assertThat(accountTransactions.size(), is(4));
+        
+        assertThat(results.size(), is(13));
 
         assertSecurity(results.stream().filter(i -> i instanceof SecurityItem).findFirst());
         assertFirstTransaction(results.stream().filter(i -> i instanceof BuySellEntryItem).findFirst());
     }
 
+    
+    private void assertOptionSecurity(SecurityItem item) {
+        assertThat(item.getSecurity().getFeed(), is(YahooFinanceQuoteFeed.ID));
+        assertThat(item.getSecurity().getTickerSymbol(), is("ORCL171117C00050000"));
+        
+    }
+    
+    private void assertOptionBuySellTransaction(BuySellEntryItem item) {
+        assertThat(item.getShares(),is((long) 100 * Values.Share.factor()));
+    }
 //    private void assertInterestCharge(Optional<Item> item)
 //    {
 //        assertThat(item.isPresent(), is(true));
@@ -89,9 +120,10 @@ public class IBFlexStatementExtractorWithAccountDetailsTest
         assertThat(entry.getPortfolioTransaction().getMonetaryAmount(), is(Money.of("EUR", 4185_05L)));
         assertThat(entry.getPortfolioTransaction().getDateTime(), is(LocalDateTime.parse("2017-09-15T16:20")));
         assertThat(entry.getPortfolioTransaction().getShares(), is(100_000000L));
-        assertThat(entry.getPortfolioTransaction().getUnitSum(Unit.Type.FEE), is(Money.of("EUR", 0_00L)));
+        assertThat(entry.getPortfolioTransaction().getUnitSum(Unit.Type.FEE), is(Money.of("EUR", 1_67L)));
+        // 100 shares at 50 USD minus 2USD transaction cost is 49.98 USD per share  times 0.83701 is 41.8338
         assertThat(entry.getPortfolioTransaction().getGrossPricePerShare(),
-                        is(Quote.of("EUR", Values.Quote.factorize(41.8505))));
+                        is(Quote.of("EUR", Values.Quote.factorize(41.8338))));
 
     }
 
