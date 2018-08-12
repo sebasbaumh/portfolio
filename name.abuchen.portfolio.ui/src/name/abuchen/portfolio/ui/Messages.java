@@ -444,12 +444,14 @@ public class Messages extends NLS
     public static String LabelLayout;
     public static String LabelLayoutFull;
     public static String LabelLayoutReduced;
+    public static String LabelLayoutRelevant;
     public static String LabelLevelNameNumber;
     public static String LabelLevelNumber;
     public static String LabelNamePlusCopy;
     public static String LabelNewClassification;
     public static String LabelNewFieldByType;
     public static String LabelNewTaxonomy;
+    public static String LabelNo;
     public static String LabelNoName;
     public static String LabelNotAvailable;
     public static String LabelNumberDataSeries;
@@ -545,6 +547,7 @@ public class Messages extends NLS
     public static String LabelXDays;
     public static String LabelYear;
     public static String LabelYearlyHeatmap;
+    public static String LabelYes;
     public static String MarkSecurityPageDescription;
     public static String MarkSecurityPageTitle;
     public static String MenuAddAll;
@@ -690,6 +693,8 @@ public class Messages extends NLS
     public static String PerformanceChartLabelEntirePortfolio;
     public static String PerformanceChartLabelCPI;
     public static String PerformanceHeatmapToolTip;
+    public static String PerformanceRelevantTransactionsFooter;
+    public static String PerformanceRelevantTransactionsHeader;
     public static String PerformanceTabAssetsAtEnd;
     public static String PerformanceTabAssetsAtStart;
     public static String PerformanceTabCalculation;
@@ -704,6 +709,7 @@ public class Messages extends NLS
     public static String PortfolioMenuDeactivate;
     public static String PortfolioMenuDelete;
     public static String PrefAlphaVantageAPIKey;
+    public static String PrefAlphaVantageCallFrequencyLimit;
     public static String PrefCheckOnStartup;
     public static String PrefCreateBackupBeforeSaving;
     public static String PrefDescriptionAlphaVantage;
