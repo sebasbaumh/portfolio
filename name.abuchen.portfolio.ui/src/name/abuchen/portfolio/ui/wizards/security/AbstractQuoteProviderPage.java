@@ -95,7 +95,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
                                 // exchanges, select this exchange in the
                                 // combo list
                                 exchanges.stream() //
-                                                .filter(e -> e.getId().equals(model.getTickerSymbol())) //
+                                                .filter(e -> e.getId().equals(model.getTickerSymbol()) || e.getId().equals(model.getFeedURL())) //
                                                 .findAny() //
                                                 .ifPresent(e -> comboExchange.setSelection(new StructuredSelection(e)));
                             }
@@ -214,9 +214,16 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
             Exchange exchange = (Exchange) ((IStructuredSelection) comboExchange.getSelection()).getFirstElement();
             if (exchange != null)
             {
-                model.setTickerSymbol(exchange.getId());
-                tickerSymbol = exchange.getId();
-                setFeedURL(null);
+                if (feed instanceof FinanztreffDeQuoteFeed)
+                {
+                    setFeedURL(exchange.getId());
+                }
+                else
+                {
+                    model.setTickerSymbol(exchange.getId());
+                    tickerSymbol = exchange.getId();
+                    setFeedURL(null);
+                }
             }
         }
         else if (textFeedURL != null)
@@ -385,6 +392,14 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
         if (model.getTickerSymbol() != null && feed != null && feed.getId() != null && feed.getId().startsWith("YAHOO")) //$NON-NLS-1$
         {
             Exchange exchange = new Exchange(model.getTickerSymbol(), model.getTickerSymbol());
+            ArrayList<Exchange> input = new ArrayList<>();
+            input.add(exchange);
+            comboExchange.setInput(input);
+            comboExchange.setSelection(new StructuredSelection(exchange));
+        }
+        else if (model.getFeedURL() != null && (feed instanceof FinanztreffDeQuoteFeed))
+        {
+            Exchange exchange = new Exchange(model.getFeedURL(), model.getFeedURL());
             ArrayList<Exchange> input = new ArrayList<>();
             input.add(exchange);
             comboExchange.setInput(input);

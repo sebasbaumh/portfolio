@@ -252,7 +252,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         if (forQuotes)
         {
             // check if ticker symbol is there
-            String exchangeUrl = s.getTickerSymbol();
+            String exchangeUrl = s.getFeedURL();
             if ((exchangeUrl != null) && !exchangeUrl.isEmpty())
             {
                 // just retrieve exactly this url
