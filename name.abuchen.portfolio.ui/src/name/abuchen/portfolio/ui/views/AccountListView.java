@@ -72,6 +72,8 @@ import name.abuchen.portfolio.ui.util.viewers.DateTimeEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.SharesLabelProvider;
 import name.abuchen.portfolio.ui.util.viewers.ShowHideColumnHelper;
 import name.abuchen.portfolio.ui.util.viewers.StringEditingSupport;
+import name.abuchen.portfolio.ui.util.viewers.TransactionOwnerListEditingSupport;
+import name.abuchen.portfolio.ui.util.viewers.TransactionTypeEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.ValueEditingSupport;
 import name.abuchen.portfolio.ui.views.columns.CurrencyColumn;
 import name.abuchen.portfolio.ui.views.columns.CurrencyColumn.CurrencyEditingSupport;
@@ -417,6 +419,7 @@ public class AccountListView extends AbstractListView implements ModificationLis
             }
         });
         column.setSorter(ColumnViewerSorter.create(AccountTransaction.class, "type")); //$NON-NLS-1$
+        new TransactionTypeEditingSupport(getClient()).addListener(this).attachTo(column);
         transactionsColumns.addColumn(column);
 
         column = new Column(Messages.ColumnAmount, SWT.RIGHT, 80);
@@ -560,6 +563,8 @@ public class AccountListView extends AbstractListView implements ModificationLis
                 return colorFor((AccountTransaction) element);
             }
         });
+        new TransactionOwnerListEditingSupport(getClient(), TransactionOwnerListEditingSupport.EditMode.CROSSOWNER)
+                        .addListener(this).attachTo(column);
         transactionsColumns.addColumn(column);
 
         column = new Column(Messages.ColumnNote, SWT.None, 200);

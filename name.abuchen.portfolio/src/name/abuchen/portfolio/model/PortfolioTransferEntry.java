@@ -27,6 +27,16 @@ public class PortfolioTransferEntry implements CrossEntry, Annotated
         this.portfolioTo = portfolioTo;
     }
 
+    public void setSourceTransaction(PortfolioTransaction transaction)
+    {
+        this.transactionFrom = transaction;
+    }
+
+    public void setTargetTransaction(PortfolioTransaction transaction)
+    {
+        this.transactionTo = transaction;
+    }
+
     public PortfolioTransaction getSourceTransaction()
     {
         return this.transactionFrom;
@@ -45,6 +55,16 @@ public class PortfolioTransferEntry implements CrossEntry, Annotated
     public void setTargetPortfolio(Portfolio portfolio)
     {
         this.portfolioTo = portfolio;
+    }
+
+    public Portfolio getSourcePortfolio()
+    {
+        return this.portfolioFrom;
+    }
+
+    public Portfolio getTargetPortfolio()
+    {
+        return this.portfolioTo;
     }
 
     public void setDate(LocalDateTime date)
@@ -90,6 +110,7 @@ public class PortfolioTransferEntry implements CrossEntry, Annotated
         this.transactionTo.setNote(note);
     }
 
+    @Override
     public void insert()
     {
         portfolioFrom.addTransaction(transactionFrom);
@@ -124,6 +145,20 @@ public class PortfolioTransferEntry implements CrossEntry, Annotated
             return portfolioTo;
         else
             throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setOwner(Transaction t, TransactionOwner<? extends Transaction> owner)
+    {
+        if (!(owner instanceof Portfolio))
+            throw new IllegalArgumentException();
+
+        if (t.equals(transactionFrom) && !portfolioTo.equals(owner))
+            portfolioFrom = (Portfolio) owner;
+        else if (t.equals(transactionTo) && !portfolioFrom.equals(owner))
+            portfolioTo = (Portfolio) owner;
+        else
+            throw new IllegalArgumentException();
     }
 
     @Override

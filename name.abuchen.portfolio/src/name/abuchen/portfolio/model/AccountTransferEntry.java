@@ -27,6 +27,16 @@ public class AccountTransferEntry implements CrossEntry, Annotated
         this.accountTo = accountTo;
     }
 
+    public void setSourceTransaction(AccountTransaction transaction)
+    {
+        this.transactionFrom = transaction;
+    }
+
+    public void setTargetTransaction(AccountTransaction transaction)
+    {
+        this.transactionTo = transaction;
+    }
+
     public AccountTransaction getSourceTransaction()
     {
         return this.transactionFrom;
@@ -88,6 +98,7 @@ public class AccountTransferEntry implements CrossEntry, Annotated
         this.transactionTo.setNote(note);
     }
 
+    @Override
     public void insert()
     {
         accountFrom.addTransaction(transactionFrom);
@@ -120,6 +131,20 @@ public class AccountTransferEntry implements CrossEntry, Annotated
             return accountTo;
         else
             throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setOwner(Transaction t, TransactionOwner<? extends Transaction> owner)
+    {
+        if (!(owner instanceof Account))
+            throw new IllegalArgumentException();
+
+        if (t.equals(transactionFrom) && !accountTo.equals(owner))
+            accountFrom = (Account) owner;
+        else if (t.equals(transactionTo) && !accountFrom.equals(owner))
+            accountTo = (Account) owner;
+        else
+            throw new IllegalArgumentException();
     }
 
     @Override

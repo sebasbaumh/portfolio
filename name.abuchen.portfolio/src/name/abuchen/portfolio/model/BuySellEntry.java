@@ -47,7 +47,7 @@ public class BuySellEntry implements CrossEntry, Annotated
     {
         return this.account;
     }
-    
+
     public void setDate(LocalDateTime date)
     {
         this.portfolioTransaction.setDateTime(date);
@@ -102,6 +102,7 @@ public class BuySellEntry implements CrossEntry, Annotated
         this.accountTransaction.setNote(note);
     }
 
+    @Override
     public void insert()
     {
         portfolio.addTransaction(portfolioTransaction);
@@ -139,6 +140,17 @@ public class BuySellEntry implements CrossEntry, Annotated
         else
             throw new UnsupportedOperationException();
 
+    }
+
+    @Override
+    public void setOwner(Transaction t, TransactionOwner<? extends Transaction> owner)
+    {
+        if (t.equals(portfolioTransaction) && owner instanceof Portfolio)
+            portfolio = (Portfolio) owner;
+        else if (t.equals(accountTransaction) && owner instanceof Account)
+            account = (Account) owner;
+        else
+            throw new IllegalArgumentException();
     }
 
     @Override

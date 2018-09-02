@@ -55,6 +55,8 @@ import name.abuchen.portfolio.ui.util.viewers.DateTimeEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.SharesLabelProvider;
 import name.abuchen.portfolio.ui.util.viewers.ShowHideColumnHelper;
 import name.abuchen.portfolio.ui.util.viewers.StringEditingSupport;
+import name.abuchen.portfolio.ui.util.viewers.TransactionOwnerListEditingSupport;
+import name.abuchen.portfolio.ui.util.viewers.TransactionTypeEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.ValueEditingSupport;
 import name.abuchen.portfolio.ui.views.actions.ConvertBuySellToDeliveryAction;
 import name.abuchen.portfolio.ui.views.actions.ConvertDeliveryToBuySellAction;
@@ -234,6 +236,7 @@ public final class TransactionsViewer implements ModificationListener
                 return null;
         }));
         ColumnViewerSorter.create(PortfolioTransaction.class, "type").attachTo(column); //$NON-NLS-1$
+        new TransactionTypeEditingSupport(owner.getClient()).addListener(this).attachTo(column);
         support.addColumn(column);
 
         column = new Column(Messages.ColumnSecurity, SWT.None, 250);
@@ -320,6 +323,8 @@ public final class TransactionsViewer implements ModificationListener
         column = new Column(Messages.ColumnOffsetAccount, SWT.None, 120);
         column.setLabelProvider(new TransactionLabelProvider(
                         t -> t.getCrossEntry() != null ? t.getCrossEntry().getCrossOwner(t).toString() : null));
+        new TransactionOwnerListEditingSupport(owner.getClient(),
+                        TransactionOwnerListEditingSupport.EditMode.CROSSOWNER).addListener(this).attachTo(column);
         support.addColumn(column);
 
         column = new Column(Messages.ColumnNote, SWT.None, 200);
