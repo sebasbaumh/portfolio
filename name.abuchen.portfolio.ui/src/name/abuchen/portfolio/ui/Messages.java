@@ -121,6 +121,7 @@ public class Messages extends NLS
     public static String ColumnAbsolutePerformance_Option;
     public static String ColumnAutoGenerate;
     public static String ColumnDeltaPercent;
+    public static String ColumnDeltaPercentRelative;
     public static String ColumnDeltaShares;
     public static String ColumnDeltaValue;
     public static String ColumnDesiredAllocation;
@@ -166,7 +167,7 @@ public class Messages extends NLS
     public static String ColumnIRRPerformanceOption;
     public static String ColumnISIN;
     public static String ColumnIssue;
-    public static String ColumnLable;
+    public static String ColumnLabel;
     public static String ColumnLastDividendPayment;
     public static String ColumnLastDividendPayment_MenuLabel;
     public static String ColumnLastTrade;
@@ -379,6 +380,7 @@ public class Messages extends NLS
     public static String LabelAbsoluteInvestedCapital;
     public static String LabelAccounts;
     public static String LabelAccumulatedDividends;
+    public static String LabelAccumulatedEarnings;
     public static String LabelAccumulatedInterest;
     public static String LabelAccumulatedInterestCharge;
     public static String LabelAccumulatedTaxes;
@@ -426,6 +428,7 @@ public class Messages extends NLS
     public static String LabelDelta;
     public static String LabelDoImport;
     public static String LabelDoNotImport;
+    public static String LabelEarnings;
     public static String LabelError;
     public static String LabelExchange;
     public static String LabelExchangeRate;
