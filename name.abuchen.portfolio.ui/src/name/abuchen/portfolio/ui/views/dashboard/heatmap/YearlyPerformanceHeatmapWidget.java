@@ -47,8 +47,8 @@ public class YearlyPerformanceHeatmapWidget extends AbstractHeatmapWidget<Double
                         interval.getEnd().withDayOfYear(interval.getEnd().lengthOfYear()));
 
         HeatmapModel<Double> model = new HeatmapModel<>(
-                        numDashboardColumns == 1 ? Values.PercentPlain : Values.PercentShort);
-        model.setCellToolTip(Messages.YearlyPerformanceHeatmapToolTip);
+                        numDashboardColumns == 1 ? Values.Percent : Values.PercentShort);
+        model.setCellToolTip(v -> Messages.YearlyPerformanceHeatmapToolTip);
 
         // add header
         for (DataSeries s : dataSeries)
