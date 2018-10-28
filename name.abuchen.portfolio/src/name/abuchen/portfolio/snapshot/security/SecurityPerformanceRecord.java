@@ -439,6 +439,7 @@ public final class SecurityPerformanceRecord implements Adaptable
 
         if (!transactions.isEmpty())
         {
+            calculateSharesHeld(converter, period);
             calculateMarketValue(converter, period);
             calculateIRR(converter);
             calculateTTWROR(client, converter, period);
@@ -447,6 +448,11 @@ public final class SecurityPerformanceRecord implements Adaptable
             calculateDividends(converter);
             calculatePeriodicity(converter);
         }
+    }
+
+    private void calculateSharesHeld(CurrencyConverter converter, ReportingPeriod period)
+    {
+        this.sharesHeld = Calculation.perform(SharesHeldCalculation.class, converter, transactions).getSharesHeld();
     }
 
     private void calculateMarketValue(CurrencyConverter converter, ReportingPeriod period)
@@ -486,7 +492,6 @@ public final class SecurityPerformanceRecord implements Adaptable
         CostCalculation cost = Calculation.perform(CostCalculation.class, converter, transactions);
         this.fifoCost = cost.getFifoCost();
         this.movingAverageCost = cost.getMovingAverageCost();
-        this.sharesHeld = cost.getSharesHeld();
 
         Money netFifoCost = cost.getNetFifoCost();
         this.fifoCostPerSharesHeld = Quote.of(netFifoCost.getCurrencyCode(), Math.round(netFifoCost.getAmount()
