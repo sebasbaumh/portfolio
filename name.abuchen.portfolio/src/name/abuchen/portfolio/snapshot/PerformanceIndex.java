@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
+import java.util.function.IntPredicate;
 import java.util.function.ToLongBiFunction;
 
 import org.apache.commons.csv.CSVPrinter;
@@ -36,6 +36,7 @@ import name.abuchen.portfolio.snapshot.filter.ClientSecurityFilter;
 import name.abuchen.portfolio.snapshot.filter.PortfolioClientFilter;
 import name.abuchen.portfolio.util.Interval;
 import name.abuchen.portfolio.util.TradeCalendar;
+import name.abuchen.portfolio.util.TradeCalendarManager;
 
 public class PerformanceIndex
 {
@@ -236,9 +237,9 @@ public class PerformanceIndex
      * <li>on weekends or public holidays</li>
      * </ul>
      */
-    private Predicate<Integer> filterReturnsForVolatilityCalculation()
+    private IntPredicate filterReturnsForVolatilityCalculation()
     {
-        TradeCalendar calendar = new TradeCalendar();
+        TradeCalendar calendar = TradeCalendarManager.getDefaultInstance();
         return index -> index > 0 && totals[index] != 0 && totals[index - 1] != 0 && !calendar.isHoliday(dates[index]);
     }
 
@@ -390,7 +391,7 @@ public class PerformanceIndex
         exportTo(file, filterReturnsForVolatilityCalculation());
     }
 
-    private void exportTo(File file, Predicate<Integer> filter) throws IOException
+    private void exportTo(File file, IntPredicate filter) throws IOException
     {
         CSVStrategy strategy = new CSVStrategy(';', '"', CSVStrategy.COMMENTS_DISABLED, CSVStrategy.ESCAPE_DISABLED,
                         false, false, false, false);
