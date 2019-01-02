@@ -150,16 +150,6 @@
 			<artifactId>guava</artifactId>
 			<version>23.5-jre</version>
 		</dependency>
-		<dependency>
-			<groupId>de.jollyday</groupId>
-			<artifactId>jollyday</artifactId>
-			<version>0.5.7</version>
-		</dependency>
-		<dependency>
-			<groupId>org.threeten</groupId>
-			<artifactId>threeten-extra</artifactId>
-			<version>1.4</version>
-		</dependency>
 	</dependencies>
 
 	<build>
@@ -200,6 +190,15 @@
 				<configuration>
 					<resolver>p2</resolver>
 					<pomDependencies>consider</pomDependencies>
+					<dependency-resolution>
+						<extraRequirements>
+							<requirement>
+								<type>eclipse-plugin</type>
+								<id>javax.annotation</id>
+								<versionRange>0.0.0</versionRange>
+							</requirement>
+						</extraRequirements>
+					</dependency-resolution>
 					<environments>
 						<environment>
 							<os>linux</os>
@@ -259,7 +258,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.7.6.201602180812</version>
+				<version>0.8.2</version>
 				<executions>
 					<execution>
 						<goals>
@@ -392,7 +391,7 @@
 				<plugin>
 					<groupId>name.abuchen</groupId>
 					<artifactId>fix-info-plist-maven-plugin</artifactId>
-					<version>1.3</version>
+					<version>1.4</version>
 				</plugin>
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
