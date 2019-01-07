@@ -1,11 +1,9 @@
-package name.abuchen.portfolio.ui;
+package name.abuchen.portfolio.ui.jobs;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import javax.inject.Inject;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -21,18 +19,18 @@ import name.abuchen.portfolio.model.InvestmentPlan;
 import name.abuchen.portfolio.model.Transaction;
 import name.abuchen.portfolio.money.CurrencyConverterImpl;
 import name.abuchen.portfolio.money.ExchangeRateProviderFactory;
+import name.abuchen.portfolio.ui.Messages;
 
-final class CreateInvestmentPlanTxJob extends AbstractClientJob
+public final class CreateInvestmentPlanTxJob extends AbstractClientJob
 {
     private Job startAfterOtherJob;
 
-    @Inject
     private ExchangeRateProviderFactory factory;
 
-    @Inject
-    public CreateInvestmentPlanTxJob(Client client)
+    public CreateInvestmentPlanTxJob(Client client, ExchangeRateProviderFactory factory)
     {
         super(client, Messages.InvestmentPlanAutoCreationJob);
+        this.factory = factory;
     }
 
     public void startAfter(Job otherJob)
