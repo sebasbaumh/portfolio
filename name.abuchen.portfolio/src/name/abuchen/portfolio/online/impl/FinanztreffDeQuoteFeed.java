@@ -393,27 +393,31 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                         // cut out JSON string and parse it
                         int iJsonStart = line.indexOf('{');
                         int iJsonEnd = line.indexOf('}');
-                        String sJson = line.substring(iJsonStart, iJsonEnd + 1);
-                        JSONObject ojIntraday = (JSONObject) JSONValue.parse(sJson);
-                        if (ojIntraday != null)
+                        if ((iJsonStart >= 0) && (iJsonEnd > 0))
                         {
-                            // get individual values
-                            long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
-                            LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp"); //$NON-NLS-1$
-                            // if at least time and price are there,
-                            // construct a latest quote
-                            if ((lastTimeStamp != null) && (lastPrice != -1))
+                            String sJson = line.substring(iJsonStart, iJsonEnd + 1);
+                            JSONObject ojIntraday = (JSONObject) JSONValue.parse(sJson);
+                            if (ojIntraday != null)
                             {
-                                LatestSecurityPrice price = new LatestSecurityPrice(lastTimeStamp, lastPrice);
-                                // check if latest security price should be set
-                                if ((latest == null) || (latest.compareTo(price) <= 0))
+                                // get individual values
+                                long lastPrice = getPrice(ojIntraday, "lastprice"); //$NON-NLS-1$
+                                LocalDate lastTimeStamp = getDate(ojIntraday, "lastTimestamp"); //$NON-NLS-1$
+                                // if at least time and price are there,
+                                // construct a latest quote
+                                if ((lastTimeStamp != null) && (lastPrice != -1))
                                 {
-                                    // set all known properties
-                                    price.setLow(getPrice(ojIntraday, "low"));//$NON-NLS-1$
-                                    price.setHigh(getPrice(ojIntraday, "high"));//$NON-NLS-1$
-                                    price.setPreviousClose(getPrice(ojIntraday, "yesterdayPrice"));//$NON-NLS-1$
-                                    // add latest quote to returned result
-                                    latest = price;
+                                    LatestSecurityPrice price = new LatestSecurityPrice(lastTimeStamp, lastPrice);
+                                    // check if latest security price should be
+                                    // set
+                                    if ((latest == null) || (latest.compareTo(price) <= 0))
+                                    {
+                                        // set all known properties
+                                        price.setLow(getPrice(ojIntraday, "low"));//$NON-NLS-1$
+                                        price.setHigh(getPrice(ojIntraday, "high"));//$NON-NLS-1$
+                                        price.setPreviousClose(getPrice(ojIntraday, "yesterdayPrice"));//$NON-NLS-1$
+                                        // add latest quote to returned result
+                                        latest = price;
+                                    }
                                 }
                             }
                         }
