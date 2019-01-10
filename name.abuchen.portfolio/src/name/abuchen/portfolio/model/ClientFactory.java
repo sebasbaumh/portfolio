@@ -565,6 +565,7 @@ public class ClientFactory
                 // added boolean attribute type
             case 38:
                 // added security exchange calendar
+                // added onlineId to security
 
                 client.setVersion(Client.CURRENT_VERSION);
                 break;
@@ -581,8 +582,7 @@ public class ClientFactory
         {
             if ("STOCK".equals(security.getType())) //$NON-NLS-1$ // NOSONAR
                 security.setType("EQUITY"); //$NON-NLS-1$ // NOSONAR
-            else if ("BOND".equals(security.getType())) //$NON-NLS-1$ //
-                                                        // NOSONAR
+            else if ("BOND".equals(security.getType())) // NOSONAR //$NON-NLS-1$
                 security.setType("DEBT"); //$NON-NLS-1$ // NOSONAR
         }
     }

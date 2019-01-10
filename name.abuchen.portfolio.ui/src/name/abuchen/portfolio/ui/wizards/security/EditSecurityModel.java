@@ -23,7 +23,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
         private Security security;
         private List<Classification> elements;
 
-        private List<ClassificationLink> links = new ArrayList<ClassificationLink>();
+        private List<ClassificationLink> links = new ArrayList<>();
 
         public TaxonomyDesignation(Taxonomy taxonomy, final Security security)
         {
@@ -60,7 +60,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
         @Override
         public void applyChanges()
         {
-            final Map<Classification, ClassificationLink> classification2link = new HashMap<Classification, ClassificationLink>();
+            final Map<Classification, ClassificationLink> classification2link = new HashMap<>();
             for (ClassificationLink link : links)
                 classification2link.put(link.getClassification(), link);
 
@@ -157,7 +157,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
         public void setValue(Object value)
         {
-            firePropertyChange("value", this.value, this.value = value); //$NON-NLS-1$
+            firePropertyChange("value", this.value, this.value = value); //$NON-NLS-1$ //NOSONAR
         }
 
         @Override
@@ -170,6 +170,8 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
     private Security security;
 
     private String name;
+    private String onlineId;
+
     private String currencyCode;
     private String targetCurrencyCode;
     private String note;
@@ -200,6 +202,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
         this.security = security;
 
         this.name = security.getName();
+        this.onlineId = security.getOnlineId();
         this.currencyCode = security.getCurrencyCode();
         this.targetCurrencyCode = security.getTargetCurrencyCode();
         this.note = security.getNote();
@@ -219,7 +222,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
         Attributes securityAttributes = security.getAttributes();
         client.getSettings() //
                         .getAttributeTypes() //
-                        .filter(a -> securityAttributes.exists(a)) //
+                        .filter(securityAttributes::exists) //
                         .filter(a -> a.supports(Security.class)) //
                         .forEach(a -> {
                             AttributeDesignation designation = new AttributeDesignation(a, securityAttributes.get(a));
@@ -234,7 +237,17 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setName(String name)
     {
-        firePropertyChange("name", this.name, this.name = name); //$NON-NLS-1$
+        firePropertyChange("name", this.name, this.name = name); //$NON-NLS-1$ //NOSONAR
+    }
+
+    public String getOnlineId()
+    {
+        return onlineId;
+    }
+
+    public void setOnlineId(String onlineId)
+    {
+        firePropertyChange("onlineId", this.onlineId, this.onlineId = onlineId); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getCurrencyCode()
@@ -244,7 +257,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setCurrencyCode(String currencyCode)
     {
-        firePropertyChange("currencyCode", this.currencyCode, this.currencyCode = currencyCode); //$NON-NLS-1$
+        firePropertyChange("currencyCode", this.currencyCode, this.currencyCode = currencyCode); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getTargetCurrencyCode()
@@ -254,7 +267,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setTargetCurrencyCode(String targetCurrencyCode)
     {
-        firePropertyChange("targetCurrencyCode", this.targetCurrencyCode, this.targetCurrencyCode = targetCurrencyCode); //$NON-NLS-1$
+        firePropertyChange("targetCurrencyCode", this.targetCurrencyCode, this.targetCurrencyCode = targetCurrencyCode); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getNote()
@@ -264,7 +277,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setNote(String note)
     {
-        firePropertyChange("note", this.note, this.note = note); //$NON-NLS-1$
+        firePropertyChange("note", this.note, this.note = note); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getIsin()
@@ -274,7 +287,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setIsin(String isin)
     {
-        firePropertyChange("isin", this.isin, this.isin = isin); //$NON-NLS-1$
+        firePropertyChange("isin", this.isin, this.isin = isin); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getTickerSymbol()
@@ -284,7 +297,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setTickerSymbol(String tickerSymbol)
     {
-        firePropertyChange("tickerSymbol", this.tickerSymbol, this.tickerSymbol = tickerSymbol); //$NON-NLS-1$
+        firePropertyChange("tickerSymbol", this.tickerSymbol, this.tickerSymbol = tickerSymbol); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getWkn()
@@ -294,7 +307,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setWkn(String wkn)
     {
-        firePropertyChange("wkn", this.wkn, this.wkn = wkn); //$NON-NLS-1$
+        firePropertyChange("wkn", this.wkn, this.wkn = wkn); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getCalendar()
@@ -304,7 +317,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setCalendar(String calendar)
     {
-        firePropertyChange("calendar", this.calendar, this.calendar = calendar); //$NON-NLS-1$
+        firePropertyChange("calendar", this.calendar, this.calendar = calendar); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getFeed()
@@ -314,7 +327,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setFeed(String feed)
     {
-        firePropertyChange("feed", this.feed, this.feed = feed); //$NON-NLS-1$
+        firePropertyChange("feed", this.feed, this.feed = feed); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getFeedURL()
@@ -324,7 +337,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setFeedURL(String feedURL)
     {
-        firePropertyChange("feedURL", this.feedURL, this.feedURL = feedURL); //$NON-NLS-1$
+        firePropertyChange("feedURL", this.feedURL, this.feedURL = feedURL); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getLatestFeed()
@@ -334,7 +347,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setLatestFeed(String latestFeed)
     {
-        firePropertyChange("latestFeed", this.latestFeed, this.latestFeed = latestFeed); //$NON-NLS-1$
+        firePropertyChange("latestFeed", this.latestFeed, this.latestFeed = latestFeed); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getLatestFeedURL()
@@ -344,7 +357,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setLatestFeedURL(String latestFeedURL)
     {
-        firePropertyChange("latestFeedURL", this.latestFeedURL, this.latestFeedURL = latestFeedURL); //$NON-NLS-1$
+        firePropertyChange("latestFeedURL", this.latestFeedURL, this.latestFeedURL = latestFeedURL); //$NON-NLS-1$ //NOSONAR
     }
 
     public boolean isRetired()
@@ -354,7 +367,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
 
     public void setRetired(boolean isRetired)
     {
-        firePropertyChange("retired", this.isRetired, this.isRetired = isRetired); //$NON-NLS-1$
+        firePropertyChange("retired", this.isRetired, this.isRetired = isRetired); //$NON-NLS-1$ //NOSONAR
     }
 
     public String getStatusHistoricalQuotesProvider()
@@ -365,7 +378,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
     public void setStatusHistoricalQuotesProvider(String status)
     {
         firePropertyChange("statusHistoricalQuotesProvider", this.statusHistoricalQuotesProvider, //$NON-NLS-1$
-                        this.statusHistoricalQuotesProvider = status);
+                        this.statusHistoricalQuotesProvider = status); // NOSONAR
     }
 
     public String getStatusLatestQuotesProvider()
@@ -376,7 +389,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
     public void setStatusLatestQuotesProvider(String status)
     {
         firePropertyChange("statusLatestQuotesProvider", this.statusLatestQuotesProvider, //$NON-NLS-1$
-                        this.statusLatestQuotesProvider = status);
+                        this.statusLatestQuotesProvider = status); // NOSONAR
     }
 
     public List<TaxonomyDesignation> getDesignations()
@@ -413,6 +426,7 @@ import name.abuchen.portfolio.ui.util.BindingHelper;
     public void setAttributes(Security security)
     {
         security.setName(name);
+        security.setOnlineId(onlineId);
         security.setCurrencyCode(currencyCode);
         security.setTargetCurrencyCode(targetCurrencyCode);
         security.setNote(note);

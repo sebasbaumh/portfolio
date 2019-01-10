@@ -262,6 +262,15 @@ public class Messages extends NLS
     public static String ConfigurationStandard;
     public static String ConsumerPriceIndexMenuAdd;
     public static String ConsumerPriceIndexMenuDelete;
+    public static String CSVConfigCSVImportLabelFileJSON;
+    public static String CSVConfigDelete;
+    public static String CSVConfigDialogTitleSave;
+    public static String CSVConfigExport;
+    public static String CSVConfigImport;
+    public static String CSVConfigLabelBuiltIn;
+    public static String CSVConfigLabelUserSpecific;
+    public static String CSVConfigRereadColumnsFromFile;
+    public static String CSVConfigSave;
     public static String CSVImportErrorMissingFields;
     public static String CSVImportInformationOptionalFields;
     public static String CSVImportLabelDelimiter;
@@ -302,6 +311,8 @@ public class Messages extends NLS
     public static String EditWizardMasterDataMsgWeightEqualsZero;
     public static String EditWizardMasterDataMsgWeightNot100Percent;
     public static String EditWizardMasterDataTitle;
+    public static String EditWizardMasterDataUnlink;
+    public static String EditWizardMasterDataUnlink_ToolTip;
     public static String EditWizardOptionSameAsHistoricalQuoteFeed;
     public static String EditWizardQuoteFeedLabelFeedURL;
     public static String EditWizardQuoteFeedMsgErrorMissingURL;
@@ -362,6 +373,7 @@ public class Messages extends NLS
     public static String InvestmentPlanTxForMultiplePlansCreated;
     public static String InvestmentPlanTypeBuyDelivery;
     public static String InvestmentPlanTypeDeposit;
+    public static String JobLabelSyncSecuritiesOnline;
     public static String JobLabelUpdateCPI;
     public static String JobLabelUpdateQuotes;
     public static String JobLabelUpdateStackedLineChart;
@@ -800,7 +812,7 @@ public class Messages extends NLS
     public static String SecurityMenuNewSecurity;
     public static String SecurityMenuQuotes;
     public static String SecurityMenuRemoveFromWatchlist;
-    public static String SecurityMenuSearchYahoo;
+    public static String SecurityMenuSearch4Securities;
     public static String SecurityMenuSell;
     public static String SecurityMenuStockSplit;
     public static String SecurityMenuTransfer;

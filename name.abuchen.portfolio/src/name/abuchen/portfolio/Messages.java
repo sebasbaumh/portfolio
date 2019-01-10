@@ -24,6 +24,8 @@ public class Messages extends NLS
     public static String ColumnPaidTaxes;
     public static String ColumnTransfers;
     public static String CSVColumn_Date;
+    public static String CSVColumn_DateQuote;
+    public static String CSVColumn_DateValue;
     public static String CSVColumn_Fees;
     public static String CSVColumn_InboundTransferals;
     public static String CSVColumn_ISIN;
@@ -48,6 +50,7 @@ public class Messages extends NLS
     public static String CSVColumn_Transferals;
     public static String CSVDefAccountTransactions;
     public static String CSVDefHistoricalQuotes;
+    public static String CSVDefPortfolio;
     public static String CSVDefPortfolioTransactions;
     public static String CSVDefSecurities;
     public static String CSVFormatApostrophe;
@@ -127,7 +130,11 @@ public class Messages extends NLS
     public static String LabelReportingPeriodMonths;
     public static String LabelReportingPeriodSince;
     public static String LabelReportingPeriodYears;
+    public static String LabelSearchAll;
+    public static String LabelSearchBond;
+    public static String LabelSearchShare;
     public static String LabelSecurity;
+    public static String LabelSecurityPrice;
     public static String LabelSuffixEntryCorrected;
     public static String LabelTradeCalendarDefault;
     public static String LabelTradeCalendarEuronext;
@@ -164,11 +171,13 @@ public class Messages extends NLS
     public static String MsgErrorEncrypting;
     public static String MsgErrorIllegalForexUnit;
     public static String MsgErrorMissingDate;
+    public static String MsgErrorMissingKeyValueInJSON;
     public static String MsgErrorMissingValueMatches;
     public static String MsgErrorNoCrumbFound;
     public static String MsgErrorNoneOfSubSectionsMatched;
     public static String MsgErrorNotAllPatternMatched;
     public static String MsgErrorNotAValidDate;
+    public static String MsgErrorParseErrorWithGivenPattern;
     public static String MsgErrorsConvertingValue;
     public static String MsgErrorTransactionTypeNotSupported;
     public static String MsgErrorUnexpectedStatusCode;
