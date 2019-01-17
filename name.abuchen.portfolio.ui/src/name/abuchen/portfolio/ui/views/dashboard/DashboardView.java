@@ -15,10 +15,11 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.e4.ui.di.UISynchronize;
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.ActionContributionItem;
+import org.eclipse.jface.action.ContributionItem;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.action.ToolBarManager;
 import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.GridLayoutFactory;
@@ -33,17 +34,12 @@ import org.eclipse.swt.dnd.DragSourceEvent;
 import org.eclipse.swt.dnd.DropTarget;
 import org.eclipse.swt.dnd.DropTargetAdapter;
 import org.eclipse.swt.dnd.DropTargetEvent;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.ToolBar;
-import org.eclipse.swt.widgets.ToolItem;
 
 import name.abuchen.portfolio.model.Dashboard;
 import name.abuchen.portfolio.model.Dashboard.Widget;
@@ -51,9 +47,10 @@ import name.abuchen.portfolio.ui.Images;
 import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.PortfolioPlugin;
 import name.abuchen.portfolio.ui.jobs.AbstractClientJob;
-import name.abuchen.portfolio.ui.util.AbstractDropDown;
+import name.abuchen.portfolio.ui.util.Colors;
 import name.abuchen.portfolio.ui.util.ConfirmAction;
 import name.abuchen.portfolio.ui.util.ContextMenu;
+import name.abuchen.portfolio.ui.util.DropDown;
 import name.abuchen.portfolio.ui.util.InfoToolTip;
 import name.abuchen.portfolio.ui.util.SimpleAction;
 import name.abuchen.portfolio.ui.views.AbstractHistoricView;
@@ -200,7 +197,6 @@ public class DashboardView extends AbstractHistoricView
 
     private DashboardResources resources;
     private Composite container;
-    private ToolBar toolBar;
 
     private Dashboard dashboard;
     private DashboardData dashboardData;
@@ -227,121 +223,71 @@ public class DashboardView extends AbstractHistoricView
     }
 
     @Override
-    protected void addButtons(ToolBar toolBar)
+    protected void addViewButtons(ToolBarManager toolBar)
     {
-        this.toolBar = toolBar;
+        createDashboardToolItems(toolBar);
+    }
 
-        createDashboardToolItems();
-
-        ToolItem item = new ToolItem(toolBar, SWT.SEPARATOR);
-        item.setWidth(20);
-
+    @Override
+    protected void addButtons(ToolBarManager toolBar)
+    {
         super.addButtons(toolBar);
 
-        Action newAction = new SimpleAction(Messages.ConfigurationNew, a -> createNewDashboard(null));
-        newAction.setImageDescriptor(Images.PLUS.descriptor());
-        new ActionContributionItem(newAction).fill(toolBar, -1);
-
-        AbstractDropDown.create(toolBar, Messages.MenuConfigureCurrentDashboard, Images.CONFIG.image(), SWT.NONE,
-                        manager -> manager.add(
-                                        new SimpleAction(Messages.MenuNewDashboardColumn, a -> createNewColumn())));
+        toolBar.add(new DropDown(Messages.MenuConfigureCurrentDashboard, Images.CONFIG, SWT.NONE, manager -> manager
+                        .add(new SimpleAction(Messages.MenuNewDashboardColumn, a -> createNewColumn()))));
     }
 
-    private void createDashboardToolItems()
+    private void createDashboardToolItems(ToolBarManager toolBar)
     {
-        int index = 0;
+        int[] index = { 0 };
+        getClient().getDashboards().forEach(board -> toolBar.add(createToolItem(index[0]++, board)));
 
-        boolean includesSelected = false;
-
-        Dashboard[] dashboards = getClient().getDashboards().toArray(Dashboard[]::new);
-        for (Dashboard board : dashboards)
-        {
-            if (index >= 4) // # of dashboards shown by default
-                break;
-
-            includesSelected = includesSelected || board.equals(dashboard);
-
-            createToolItem(index++, board);
-        }
-
-        if (!includesSelected && dashboard != null)
-            createToolItem(index++, dashboard);
-
-        if (index < dashboards.length)
-        {
-            AbstractDropDown dropdown = AbstractDropDown.create(toolBar, Messages.MenuConfigureDashboards,
-                            Images.SAVE.image(), SWT.NONE, index, manager -> getClient().getDashboards().forEach(d -> {
-                                Action action = new SimpleAction(d.getName(), a -> selectDashboard(d));
-                                action.setChecked(d.equals(dashboard));
-                                manager.add(action);
-                            }));
-
-            // attach one dashboard to the tool item so that the tool item is
-            // removed before re-creation
-            dropdown.getToolItem().setData(dashboards[0]);
-        }
+        Action newAction = new SimpleAction(Messages.MenuNewDashboard, a -> createNewDashboard(null));
+        newAction.setImageDescriptor(Images.VIEW_PLUS.descriptor());
+        toolBar.add(newAction);
     }
 
-    private void createToolItem(int index, Dashboard board)
+    private ContributionItem createToolItem(int index, Dashboard board)
     {
-        ToolItem item = new ToolItem(toolBar, SWT.DROP_DOWN, index);
-        item.setImage(board.equals(dashboard) ? Images.DASHBOARD_SELECTED.image() : Images.DASHBOARD.image());
-        item.setText(board.getName());
-        item.setData(board);
+        DropDown toolItem = new DropDown(board.getName(),
+                        board.equals(dashboard) ? Images.VIEW_SELECTED : Images.VIEW, SWT.DROP_DOWN);
 
-        item.addSelectionListener(SelectionListener.widgetSelectedAdapter(event -> {
-            if (event.detail == SWT.ARROW)
+        toolItem.setMenuListener(manager -> {
+            if (!board.equals(dashboard))
             {
-                Rectangle rect = item.getBounds();
-                Point pt = item.getParent().toDisplay(new Point(rect.x, rect.y));
-
-                MenuManager manager = new MenuManager("#PopupMenu"); //$NON-NLS-1$
-
-                if (!board.equals(dashboard))
-                {
-                    manager.add(new SimpleAction(Messages.MenuShow, a -> selectDashboard(board)));
-                    manager.add(new Separator());
-                }
-
-                manager.add(new SimpleAction(Messages.ConfigurationDuplicate, a -> createNewDashboard(board)));
-                manager.add(new SimpleAction(Messages.ConfigurationRename, a -> renameDashboard(board)));
-                manager.add(new ConfirmAction(
-                                Messages.ConfigurationDelete, 
-                                MessageFormat.format(Messages.ConfigurationDeleteConfirm, board.getName()), 
-                                a -> deleteDashboard(board)));
-
-                if (index > 0)
-                {
-                    manager.add(new Separator());
-                    manager.add(new SimpleAction(Messages.ChartBringToFront, a -> bringToFrontDashboard(board)));
-                }
-
-                Menu menu = manager.createContextMenu(toolBar);
-                menu.setLocation(pt.x, pt.y + rect.height);
-                menu.setVisible(true);
-
-                item.addDisposeListener(e -> menu.dispose());
+                manager.add(new SimpleAction(Messages.MenuShow, a -> selectDashboard(board)));
+                manager.add(new Separator());
             }
-            else
+
+            manager.add(new SimpleAction(Messages.ConfigurationDuplicate, a -> createNewDashboard(board)));
+            manager.add(new SimpleAction(Messages.ConfigurationRename, a -> renameDashboard(board)));
+            manager.add(new ConfirmAction(Messages.ConfigurationDelete,
+                            MessageFormat.format(Messages.ConfigurationDeleteConfirm, board.getName()),
+                            a -> deleteDashboard(board)));
+
+            if (index > 0)
             {
-                selectDashboard(board);
+                manager.add(new Separator());
+                manager.add(new SimpleAction(Messages.ChartBringToFront, a -> bringToFrontDashboard(board)));
             }
-        }));
+        });
+
+        toolItem.setDefaultAction(new SimpleAction(Messages.MenuShow, a -> selectDashboard(board)));
+
+        return toolItem;
     }
 
     private void recreateDashboardToolItems()
     {
-        if (toolBar.isDisposed())
+        ToolBarManager toolBar = getViewToolBarManager();
+        if (toolBar.getControl().isDisposed())
             return;
 
-        for (ToolItem child : toolBar.getItems())
-        {
-            if (child.getData() instanceof Dashboard)
-                child.dispose();
-        }
+        toolBar.removeAll();
 
-        createDashboardToolItems();
-        toolBar.getParent().layout(true);
+        createDashboardToolItems(toolBar);
+
+        toolBar.update(true);
     }
 
     @Override
@@ -361,12 +307,12 @@ public class DashboardView extends AbstractHistoricView
                             Dashboard newDashboard = createDefaultDashboard();
                             getClient().addDashboard(newDashboard);
                             markDirty();
-                            createDashboardToolItems();
+                            createDashboardToolItems(getToolBarManager());
                             return newDashboard;
                         });
 
         container = new Composite(parent, SWT.NONE);
-        container.setBackground(Display.getDefault().getSystemColor(SWT.COLOR_WHITE));
+        container.setBackground(Colors.WHITE);
 
         selectDashboard(dashboard);
 

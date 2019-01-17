@@ -62,12 +62,14 @@ public enum Images
     QUICKFIX("quickfix.png"), //$NON-NLS-1$
     ADD("add.png"), //$NON-NLS-1$
     REMOVE("remove.png"), //$NON-NLS-1$
+    CHEVRON("chevron.png"), //$NON-NLS-1$
 
     CATEGORY("category.png"), //$NON-NLS-1$
     UNASSIGNED_CATEGORY("unassigned.png"), //$NON-NLS-1$
 
-    DASHBOARD("dashboard.png"), //$NON-NLS-1$
-    DASHBOARD_SELECTED("dashboard_selected.png"), //$NON-NLS-1$
+    VIEW("view.png"), //$NON-NLS-1$
+    VIEW_SELECTED("view_selected.png"), //$NON-NLS-1$
+    VIEW_PLUS("view_plus.png"), //$NON-NLS-1$
 
     TEXT("text.png"), //$NON-NLS-1$
 

@@ -1,20 +1,22 @@
 package name.abuchen.portfolio.ui.views;
 
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.action.ToolBarManager;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.ToolBar;
 import org.swtchart.ISeries;
+
 import com.google.common.collect.Lists;
+
 import name.abuchen.portfolio.ui.Images;
 import name.abuchen.portfolio.ui.Messages;
+import name.abuchen.portfolio.ui.util.DropDown;
 import name.abuchen.portfolio.ui.util.SimpleAction;
 import name.abuchen.portfolio.ui.util.chart.TimelineChart;
 import name.abuchen.portfolio.ui.util.chart.TimelineChartCSVExporter;
@@ -37,14 +39,15 @@ public class StatementOfAssetsHistoryView extends AbstractHistoricView
     }
 
     @Override
-    protected void addButtons(ToolBar toolBar)
+    protected void addButtons(ToolBarManager toolBar)
     {
         super.addButtons(toolBar);
         addExportButton(toolBar);
-        addConfigButton(toolBar);
+        toolBar.add(new DropDown(Messages.MenuConfigureChart, Images.CONFIG, SWT.NONE,
+                        manager -> configurator.configMenuAboutToShow(manager)));
     }
 
-    private void addExportButton(ToolBar toolBar)
+    private void addExportButton(ToolBarManager toolBar)
     {
         Action export = new Action()
         {
@@ -63,7 +66,7 @@ public class StatementOfAssetsHistoryView extends AbstractHistoricView
         export.setImageDescriptor(Images.EXPORT.descriptor());
         export.setToolTipText(Messages.MenuExportData);
 
-        new ActionContributionItem(export).fill(toolBar, -1);
+        toolBar.add(export);
     }
 
     private void exportMenuAboutToShow(IMenuManager manager) // NOSONAR
@@ -75,19 +78,6 @@ public class StatementOfAssetsHistoryView extends AbstractHistoricView
         }));
         manager.add(new Separator());
         chart.exportMenuAboutToShow(manager, getTitle());
-    }
-
-    private void addConfigButton(ToolBar toolBar)
-    {
-        Action save = new SimpleAction(a -> configurator.showSaveMenu(getActiveShell()));
-        save.setImageDescriptor(Images.SAVE.descriptor());
-        save.setToolTipText(Messages.MenuSaveChart);
-        new ActionContributionItem(save).fill(toolBar, -1);
-
-        Action config = new SimpleAction(a -> configurator.showMenu(getActiveShell()));
-        config.setImageDescriptor(Images.CONFIG.descriptor());
-        config.setToolTipText(Messages.MenuConfigureChart);
-        new ActionContributionItem(config).fill(toolBar, -1);
     }
 
     @Override
@@ -105,6 +95,7 @@ public class StatementOfAssetsHistoryView extends AbstractHistoricView
 
         configurator = new DataSeriesConfigurator(this, DataSeries.UseCase.STATEMENT_OF_ASSETS);
         configurator.addListener(this::updateChart);
+        configurator.setToolBarManager(getViewToolBarManager());
 
         DataSeriesChartLegend legend = new DataSeriesChartLegend(composite, configurator);
 

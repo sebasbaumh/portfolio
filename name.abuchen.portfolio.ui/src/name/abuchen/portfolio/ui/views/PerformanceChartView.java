@@ -6,17 +6,19 @@ import java.text.DecimalFormat;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 
+import javax.annotation.PostConstruct;
+
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.ActionContributionItem;
+import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.action.ToolBarManager;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.Shell;
 import org.swtchart.ISeries;
 
 import com.google.common.collect.Lists;
@@ -26,9 +28,8 @@ import name.abuchen.portfolio.snapshot.PerformanceIndex;
 import name.abuchen.portfolio.ui.Images;
 import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.PortfolioPlugin;
-import name.abuchen.portfolio.ui.editor.PortfolioPart;
 import name.abuchen.portfolio.ui.util.AbstractCSVExporter;
-import name.abuchen.portfolio.ui.util.AbstractDropDown;
+import name.abuchen.portfolio.ui.util.DropDown;
 import name.abuchen.portfolio.ui.util.SimpleAction;
 import name.abuchen.portfolio.ui.util.chart.TimelineChart;
 import name.abuchen.portfolio.ui.util.chart.TimelineChartCSVExporter;
@@ -55,12 +56,10 @@ public class PerformanceChartView extends AbstractHistoricView
         return Messages.LabelPerformanceChart;
     }
 
-    @Override
-    public void init(PortfolioPart part, Object parameter)
+    @PostConstruct
+    public void setup()
     {
-        super.init(part, parameter);
-
-        String key = part.getPreferenceStore().getString(KEY_AGGREGATION_PERIOD);
+        String key = getPreferenceStore().getString(KEY_AGGREGATION_PERIOD);
         if (key != null && key.length() > 0)
         {
             try
@@ -76,39 +75,13 @@ public class PerformanceChartView extends AbstractHistoricView
     }
 
     @Override
-    protected void addButtons(ToolBar toolBar)
+    protected void addButtons(ToolBarManager toolBar)
     {
         super.addButtons(toolBar);
-        new AggregationPeriodDropDown(toolBar);
-        new ExportDropDown(toolBar);
-        addConfigButton(toolBar);
-    }
-
-    private void addConfigButton(ToolBar toolBar)
-    {
-        Action save = new Action()
-        {
-            @Override
-            public void run()
-            {
-                picker.showSaveMenu(getActiveShell());
-            }
-        };
-        save.setImageDescriptor(Images.SAVE.descriptor());
-        save.setToolTipText(Messages.MenuSaveChart);
-        new ActionContributionItem(save).fill(toolBar, -1);
-
-        Action config = new Action()
-        {
-            @Override
-            public void run()
-            {
-                picker.showMenu(getActiveShell());
-            }
-        };
-        config.setImageDescriptor(Images.CONFIG.descriptor());
-        config.setToolTipText(Messages.MenuConfigureChart);
-        new ActionContributionItem(config).fill(toolBar, -1);
+        toolBar.add(new AggregationPeriodDropDown());
+        toolBar.add(new ExportDropDown());
+        toolBar.add(new DropDown(Messages.MenuConfigureChart, Images.CONFIG, SWT.NONE,
+                        manager -> picker.configMenuAboutToShow(manager)));
     }
 
     @Override
@@ -129,6 +102,7 @@ public class PerformanceChartView extends AbstractHistoricView
 
         picker = new DataSeriesConfigurator(this, DataSeries.UseCase.PERFORMANCE);
         picker.addListener(this::updateChart);
+        picker.setToolBarManager(getViewToolBarManager());
 
         DataSeriesChartLegend legend = new DataSeriesChartLegend(composite, picker);
 
@@ -195,11 +169,12 @@ public class PerformanceChartView extends AbstractHistoricView
                         .forEach(series -> seriesBuilder.build(series, getReportingPeriod(), aggregationPeriod));
     }
 
-    private final class AggregationPeriodDropDown extends AbstractDropDown
+    private final class AggregationPeriodDropDown extends DropDown implements IMenuListener
     {
-        private AggregationPeriodDropDown(ToolBar toolBar)
+        private AggregationPeriodDropDown()
         {
-            super(toolBar, aggregationPeriod == null ? Messages.LabelAggregationDaily : aggregationPeriod.toString());
+            super(aggregationPeriod == null ? Messages.LabelAggregationDaily : aggregationPeriod.toString());
+            setMenuListener(this);
         }
 
         @Override
@@ -238,11 +213,12 @@ public class PerformanceChartView extends AbstractHistoricView
         }
     }
 
-    private final class ExportDropDown extends AbstractDropDown
+    private final class ExportDropDown extends DropDown implements IMenuListener
     {
-        private ExportDropDown(ToolBar toolBar)
+        private ExportDropDown()
         {
-            super(toolBar, Messages.MenuExportData, Images.EXPORT.image(), SWT.NONE);
+            super(Messages.MenuExportData, Images.EXPORT, SWT.NONE);
+            setMenuListener(this);
         }
 
         @Override
@@ -284,9 +260,9 @@ public class PerformanceChartView extends AbstractHistoricView
                     }
 
                     @Override
-                    protected Control getControl()
+                    protected Shell getShell()
                     {
-                        return ExportDropDown.this.getToolBar();
+                        return chart.getShell();
                     }
                 };
                 exporter.export(getTitle() + "_" + series.getLabel() + ".csv"); //$NON-NLS-1$ //$NON-NLS-2$

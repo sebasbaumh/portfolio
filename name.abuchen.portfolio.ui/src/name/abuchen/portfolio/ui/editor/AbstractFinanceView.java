@@ -3,12 +3,15 @@ package name.abuchen.portfolio.ui.editor;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.e4.core.contexts.ContextInjectionFactory;
 import org.eclipse.e4.core.contexts.EclipseContextFactory;
 import org.eclipse.e4.core.contexts.IEclipseContext;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.ToolBarManager;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -30,16 +33,31 @@ import name.abuchen.portfolio.ui.util.Colors;
 
 public abstract class AbstractFinanceView
 {
-    private PortfolioPart part;
+    @Inject
     private IEclipseContext context;
+
+    @Inject
+    private PortfolioPart part;
 
     private Composite top;
     private Label title;
+
+    /**
+     * Tool bar used for switching between different views. It displays an
+     * abridged tool bar if the spaces does not allow to display all views.
+     */
+    private ToolBarManager viewToolBar;
+
+    /**
+     * Tool bar used for actions (new, columns, configuration).
+     */
+    private ToolBarManager actionToolBar;
+
     private LocalResourceManager resourceManager = new LocalResourceManager(JFaceResources.getResources());
     private List<Menu> contextMenus = new ArrayList<>();
 
     protected abstract String getDefaultTitle();
-    
+
     protected String getTitle()
     {
         return title.getText();
@@ -48,16 +66,18 @@ public abstract class AbstractFinanceView
     protected final void updateTitle(String title)
     {
         if (!this.title.isDisposed())
+        {
+            boolean isEqual = title.equals(this.title.getText());
+
             this.title.setText(title);
+            if (!isEqual)
+                this.title.getParent().layout(true);
+        }
     }
 
     /** called when some other view modifies the model */
     public void notifyModelUpdated()
-    {}
-
-    public void init(PortfolioPart part, Object parameter) // NOSONAR
     {
-        this.part = part;
     }
 
     public PortfolioPart getPart()
@@ -68,16 +88,6 @@ public abstract class AbstractFinanceView
     public IPreferenceStore getPreferenceStore()
     {
         return part.getPreferenceStore();
-    }
-
-    /* package */void setContext(IEclipseContext context)
-    {
-        this.context = context;
-    }
-
-    /* package */IEclipseContext getContext()
-    {
-        return this.context;
     }
 
     public Client getClient()
@@ -114,7 +124,7 @@ public abstract class AbstractFinanceView
 
     protected abstract Control createBody(Composite parent);
 
-    private Control createHeader(Composite parent)
+    private final Control createHeader(Composite parent)
     {
         Composite header = new Composite(parent, SWT.NONE);
         header.setBackground(Colors.WHITE);
@@ -128,20 +138,48 @@ public abstract class AbstractFinanceView
         title.setForeground(Colors.SIDEBAR_TEXT);
         title.setBackground(header.getBackground());
 
-        ToolBar toolBar = new ToolBar(header, SWT.FLAT | SWT.RIGHT);
-        toolBar.setBackground(header.getBackground());
-        addButtons(toolBar);
+        Composite wrapper = new Composite(header, SWT.NONE);
+        wrapper.setBackground(header.getBackground());
+
+        viewToolBar = new ToolBarManager(SWT.FLAT | SWT.RIGHT);
+        addViewButtons(viewToolBar);
+        ToolBar tb1 = viewToolBar.createControl(wrapper);
+        tb1.setBackground(header.getBackground());
+
+        // create layout *after* the toolbar to keep the tab order right
+        wrapper.setLayout(new ToolBarPlusChevronLayout(wrapper));
+
+        actionToolBar = new ToolBarManager(SWT.FLAT | SWT.RIGHT);
+        addButtons(actionToolBar);
+        ToolBar tb2 = actionToolBar.createControl(header);
+        tb2.setBackground(header.getBackground());
 
         // layout
-        GridLayoutFactory.fillDefaults().numColumns(2).margins(5, 5).applyTo(header);
-        GridDataFactory.fillDefaults().grab(true, false).applyTo(title);
-        GridDataFactory.fillDefaults().applyTo(toolBar);
+        GridLayoutFactory.fillDefaults().numColumns(3).margins(5, 5).applyTo(header);
+        GridDataFactory.fillDefaults().applyTo(title);
+        GridDataFactory.fillDefaults().grab(true, false).align(SWT.END, SWT.CENTER).applyTo(wrapper);
+        GridDataFactory.fillDefaults().applyTo(tb2);
 
         return header;
     }
 
-    protected void addButtons(ToolBar toolBar)
-    {}
+    protected void addViewButtons(ToolBarManager toolBarManager)
+    {
+    }
+
+    protected void addButtons(ToolBarManager toolBarManager)
+    {
+    }
+
+    protected ToolBarManager getViewToolBarManager()
+    {
+        return this.viewToolBar;
+    }
+
+    protected ToolBarManager getToolBarManager()
+    {
+        return this.actionToolBar;
+    }
 
     protected final void hookContextMenu(Control control, IMenuListener listener)
     {
@@ -170,11 +208,16 @@ public abstract class AbstractFinanceView
 
     public void dispose()
     {
+        viewToolBar.dispose();
+        actionToolBar.dispose();
+
         for (Menu contextMenu : contextMenus)
             if (!contextMenu.isDisposed())
                 contextMenu.dispose();
 
         resourceManager.dispose();
+
+        context.dispose();
     }
 
     public final Control getControl()
@@ -187,7 +230,7 @@ public abstract class AbstractFinanceView
         getControl().setFocus();
     }
 
-    public <T> T make(Class<T> type, Object... parameters)
+    public final <T> T make(Class<T> type, Object... parameters)
     {
         if (parameters == null || parameters.length == 0)
             return ContextInjectionFactory.make(type, this.context);
@@ -198,7 +241,7 @@ public abstract class AbstractFinanceView
         return ContextInjectionFactory.make(type, this.context, c2);
     }
 
-    public void inject(Object object)
+    public final void inject(Object object)
     {
         ContextInjectionFactory.inject(object, context);
     }

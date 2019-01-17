@@ -319,9 +319,6 @@ public class PortfolioPart implements ClientInputListener
     public void onDirty(boolean isDirty)
     {
         dirty.setDirty(isDirty);
-
-        if (isDirty)
-            onRecalculationNeeded();
     }
 
     @Override
@@ -451,19 +448,24 @@ public class PortfolioPart implements ClientInputListener
 
     private void createView(Class<? extends AbstractFinanceView> clazz, Object parameter)
     {
-        IEclipseContext viewContext = this.context.createChild();
+        IEclipseContext viewContext = this.context.createChild(clazz.getName());
         viewContext.set(Client.class, this.clientInput.getClient());
         viewContext.set(IPreferenceStore.class, this.clientInput.getPreferenceStore());
         viewContext.set(PortfolioPart.class, this);
         viewContext.set(ESelectionService.class, selectionService);
         viewContext.set(ExchangeRateProviderFactory.class, this.clientInput.getExchangeRateProviderFacory());
 
-        view = ContextInjectionFactory.make(clazz, viewContext);
-        viewContext.set(AbstractFinanceView.class, view);
-        view.setContext(viewContext);
-        view.init(this, parameter);
-        view.createViewControl(book);
+        if (parameter != null)
+            viewContext.set(UIConstants.Parameter.VIEW_PARAMETER, parameter);
 
+        // assign to 'view' only *after* creating the view control to avoid
+        // dirty listeners to trigger the view while it is under construction
+        AbstractFinanceView underConstruction = ContextInjectionFactory.make(clazz, viewContext);
+        viewContext.set(AbstractFinanceView.class, underConstruction);
+
+        underConstruction.createViewControl(book);
+
+        view = underConstruction;
         book.showPage(view.getControl());
         view.setFocus();
     }
@@ -474,9 +476,8 @@ public class PortfolioPart implements ClientInputListener
         {
             AbstractFinanceView toBeDisposed = view;
 
+            // null view first to avoid dirty listener to notify view
             view = null;
-
-            toBeDisposed.getContext().dispose();
 
             if (!toBeDisposed.getControl().isDisposed())
                 toBeDisposed.getControl().dispose();
