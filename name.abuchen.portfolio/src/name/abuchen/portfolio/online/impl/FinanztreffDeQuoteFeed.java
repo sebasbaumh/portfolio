@@ -37,25 +37,10 @@ import name.abuchen.portfolio.online.QuoteFeed;
 public class FinanztreffDeQuoteFeed implements QuoteFeed
 {
     /**
-     * Combination of quotes and latest quote.
-     */
-    private static class CombinedQuoteResult
-    {
-        /**
-         * Latest quote.
-         */
-        public LatestSecurityPrice latest;
-
-        /**
-         * All prices.
-         */
-        public final List<LatestSecurityPrice> prices = new ArrayList<LatestSecurityPrice>();
-    }
-
-    /**
      * ID of the provider.
      */
     public static final String ID = "FINANZTREFF_DE"; //$NON-NLS-1$
+
     /**
      * ID of the exchange.
      */
@@ -120,6 +105,131 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     /**
+     * Gets the content of the web page for the given {@link Security}.
+     *
+     * @param s
+     *            {@link Security}
+     * @param forQuotes
+     *            return content for getting quotes? (should match currency and
+     *            selected exchange)
+     * @param errors
+     *            errors list
+     * @return {@link SecurityPage} on success, else null
+     */
+    private static SecurityPage getContentOfSecurityPage(Security s, boolean forQuotes, List<Exception> errors)
+    {
+        // get content for quotes then check for exchange
+        if (forQuotes)
+        {
+            // check if ticker symbol is there
+            String exchangeUrl = s.getFeedURL();
+            if ((exchangeUrl != null) && !exchangeUrl.isEmpty())
+            {
+                // just retrieve exactly this url
+                try (InputStream is = openUrlStream(new URL(exchangeUrl), null))
+                {
+                    SecurityPage p = new SecurityPage(exchangeUrl, null);
+                    // read data to lines
+                    p.contentLines = readToLines(is);
+                    return p;
+                }
+                catch (MalformedURLException ex)
+                {
+                    // ignore if this is not an actual URL
+                }
+                catch (IOException ex)
+                {
+                    errors.add(ex);
+                }
+            }
+        }
+        // retrieve data using the ISIN?
+        String key = s.getIsin();
+        if ((key == null) || key.isEmpty())
+        {
+            // then try WKN
+            key = s.getWkn();
+            if ((key == null) || key.isEmpty())
+            {
+                // then ticker symbol
+                key = s.getTickerSymbol();
+            }
+        }
+        SecurityPage p = null;
+        if ((key != null) && !key.isEmpty())
+        {
+            // execute query
+            String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
+            try (InputStream is = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
+            {
+                List<String> results = collectQueryResults(is);
+                // get first result
+                if (!results.isEmpty())
+                {
+                    p = new SecurityPage(results.get(0), sQueryUrl);
+                }
+            }
+            catch (IOException ex)
+            {
+                errors.add(ex);
+            }
+        }
+        if (p != null)
+        {
+            try (InputStream is = openUrlStream(new URL(p.url), p.referrer))
+            {
+                // cache data
+                p.contentLines = readToLines(is);
+            }
+            catch (IOException ex)
+            {
+                errors.add(ex);
+            }
+
+            // try to match currency of security?
+            if ((p.contentLines != null) && forQuotes)
+            {
+                // check if currency matches
+                String securityCurrency = s.getCurrencyCode();
+                String currency = getCurrency(p.contentLines);
+                if ((currency != null) && !currency.equals(securityCurrency))
+                {
+                    // collect all available pages
+                    List<String> lQuoteUrls = collectQuotePages(p.contentLines);
+                    // try to get the correct currency page
+                    if (!lQuoteUrls.isEmpty())
+                    {
+                        for (String sQuoteUrl : lQuoteUrls)
+                        {
+                            List<String> lines2 = null;
+                            try (InputStream is = openUrlStream(new URL(sQuoteUrl), p.url))
+                            {
+                                // cache data
+                                lines2 = readToLines(is);
+                                String currency2 = getCurrency(lines2);
+                                // if currency matches, use that page data
+                                if (securityCurrency.equals(currency2))
+                                {
+                                    p.contentLines = lines2;
+                                    p.referrer = p.url;
+                                    p.url = sQuoteUrl;
+                                    break;
+                                }
+                            }
+                            catch (IOException ex)
+                            {
+                                errors.add(ex);
+                            }
+                        }
+                    }
+                }
+            }
+            return p;
+        }
+        return null;
+    }
+
+    /**
      * Gets the currency from the given data.
      *
      * @param lines
@@ -133,7 +243,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         for (String line : lines)
         {
             Matcher m = pCur.matcher(line);
-            if (m.find()) { return m.group(1); }
+            if (m.find())
+            { return m.group(1); }
         }
         return null;
     }
@@ -150,9 +261,11 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static LocalDate getDate(JSONObject o, String key)
     {
         Long l = getLong(o, key);
-        if (l != null) { return LocalDateTime
-                        .ofInstant(Instant.ofEpochMilli(l.longValue()), TimeZone.getDefault().toZoneId())
-                        .toLocalDate(); }
+        if (l != null)
+        {
+            return LocalDateTime.ofInstant(Instant.ofEpochMilli(l.longValue()), TimeZone.getDefault().toZoneId())
+                            .toLocalDate();
+        }
         return null;
     }
 
@@ -179,7 +292,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             catch (NumberFormatException ex)
             {}
         }
-        if (value instanceof Long) { return (Long) value; }
+        if (value instanceof Long)
+        { return (Long) value; }
         return null;
     }
 
@@ -229,128 +343,10 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                 v = (Double) value;
             }
             // if value is found, adjust it and return it
-            if (!Double.isNaN(v)) { return Math.round(v * Values.Quote.factor()); }
+            if (!Double.isNaN(v))
+            { return Math.round(v * Values.Quote.factor()); }
         }
         return -1;
-    }
-
-    /**
-     * Gets the content of the web page for the given {@link Security}.
-     * 
-     * @param s
-     *            {@link Security}
-     * @param forQuotes
-     *            return content for getting quotes? (should match currency and
-     *            selected exchange)
-     * @param errors
-     *            errors list
-     * @return content lines on success, else null
-     */
-    private static List<String> getContentOfSecurityPage(Security s, boolean forQuotes, List<Exception> errors)
-    {
-        // get content for quotes then check for exchange
-        if (forQuotes)
-        {
-            // check if ticker symbol is there
-            String exchangeUrl = s.getFeedURL();
-            if ((exchangeUrl != null) && !exchangeUrl.isEmpty())
-            {
-                // just retrieve exactly this url
-                try (InputStream is = openUrlStream(new URL(exchangeUrl), null))
-                {
-                    // read data to lines
-                    return readToLines(is);
-                }
-                catch (MalformedURLException ex)
-                {
-                    // ignore if this is not an actual URL
-                }
-                catch (IOException ex)
-                {
-                    errors.add(ex);
-                }
-            }
-        }
-        // retrieve data using the ISIN?
-        String key = s.getIsin();
-        if ((key == null) || key.isEmpty())
-        {
-            // then try WKN
-            key = s.getWkn();
-            if ((key == null) || key.isEmpty())
-            {
-                // then ticker symbol
-                key = s.getTickerSymbol();
-            }
-        }
-        if ((key != null) && !key.isEmpty())
-        {
-            List<String> results = null;
-            // execute query
-            String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
-            try (InputStream is = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
-            {
-                results = collectQueryResults(is);
-            }
-            catch (IOException ex)
-            {
-                errors.add(ex);
-            }
-            // get first result
-            if ((results != null) && (!results.isEmpty()))
-            {
-                String url = results.get(0);
-                List<String> lines = null;
-                try (InputStream is = openUrlStream(new URL(url), sQueryUrl))
-                {
-                    // cache data
-                    lines = readToLines(is);
-                }
-                catch (IOException ex)
-                {
-                    errors.add(ex);
-                }
-
-                // try to match currency of security?
-                if ((lines != null) && forQuotes)
-                {
-                    // check if currency matches
-                    String securityCurrency = s.getCurrencyCode();
-                    String currency = getCurrency(lines);
-                    if ((currency != null) && !currency.equals(securityCurrency))
-                    {
-                        // collect all available pages
-                        List<String> lQuoteUrls = collectQuotePages(lines);
-                        // try to get the correct currency page
-                        if (!lQuoteUrls.isEmpty())
-                        {
-                            for (String sQuoteUrl : lQuoteUrls)
-                            {
-                                List<String> lines2 = null;
-                                try (InputStream is = openUrlStream(new URL(sQuoteUrl), url))
-                                {
-                                    // cache data
-                                    lines2 = readToLines(is);
-                                    String currency2 = getCurrency(lines2);
-                                    // if currency matches, use that page data
-                                    if (securityCurrency.equals(currency2))
-                                    {
-                                        lines = lines2;
-                                        break;
-                                    }
-                                }
-                                catch (IOException ex)
-                                {
-                                    errors.add(ex);
-                                }
-                            }
-                        }
-                    }
-                }
-                return lines;
-            }
-        }
-        return null;
     }
 
     /**
@@ -366,8 +362,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      */
     private static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
     {
-        List<String> lines = getContentOfSecurityPage(s, true, errors);
-        if (lines == null)
+        SecurityPage p = getContentOfSecurityPage(s, true, errors);
+        if ((p == null) || (p.contentLines == null))
         {
             // return empty result
             return new CombinedQuoteResult();
@@ -377,7 +373,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         CombinedQuoteResult result = new CombinedQuoteResult();
         Pattern pLine = Pattern.compile("\\$\\.extend\\(true,\\ss\\.USFdata\\.(\\w+).*"); //$NON-NLS-1$
         Pattern pSingleQuote = Pattern.compile("\\[(\\d+),([0-9.]+)\\]"); //$NON-NLS-1$
-        for (String line : lines)
+        for (String line : p.contentLines)
         {
             line = line.trim();
             if (!line.isEmpty())
@@ -537,25 +533,30 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     public List<Exchange> getExchanges(Security subject, List<Exception> errors)
     {
         // try to get list of exchanges from security page
-        List<String> lines = getContentOfSecurityPage(subject, false, errors);
-        if (lines != null)
+        SecurityPage p = getContentOfSecurityPage(subject, false, errors);
+        if ((p == null) || (p.contentLines != null))
         {
             List<Exchange> exchanges = new ArrayList<Exchange>();
             // <a onclick="USFchangeSnapqoute('frankfurt');"
             // href="http://fonds.finanztreff.de/fonds_einzelkurs_uebersicht.htn?i=2401356">Frankfurt</a>
             Pattern pLine = Pattern.compile("USFchangeSnapqoute[^ ]+ href=\"([^\"]+)\">([^<]+)"); //$NON-NLS-1$
-            for (String line : lines)
+            for (String line : p.contentLines)
             {
                 Matcher m = pLine.matcher(line);
                 while (m.find())
                 {
                     String url = m.group(1);
                     String name = m.group(2);
-                    Exchange exchange = new Exchange(url, name);
-                    exchanges.add(exchange);
+                    exchanges.add(new Exchange(url, name));
                 }
             }
-            if (!exchanges.isEmpty()) { return exchanges; }
+            // check if there are no other exchanges andjust the current one
+            if (exchanges.isEmpty())
+            {
+                exchanges.add(new Exchange(p.url, p.url));
+            }
+            if (!exchanges.isEmpty())
+            { return exchanges; }
         }
         return null;
     }
@@ -623,5 +624,55 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             return security.setLatest(latest);
         }
         return false;
+    }
+
+    /**
+     * Combination of quotes and latest quote.
+     */
+    private static class CombinedQuoteResult
+    {
+        /**
+         * Latest quote.
+         */
+        public LatestSecurityPrice latest;
+
+        /**
+         * All prices.
+         */
+        public final List<LatestSecurityPrice> prices = new ArrayList<LatestSecurityPrice>();
+    }
+
+    /**
+     * A page for a security.
+     */
+    private static class SecurityPage
+    {
+        /**
+         * Content lines.
+         */
+        public List<String> contentLines;
+        /**
+         * Referrer of the query to get to the page.
+         */
+        public String referrer;
+
+        /**
+         * Url of the security's page.
+         */
+        public String url;
+
+        /**
+         * Constructs an instance.
+         *
+         * @param url
+         *            url of the security's page
+         * @param referrer
+         *            referrer of the query to get to the page
+         */
+        public SecurityPage(String url, String referrer)
+        {
+            this.url = url;
+            this.referrer = referrer;
+        }
     }
 }
