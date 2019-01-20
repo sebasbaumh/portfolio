@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %Bundle-Name
 Bundle-SymbolicName: name.abuchen.portfolio
-Bundle-Version: 0.36.2.qualifier
+Bundle-Version: 0.37.0
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Export-Package: name.abuchen.portfolio.checks,
  name.abuchen.portfolio.datatransfer,
@@ -21,8 +21,10 @@ Export-Package: name.abuchen.portfolio.checks,
  name.abuchen.portfolio.util
 Import-Package: com.google.common.util.concurrent;version="23.5.0",
  com.thoughtworks.xstream;version="1.4.7",
+ com.thoughtworks.xstream.annotations;version="1.4.8",
  com.thoughtworks.xstream.converters;version="1.4.7",
  com.thoughtworks.xstream.converters.basic;version="1.4.7",
+ com.thoughtworks.xstream.converters.extended;version="1.4.8",
  com.thoughtworks.xstream.converters.reflection;version="1.4.7",
  com.thoughtworks.xstream.io;version="1.4.7",
  com.thoughtworks.xstream.mapper;version="1.4.7",
