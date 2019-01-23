@@ -186,7 +186,7 @@ public class DashboardView extends AbstractHistoricView
     public static final String INFO_MENU_GROUP_NAME = "info"; //$NON-NLS-1$
 
     private static final String SELECTED_DASHBOARD_KEY = "selected-dashboard"; //$NON-NLS-1$
-    private static final String DELEGATE_KEY = "$delegate"; //$NON-NLS-1$
+    /* package */ static final String DELEGATE_KEY = "$delegate"; //$NON-NLS-1$
     private static final String FILLER_KEY = "$filler"; //$NON-NLS-1$
 
     @Inject
@@ -249,8 +249,8 @@ public class DashboardView extends AbstractHistoricView
 
     private ContributionItem createToolItem(int index, Dashboard board)
     {
-        DropDown toolItem = new DropDown(board.getName(),
-                        board.equals(dashboard) ? Images.VIEW_SELECTED : Images.VIEW, SWT.DROP_DOWN);
+        DropDown toolItem = new DropDown(board.getName(), board.equals(dashboard) ? Images.VIEW_SELECTED : Images.VIEW,
+                        SWT.DROP_DOWN);
 
         toolItem.setMenuListener(manager -> {
             if (!board.equals(dashboard))
@@ -325,18 +325,7 @@ public class DashboardView extends AbstractHistoricView
     private void buildColumns()
     {
         for (Dashboard.Column column : dashboard.getColumns())
-        {
-            Composite composite = buildColumn(container, column);
-
-            for (Dashboard.Widget widget : column.getWidgets())
-            {
-                WidgetFactory factory = WidgetFactory.valueOf(widget.getType());
-                if (factory == null)
-                    continue;
-
-                buildDelegate(composite, factory, widget);
-            }
-        }
+            buildColumn(container, column);
     }
 
     private Composite buildColumn(Composite composite, Dashboard.Column column)
@@ -358,30 +347,52 @@ public class DashboardView extends AbstractHistoricView
         GridDataFactory.fillDefaults().grab(true, true).applyTo(filler);
         columnControl.setData(FILLER_KEY, filler);
 
-        new ContextMenu(filler, manager -> {
-            MenuManager subMenu = new MenuManager(Messages.MenuNewWidget);
-            manager.add(subMenu);
+        new ContextMenu(filler, manager -> columnMenuAboutToShow(manager, column, columnControl)).hook();
 
-            Map<String, MenuManager> group2menu = new HashMap<>();
-            group2menu.put(null, subMenu);
+        for (Dashboard.Widget widget : column.getWidgets())
+        {
+            WidgetFactory factory = WidgetFactory.valueOf(widget.getType());
+            if (factory == null)
+                continue;
 
-            for (WidgetFactory type : WidgetFactory.values())
-            {
-                MenuManager mm = group2menu.computeIfAbsent(type.getGroup(), group -> {
-                    MenuManager groupMenu = new MenuManager(group);
-                    subMenu.add(groupMenu);
-                    return groupMenu;
-                });
-                mm.add(new SimpleAction(type.getLabel(), a -> addNewWidget(columnControl, type)));
-            }
-
-            manager.add(new Separator());
-            manager.add(new SimpleAction(Messages.MenuAddNewDashboardColumnLeft,
-                            a -> createNewColumn(column, columnControl)));
-            manager.add(new SimpleAction(Messages.MenuDeleteDashboardColumn, a -> deleteColumn(columnControl)));
-        }).hook();
+            buildDelegate(columnControl, factory, widget);
+        }
 
         return columnControl;
+    }
+
+    private void columnMenuAboutToShow(IMenuManager manager, Dashboard.Column column, Composite columnControl)
+    {
+        MenuManager subMenu = new MenuManager(Messages.MenuNewWidget);
+        manager.add(subMenu);
+
+        Map<String, MenuManager> group2menu = new HashMap<>();
+        group2menu.put(null, subMenu);
+
+        for (WidgetFactory type : WidgetFactory.values())
+        {
+            MenuManager mm = group2menu.computeIfAbsent(type.getGroup(), group -> {
+                MenuManager groupMenu = new MenuManager(group);
+                subMenu.add(groupMenu);
+                return groupMenu;
+            });
+            mm.add(new SimpleAction(type.getLabel(), a -> addNewWidget(columnControl, type)));
+        }
+
+        manager.add(new Separator());
+        manager.add(new SimpleAction(Messages.MenuAddNewDashboardColumnLeft,
+                        a -> createNewColumn(column, columnControl, SWT.LEFT)));
+        manager.add(new SimpleAction(Messages.MenuAddNewDashboardColumnRight,
+                        a -> createNewColumn(column, columnControl, SWT.RIGHT)));
+        manager.add(new SimpleAction(Messages.MenuDuplicateDashboardColumn,
+                        a -> duplicateColumn(column, columnControl)));
+
+        MenuManager applyToAll = new MenuManager(Messages.MenuApplyToAllWidgets);
+        manager.add(applyToAll);
+        new ReportingPeriodApplyToAll(this.dashboardData).menuAboutToShow(applyToAll, columnControl);
+
+        manager.add(new Separator());
+        manager.add(new SimpleAction(Messages.MenuDeleteDashboardColumn, a -> deleteColumn(columnControl)));
     }
 
     private WidgetDelegate<?> buildDelegate(Composite columnControl, WidgetFactory widgetType, Dashboard.Widget widget)
@@ -532,7 +543,8 @@ public class DashboardView extends AbstractHistoricView
                     }
 
                     sync.asyncExec(() -> data.entrySet().stream()
-                                    .filter(entry -> !entry.getKey().getTitleControl().isDisposed()).forEach(entry -> {
+                                    .filter(entry -> !entry.getKey().getTitleControl().isDisposed()) //
+                                    .forEach(entry -> {
                                         entry.getKey().update(entry.getValue());
 
                                         if (entry.getValue() == null)
@@ -646,6 +658,7 @@ public class DashboardView extends AbstractHistoricView
     {
         Dashboard.Column column = new Dashboard.Column();
         dashboard.getColumns().add(column);
+        getClient().touch();
 
         buildColumn(container, column);
 
@@ -654,18 +667,52 @@ public class DashboardView extends AbstractHistoricView
         container.layout(true);
     }
 
-    private void createNewColumn(Dashboard.Column beforeColumn, Composite beforeColumnControl)
+    private void createNewColumn(Dashboard.Column referenceColumn, Composite referenceColumnControl, int position)
     {
-        int index = dashboard.getColumns().indexOf(beforeColumn);
+        int index = dashboard.getColumns().indexOf(referenceColumn);
+
+        if (position == SWT.RIGHT)
+            index++;
 
         Dashboard.Column newColumn = new Dashboard.Column();
         dashboard.getColumns().add(index, newColumn);
+        getClient().touch();
 
-        buildColumn(container, newColumn).moveAbove(beforeColumnControl);
+        Composite c = buildColumn(container, newColumn);
+        if (position == SWT.RIGHT)
+            c.moveBelow(referenceColumnControl);
+        else
+            c.moveAbove(referenceColumnControl);
 
         GridLayoutFactory.fillDefaults().numColumns(dashboard.getColumns().size()).equalWidth(true).spacing(10, 10)
                         .applyTo(container);
         container.layout(true);
+    }
+
+    private void duplicateColumn(Dashboard.Column column, Composite columnControl)
+    {
+        int index = dashboard.getColumns().indexOf(column) + 1;
+
+        Dashboard.Column newColumn = new Dashboard.Column();
+        dashboard.getColumns().add(index, newColumn);
+
+        newColumn.setWidgets(column.getWidgets().stream().map(widget -> {
+            Widget copy = new Widget();
+            copy.setLabel(widget.getLabel());
+            copy.setType(widget.getType());
+            copy.getConfiguration().putAll(widget.getConfiguration());
+            return copy;
+        }).collect(Collectors.toList()));
+
+        getClient().touch();
+
+        buildColumn(container, newColumn).moveBelow(columnControl);
+
+        GridLayoutFactory.fillDefaults().numColumns(dashboard.getColumns().size()).equalWidth(true).spacing(10, 10)
+                        .applyTo(container);
+        container.layout(true);
+
+        updateWidgets();
     }
 
     private void deleteColumn(Composite columnControl)
