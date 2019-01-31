@@ -1,6 +1,8 @@
 package name.abuchen.portfolio.ui.views.dataseries;
 
+import java.text.DecimalFormat;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 import org.eclipse.jface.action.Action;
@@ -34,7 +36,6 @@ import name.abuchen.portfolio.ui.util.SimpleAction;
  */
 public class DataSeriesChartLegend extends Composite
 {
-    private final AbstractChartSeriesBuilder builder;
     private final DataSeriesConfigurator configurator;
     private final LocalResourceManager resources;
 
@@ -53,7 +54,6 @@ public class DataSeriesChartLegend extends Composite
     {
         super(parent, SWT.NONE);
 
-        this.builder = builder;
         this.configurator = configurator;
         this.resources = new LocalResourceManager(JFaceResources.getResources(), parent);
 
@@ -88,7 +88,7 @@ public class DataSeriesChartLegend extends Composite
         getParent().layout();
     }
 
-    private void onUpdateValues(double[] values)
+    private void onUpdateValues(DataSeries series, double[] values)
     {
         // collect min/max
         double dMin = Double.MAX_VALUE;
@@ -116,7 +116,12 @@ public class DataSeriesChartLegend extends Composite
         {
             if (child instanceof PaintItem)
             {
-                ((PaintItem) child).setToolTipData(dMin, dMax);
+                PaintItem pi = (PaintItem) child;
+                // check if this item is the one related to the current series
+                if (Objects.equals(series, pi.getSeries()))
+                {
+                    ((PaintItem) child).setToolTipData(dMin, dMax);
+                }
             }
         }
     }
@@ -124,7 +129,7 @@ public class DataSeriesChartLegend extends Composite
     private static final class PaintItem extends Canvas implements Listener // NOSONAR
     {
         private static final ResourceBundle LABELS = ResourceBundle.getBundle("name.abuchen.portfolio.ui.views.labels"); //$NON-NLS-1$
-        private static final String TOOLTIP_TEMPLATE = "%s\nMin: %.4f Max: %.4f"; //$NON-NLS-1$
+        private static final String TOOLTIP_TEMPLATE = "%s\nMin: %s Max: %s"; //$NON-NLS-1$
 
         private final DataSeries series;
 
@@ -159,6 +164,11 @@ public class DataSeriesChartLegend extends Composite
                 default:
                     break;
             }
+        }
+        
+        public DataSeries getSeries()
+        {
+            return this.series;
         }
 
         private Color colorFor(RGB color)
@@ -215,7 +225,9 @@ public class DataSeriesChartLegend extends Composite
         {
             if (!Double.isNaN(dMin) && !Double.isNaN(dMax))
             {
-                setToolTipText(String.format(TOOLTIP_TEMPLATE, series.getLabel(), dMin, dMax));
+                // build tooltip text
+                DecimalFormat f = new DecimalFormat("0.####"); //$NON-NLS-1$
+                setToolTipText(String.format(TOOLTIP_TEMPLATE, series.getLabel(), f.format(dMin), f.format(dMax)));
             }
             else
             {

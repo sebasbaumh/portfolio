@@ -2,7 +2,7 @@ package name.abuchen.portfolio.ui.views.dataseries;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.resource.LocalResourceManager;
@@ -17,7 +17,7 @@ public abstract class AbstractChartSeriesBuilder
     private final TimelineChart chart;
     private final DataSeriesCache cache;
     private final LocalResourceManager resources;
-    private final List<Consumer<double[]>> listeners = new ArrayList<>();
+    private final List<BiConsumer<DataSeries, double[]>> listeners = new ArrayList<>();
 
     public AbstractChartSeriesBuilder(TimelineChart chart, DataSeriesCache cache)
     {
@@ -33,7 +33,7 @@ public abstract class AbstractChartSeriesBuilder
      * @param listener
      *            listener
      */
-    public void addValuesListener(Consumer<double[]> listener)
+    public void addValuesListener(BiConsumer<DataSeries, double[]> listener)
     {
         this.listeners.add(listener);
     }
@@ -41,14 +41,16 @@ public abstract class AbstractChartSeriesBuilder
     /**
      * Fire value change event to listeners.
      * 
+     * @param series
+     *            {@link DataSeries}
      * @param values
      *            values
      */
-    protected void fireValuesUpdate(double[] values)
+    protected void fireValuesUpdate(DataSeries series, double[] values)
     {
-        for(Consumer<double[]> listener:listeners)
+        for (BiConsumer<DataSeries, double[]> listener : listeners)
         {
-            listener.accept(values);
+            listener.accept(series, values);
         }
     }
 
@@ -71,7 +73,7 @@ public abstract class AbstractChartSeriesBuilder
         lineSeries.enableArea(series.isShowArea());
         lineSeries.setLineStyle(series.getLineStyle());
         
-        fireValuesUpdate(lineSeries.getYSeries());
+        fireValuesUpdate(series, lineSeries.getYSeries());
     }
 
     protected void configure(DataSeries series, IBarSeries barSeries)
@@ -79,6 +81,6 @@ public abstract class AbstractChartSeriesBuilder
         barSeries.setBarPadding(50);
         barSeries.setBarColor(resources.createColor(series.getColor()));
         
-        fireValuesUpdate(barSeries.getYSeries());
+        fireValuesUpdate(series, barSeries.getYSeries());
     }
 }
