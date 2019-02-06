@@ -21,7 +21,6 @@ import org.eclipse.e4.ui.di.Persist;
 import org.eclipse.e4.ui.model.application.ui.MDirtyable;
 import org.eclipse.e4.ui.model.application.ui.basic.MPart;
 import org.eclipse.e4.ui.services.IServiceConstants;
-import org.eclipse.e4.ui.workbench.modeling.ESelectionService;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -78,9 +77,6 @@ public class PortfolioPart implements ClientInputListener
     IEventBroker broker;
 
     @Inject
-    ESelectionService selectionService;
-
-    @Inject
     ClientInputFactory clientInputFactory;
 
     @PostConstruct
@@ -127,6 +123,8 @@ public class PortfolioPart implements ClientInputListener
                             MessageFormat.format(Messages.MsgLoadingFile, clientInput.getFile().getName()), true,
                             false);
         }
+
+        clientInputFactory.incrementEditorCount(clientInput);
     }
 
     private void createContainerWithViews(Composite parent)
@@ -340,6 +338,10 @@ public class PortfolioPart implements ClientInputListener
     {
         this.clientInput.removeListener(this);
         this.clientInput.savePreferences();
+
+        clientInputFactory.decrementEditorCount(clientInput);
+
+        this.clientInput = null;
     }
 
     @Persist
@@ -452,7 +454,6 @@ public class PortfolioPart implements ClientInputListener
         viewContext.set(Client.class, this.clientInput.getClient());
         viewContext.set(IPreferenceStore.class, this.clientInput.getPreferenceStore());
         viewContext.set(PortfolioPart.class, this);
-        viewContext.set(ESelectionService.class, selectionService);
         viewContext.set(ExchangeRateProviderFactory.class, this.clientInput.getExchangeRateProviderFacory());
 
         if (parameter != null)

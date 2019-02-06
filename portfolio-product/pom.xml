@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>name.abuchen.portfolio</groupId>
 		<artifactId>portfolio-app</artifactId>
-		<version>0.37.2-SNAPSHOT</version>
+		<version>0.38.0</version>
 		<relativePath>../portfolio-app</relativePath>
 	</parent>
 
@@ -175,6 +175,22 @@
 								</goals>
 							</execution>
 						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<skip>${gpgsigner.skip}</skip>
+						</configuration>
 					</plugin>
 				</plugins>
 			</build>
