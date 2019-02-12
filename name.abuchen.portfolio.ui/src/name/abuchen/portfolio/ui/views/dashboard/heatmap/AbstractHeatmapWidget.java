@@ -18,8 +18,8 @@ import org.eclipse.swt.widgets.Label;
 
 import name.abuchen.portfolio.model.Dashboard.Widget;
 import name.abuchen.portfolio.money.Values;
-import name.abuchen.portfolio.ui.util.Colors;
 import name.abuchen.portfolio.ui.util.InfoToolTip;
+import name.abuchen.portfolio.ui.util.SWTHelper;
 import name.abuchen.portfolio.ui.views.dashboard.DashboardData;
 import name.abuchen.portfolio.ui.views.dashboard.DashboardResources;
 import name.abuchen.portfolio.ui.views.dashboard.ReportingPeriodConfig;
@@ -49,6 +49,7 @@ public abstract class AbstractHeatmapWidget<N extends Number> extends WidgetDele
         container.setBackground(parent.getBackground());
 
         title = new Label(container, SWT.NONE);
+        title.setBackground(container.getBackground());
         title.setText(getWidget().getLabel() != null ? TextUtil.tooltip(getWidget().getLabel()) : ""); //$NON-NLS-1$
         GridDataFactory.fillDefaults().grab(true, false).applyTo(title);
 
@@ -73,12 +74,14 @@ public abstract class AbstractHeatmapWidget<N extends Number> extends WidgetDele
         model.getRows().forEach(row -> {
 
             Label label = new Label(table, SWT.CENTER);
+            label.setBackground(table.getBackground());
             label.setText(row.getLabel());
             if (row.getToolTip() != null)
                 InfoToolTip.attach(label, row.getToolTip());
 
             row.getData().forEach(data -> {
                 CLabel dataLabel = new CLabel(table, SWT.CENTER);
+                dataLabel.setBackground(table.getBackground());
 
                 if (data != null)
                 {
@@ -96,7 +99,7 @@ public abstract class AbstractHeatmapWidget<N extends Number> extends WidgetDele
         SimpleGridLayout layout = new SimpleGridLayout();
         layout.setNumColumns(model.getHeaderSize() + 1);
         layout.setNumRows((int) model.getRows().count() + 1);
-        layout.setRowHeight(table.getFont().getFontData()[0].getHeight() + 8);
+        layout.setRowHeight(SWTHelper.lineHeight(table) + 6);
 
         table.setLayout(layout);
         table.layout(true);
@@ -105,12 +108,13 @@ public abstract class AbstractHeatmapWidget<N extends Number> extends WidgetDele
     private void addHeaderRow(Composite table, HeatmapModel<?> model)
     {
         // Top Left is empty
-        new Label(table, SWT.NONE);
+        Label topLeft = new Label(table, SWT.NONE);
+        topLeft.setBackground(table.getBackground());
 
         model.getHeader().forEach(header -> {
             CLabel l = new CLabel(table, SWT.CENTER);
             l.setText(header.getLabel());
-            l.setBackground(Colors.WHITE);
+            l.setBackground(table.getBackground());
 
             InfoToolTip.attach(l, header.getToolTip() != null ? header.getToolTip() : header.getLabel());
         });
