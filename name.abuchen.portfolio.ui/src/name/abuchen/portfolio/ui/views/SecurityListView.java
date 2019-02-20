@@ -16,6 +16,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ControlContribution;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.action.ToolBarManager;
 import org.eclipse.jface.dialogs.Dialog;
@@ -63,6 +64,7 @@ import name.abuchen.portfolio.money.ExchangeRateProviderFactory;
 import name.abuchen.portfolio.money.Quote;
 import name.abuchen.portfolio.money.Values;
 import name.abuchen.portfolio.online.QuoteFeed;
+import name.abuchen.portfolio.online.impl.EurostatHICPQuoteFeed;
 import name.abuchen.portfolio.ui.Images;
 import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.UIConstants;
@@ -94,7 +96,8 @@ import name.abuchen.portfolio.ui.views.actions.ConvertDeliveryToBuySellAction;
 import name.abuchen.portfolio.ui.views.columns.NoteColumn;
 import name.abuchen.portfolio.ui.wizards.security.EditSecurityDialog;
 import name.abuchen.portfolio.ui.wizards.security.SearchSecurityWizardDialog;
-import name.abuchen.portfolio.util.Dates;
+import name.abuchen.portfolio.util.TradeCalendar;
+import name.abuchen.portfolio.util.TradeCalendarManager;
 
 public class SecurityListView extends AbstractListView implements ModificationListener
 {
@@ -123,6 +126,21 @@ public class SecurityListView extends AbstractListView implements ModificationLi
                 newSecurity.setTargetCurrencyCode(getClient().getBaseCurrency());
                 openEditDialog(newSecurity);
             }));
+
+            MenuManager newHICP = new MenuManager(Messages.SecurityMenuNewHICP);
+            manager.add(newHICP);
+
+            new EurostatHICPQuoteFeed().getExchanges(new Security(), new ArrayList<>()).stream()
+                            .forEach(region -> newHICP.add(new SimpleAction(region.getName(), a -> {
+                                Security newSecurity = new Security();
+                                newSecurity.setFeed(EurostatHICPQuoteFeed.ID);
+                                newSecurity.setLatestFeed(QuoteFeed.MANUAL);
+                                newSecurity.setCurrencyCode(null);
+                                newSecurity.setTickerSymbol(region.getId());
+                                newSecurity.setName(region.getName() + Messages.LabelSuffix_HICP);
+                                newSecurity.setCalendar(TradeCalendar.EMPTY_CODE);
+                                openEditDialog(newSecurity);
+                            })));
 
             manager.add(new Separator());
 
@@ -610,8 +628,19 @@ public class SecurityListView extends AbstractListView implements ModificationLi
                     return null;
 
                 SecurityPrice previous = (SecurityPrice) all.get(index - 1);
-                int days = Dates.daysBetween(previous.getDate(), current.getDate());
-                return days > 3 ? Colors.WARNING : null;
+
+                Security security = (Security) prices.getData(Security.class.toString());
+                TradeCalendar calendar = TradeCalendarManager.getInstance(security);
+
+                boolean hasMissing = false;
+                LocalDate date = current.getDate().minusDays(1);
+                while (!hasMissing && date.isAfter(previous.getDate()))
+                {
+                    hasMissing = !calendar.isHoliday(date);
+                    date = date.minusDays(1);
+                }
+
+                return hasMissing ? Colors.WARNING : null;
             }
         });
         ColumnViewerSorter.create(SecurityPrice.class, "date").attachTo(column, SWT.UP); //$NON-NLS-1$
