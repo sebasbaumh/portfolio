@@ -4,7 +4,7 @@ A simple tool to calculate the overall performance of an investment portfolio.
 
 See http://www.portfolio-performance.info for more details.
 
-[![Build Status](https://travis-ci.org/buchen/portfolio.svg?branch=master)](https://travis-ci.org/buchen/portfolio) [ ![Download](https://api.bintray.com/packages/buchen/downloads/portfolio-performance/images/download.svg) ](https://bintray.com/buchen/downloads/portfolio-performance/_latestVersion)
+[![Build Status](https://travis-ci.org/buchen/portfolio.svg?branch=master)](https://travis-ci.org/buchen/portfolio) [![Latest Release](https://img.shields.io/github/release/buchen/portfolio.svg)](https://github.com/buchen/portfolio/releases/latest) [![License](https://img.shields.io/github/license/buchen/portfolio.svg)](https://github.com/buchen/portfolio/blob/master/LICENSE)
 
 [![LOC](https://sonarcloud.io/api/project_badges/measure?project=name.abuchen.portfolio%3Aportfolio-app&metric=ncloc)](https://sonarcloud.io/dashboard?id=name.abuchen.portfolio%3Aportfolio-app) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=name.abuchen.portfolio%3Aportfolio-app&metric=bugs)](https://sonarcloud.io/project/issues?id=name.abuchen.portfolio%3Aportfolio-app&resolved=false&types=BUG) [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=name.abuchen.portfolio%3Aportfolio-app&metric=vulnerabilities)](https://sonarcloud.io/project/issues?id=name.abuchen.portfolio%3Aportfolio-app&resolved=false&types=VULNERABILITY) [![Code Coverage](https://sonarcloud.io/api/project_badges/measure?project=name.abuchen.portfolio%3Aportfolio-app&metric=coverage)](https://sonarcloud.io/component_measures?id=name.abuchen.portfolio%3Aportfolio-app&metric=Coverage)
 
@@ -75,6 +75,8 @@ mvn clean install -Dgenerate-target-platform=true -Dtycho.disableP2Mirrors
 ### Run Program
 
 Run the application and the tests with the launch configurations stored in ~/portfolio-app/eclipse folder (right-click "Run As").
+
+:warning: The launch configuration needs an update when bundles are added and removed or the OS platform changes. If the program does not start, try selecting "Add required plug-ins" in the launch configuration dialog.
 
 ## License
 

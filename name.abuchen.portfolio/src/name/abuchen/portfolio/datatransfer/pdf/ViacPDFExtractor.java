@@ -20,9 +20,37 @@ public class ViacPDFExtractor extends SwissBasedPDFExtractor
 
         addBankIdentifier("Terzo"); //$NON-NLS-1$
 
+        addDepositTransaction();
         addBuyTransaction();
         addInterestTransaction();
         addFeeTransaction();
+    }
+
+    @SuppressWarnings("nls")
+    private void addDepositTransaction()
+    {
+        DocumentType type = new DocumentType("Einzahlung 3a");
+        this.addDocumentTyp(type);
+
+        Block block = new Block("Einzahlung 3a");
+        type.addBlock(block);
+        block.set(new Transaction<AccountTransaction>()
+
+                        .subject(() -> {
+                            AccountTransaction transaction = new AccountTransaction();
+                            transaction.setType(AccountTransaction.Type.DEPOSIT);
+                            return transaction;
+                        })
+
+                        .section("date", "amount", "currency") //
+                        .find("Einzahlung 3a") //
+                        .match("Gutschrift: Valuta (?<date>\\d+.\\d+.\\d{4}+) (?<currency>\\w{3}+) (?<amount>-?[\\d+',.]*)") //
+                        .assign((t, v) -> {
+                            t.setDateTime(asDate(v.get("date")));
+                            t.setAmount(asAmount(v.get("amount")));
+                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                        })
+                        .wrap(TransactionItem::new));
     }
 
     @SuppressWarnings("nls")
@@ -52,7 +80,7 @@ public class ViacPDFExtractor extends SwissBasedPDFExtractor
                         })
 
                         .section("date", "amount", "currency") //
-                        .match("Verrechneter Betrag: Valuta (?<date>\\d+.\\d+.\\d{4}+) (?<currency>\\w{3}+) (?<amount>[\\d+,.]*)")
+                        .match("Verrechneter Betrag: Valuta (?<date>\\d+.\\d+.\\d{4}+) (?<currency>\\w{3}+) (?<amount>[\\d+',.]*)")
                         .assign((t, v) -> {
                             t.setDate(asDate(v.get("date")));
                             t.setAmount(asAmount(v.get("amount")));
@@ -60,7 +88,7 @@ public class ViacPDFExtractor extends SwissBasedPDFExtractor
                         })
 
                         .section("tax", "currency").optional() //
-                        .match("Stempelsteuer (?<currency>\\w{3}+) (?<tax>[\\d+,.]*)") //
+                        .match("Stempelsteuer (?<currency>\\w{3}+) (?<tax>[\\d+',.]*)") //
                         .assign((t, v) -> {
                             Money tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("tax")));
                             if (tax.getCurrencyCode().equals(t.getAccountTransaction().getCurrencyCode()))
@@ -69,8 +97,8 @@ public class ViacPDFExtractor extends SwissBasedPDFExtractor
                         })
 
                         .section("forex", "forexCurrency", "amount", "currency", "exchangeRate").optional() //
-                        .match("Betrag (?<forexCurrency>\\w{3}+) (?<forex>[\\d+,.]*)")
-                        .match("Umrechnungskurs CHF/USD (?<exchangeRate>[\\d+,.]*) (?<currency>\\w{3}+) (?<amount>[\\d+,.]*)")
+                        .match("Betrag (?<forexCurrency>\\w{3}+) (?<forex>[\\d+',.]*)")
+                        .match("Umrechnungskurs CHF/USD (?<exchangeRate>[\\d+',.]*) (?<currency>\\w{3}+) (?<amount>[\\d+',.]*)")
                         .assign((t, v) -> {
 
                             Money forex = Money.of(asCurrencyCode(v.get("forexCurrency")), asAmount(v.get("forex")));
@@ -111,7 +139,7 @@ public class ViacPDFExtractor extends SwissBasedPDFExtractor
                         .section("date", "amount", "currency") //
                         .find("Zins") //
                         .match("Am (?<date>\\d+.\\d+.\\d{4}+) haben wir Ihrem Konto gutgeschrieben:") //
-                        .match("Zinsgutschrift: (?<currency>\\w{3}+) (?<amount>[\\d+,.]*)") //
+                        .match("Zinsgutschrift: (?<currency>\\w{3}+) (?<amount>[\\d+',.]*)") //
                         .assign((t, v) -> {
                             t.setDateTime(asDate(v.get("date")));
                             t.setAmount(asAmount(v.get("amount")));
@@ -138,7 +166,7 @@ public class ViacPDFExtractor extends SwissBasedPDFExtractor
 
                         .section("date", "amount", "currency") //
                         .find("Belastung") //
-                        .match("Verrechneter Betrag: Valuta (?<date>\\d+.\\d+.\\d{4}+) (?<currency>\\w{3}+) (?<amount>-?[\\d+,.]*)") //
+                        .match("Verrechneter Betrag: Valuta (?<date>\\d+.\\d+.\\d{4}+) (?<currency>\\w{3}+) (?<amount>-?[\\d+',.]*)") //
                         .assign((t, v) -> {
                             t.setDateTime(asDate(v.get("date")));
                             t.setAmount(asAmount(v.get("amount")));

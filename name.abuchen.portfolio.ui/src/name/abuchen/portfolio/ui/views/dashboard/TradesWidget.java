@@ -25,8 +25,10 @@ import name.abuchen.portfolio.snapshot.trades.Trade;
 import name.abuchen.portfolio.snapshot.trades.TradeCollector;
 import name.abuchen.portfolio.ui.Images;
 import name.abuchen.portfolio.ui.editor.PortfolioPart;
+import name.abuchen.portfolio.ui.util.swt.StyledLabel;
 import name.abuchen.portfolio.ui.views.trades.TradeDetailsView;
 import name.abuchen.portfolio.util.Interval;
+import name.abuchen.portfolio.util.TextUtil;
 
 public class TradesWidget extends WidgetDelegate<TradeDetailsView.Input>
 {
@@ -34,7 +36,7 @@ public class TradesWidget extends WidgetDelegate<TradeDetailsView.Input>
     private PortfolioPart part;
 
     protected Label title;
-    protected Label indicator;
+    protected StyledLabel indicator;
 
     public TradesWidget(Widget widget, DashboardData dashboardData)
     {
@@ -51,11 +53,11 @@ public class TradesWidget extends WidgetDelegate<TradeDetailsView.Input>
         GridLayoutFactory.fillDefaults().numColumns(2).margins(5, 5).applyTo(container);
 
         title = new Label(container, SWT.NONE);
-        title.setText(getWidget().getLabel());
+        title.setText(TextUtil.tooltip(getWidget().getLabel()));
         title.setBackground(container.getBackground());
         GridDataFactory.fillDefaults().grab(true, false).span(2, 1).applyTo(title);
 
-        indicator = new Label(container, SWT.NONE);
+        indicator = new StyledLabel(container, SWT.NONE);
         indicator.setFont(resources.getKpiFont());
         indicator.setBackground(container.getBackground());
         indicator.setText(""); //$NON-NLS-1$
@@ -84,12 +86,14 @@ public class TradesWidget extends WidgetDelegate<TradeDetailsView.Input>
     @Override
     public void update(TradeDetailsView.Input input)
     {
-        this.title.setText(getWidget().getLabel());
+        this.title.setText(TextUtil.tooltip(getWidget().getLabel()));
 
         List<Trade> trades = input.getTrades();
         long positive = trades.stream().filter(t -> t.getIRR() > 0).count();
-        this.indicator.setText(
-                        MessageFormat.format("{0}   ↑{1} ↓{2}", trades.size(), positive, trades.size() - positive)); //$NON-NLS-1$
+        String text = MessageFormat.format("{0} <green>↑{1}</green> <red>↓{2}</red>", //$NON-NLS-1$
+                        trades.size(), positive, trades.size() - positive);
+
+        this.indicator.setText(text);
     }
 
     @Override
