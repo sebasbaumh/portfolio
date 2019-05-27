@@ -4,16 +4,20 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,7 +50,12 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      */
     public static final String ID_EXCHANGE = "FINANZTREFF_DE.SINGLEQUOTE"; //$NON-NLS-1$
     private static final String QUERY_URL = "http://www.finanztreff.de/ftreffNG/ajax/get_search.htn?suchbegriff={key}"; //$NON-NLS-1$
+    private static final String QUERY_QUOTES_URL = "http://aktien.finanztreff.de/ftreffNG/kurse_einzelkurs_portrait.htn?ajax=undef"; //$NON-NLS-1$
     private static final String REFERRER_URL = "http://www.finanztreff.de"; //$NON-NLS-1$
+    /**
+     * Ajax flag for quotes.
+     */
+    private static final String AJAX_QUOTE = "2"; //$NON-NLS-1$
 
     /**
      * Collects all query results from the given {@link InputStream}.
@@ -104,6 +113,55 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         return results;
     }
 
+    
+    /**
+     * Gets the content of the web page for the given {@link SecurityPage}.
+     * 
+     * @param p
+     *            {@link SecurityPage}
+     * @param url
+     *            url
+     * @param referrer
+     *            referrer
+     * @param errors
+     *            errors list
+     * @throws MalformedURLException
+     */
+    private static void getContentOfSecurityPage(SecurityPage p, String url, String referrer, List<Exception> errors)
+                    throws MalformedURLException
+    {
+        try (InputStream is = openUrlStream(new URL(url), referrer))
+        {
+            // cache data
+            p.setContentLines(readToLines(is));
+        }
+        catch (MalformedURLException ex)
+        {
+            throw ex;
+        }
+        catch (IOException ex)
+        {
+            errors.add(ex);
+        }
+
+        // try to match currency of security?
+        if ((p.getContentLines() != null))
+        {
+            // retrieve the actual quotes page using an XHR request
+            try (InputStream is = openUrlStream(new URL(QUERY_QUOTES_URL), p.getUrl(), p, AJAX_QUOTE))
+            {
+                // cache data
+                p.setContentLines(readToLines(is));
+                p.setReferrer(p.getUrl());
+                p.setUrl(QUERY_QUOTES_URL);
+            }
+            catch (IOException ex)
+            {
+                errors.add(ex);
+            }
+        }
+    }
+    
     /**
      * Gets the content of the web page for the given {@link Security}.
      *
@@ -122,24 +180,18 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         if (forQuotes)
         {
             // check if ticker symbol is there
-            String exchangeUrl = s.getFeedURL();
+            String exchangeUrl = s.getTickerSymbol();
             if ((exchangeUrl != null) && !exchangeUrl.isEmpty())
             {
-                // just retrieve exactly this url
-                try (InputStream is = openUrlStream(new URL(exchangeUrl), null))
+                try
                 {
                     SecurityPage p = new SecurityPage(exchangeUrl, null);
-                    // read data to lines
-                    p.contentLines = readToLines(is);
+                    getContentOfSecurityPage(p, exchangeUrl, REFERRER_URL, errors);
                     return p;
                 }
                 catch (MalformedURLException ex)
                 {
                     // ignore if this is not an actual URL
-                }
-                catch (IOException ex)
-                {
-                    errors.add(ex);
                 }
             }
         }
@@ -176,10 +228,9 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         }
         if (p != null)
         {
-            try (InputStream is = openUrlStream(new URL(p.url), p.referrer))
+            try
             {
-                // cache data
-                p.contentLines = readToLines(is);
+                getContentOfSecurityPage(p, p.getUrl(), p.getReferrer(), errors);
             }
             catch (IOException ex)
             {
@@ -187,22 +238,22 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             }
 
             // try to match currency of security?
-            if ((p.contentLines != null) && forQuotes)
+            if ((p.getContentLines() != null) && forQuotes)
             {
                 // check if currency matches
                 String securityCurrency = s.getCurrencyCode();
-                String currency = getCurrency(p.contentLines);
+                String currency = getCurrency(p.getContentLines());
                 if ((currency != null) && !currency.equals(securityCurrency))
                 {
                     // collect all available pages
-                    List<String> lQuoteUrls = collectQuotePages(p.contentLines);
+                    List<String> lQuoteUrls = collectQuotePages(p.getContentLines());
                     // try to get the correct currency page
                     if (!lQuoteUrls.isEmpty())
                     {
                         for (String sQuoteUrl : lQuoteUrls)
                         {
                             List<String> lines2 = null;
-                            try (InputStream is = openUrlStream(new URL(sQuoteUrl), p.url))
+                            try (InputStream is = openUrlStream(new URL(sQuoteUrl), p.getUrl(), p, AJAX_QUOTE))
                             {
                                 // cache data
                                 lines2 = readToLines(is);
@@ -210,9 +261,9 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                                 // if currency matches, use that page data
                                 if (securityCurrency.equals(currency2))
                                 {
-                                    p.contentLines = lines2;
-                                    p.referrer = p.url;
-                                    p.url = sQuoteUrl;
+                                    p.setContentLines(lines2);
+                                    p.setReferrer(p.getUrl());
+                                    p.setUrl(sQuoteUrl);
                                     break;
                                 }
                             }
@@ -244,7 +295,9 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         {
             Matcher m = pCur.matcher(line);
             if (m.find())
-            { return m.group(1); }
+            {
+                return m.group(1);
+            }
         }
         return null;
     }
@@ -278,7 +331,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            key
      * @return long value on success, else null
      */
-    @SuppressWarnings("boxing")
     private static Long getLong(JSONObject o, String key)
     {
         Object value = o.get(key);
@@ -293,7 +345,9 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             {}
         }
         if (value instanceof Long)
-        { return (Long) value; }
+        {
+            return (Long) value;
+        }
         return null;
     }
 
@@ -318,7 +372,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            value
      * @return price on success, else -1
      */
-    @SuppressWarnings("boxing")
     private static long getPrice(Object value)
     {
         if (value != null)
@@ -344,7 +397,9 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             }
             // if value is found, adjust it and return it
             if (!Double.isNaN(v))
-            { return Math.round(v * Values.Quote.factor()); }
+            {
+                return Math.round(v * Values.Quote.factor());
+            }
         }
         return -1;
     }
@@ -363,7 +418,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
     {
         SecurityPage p = getContentOfSecurityPage(s, true, errors);
-        if ((p == null) || (p.contentLines == null))
+        if ((p == null) || (p.getContentLines() == null))
         {
             // return empty result
             return new CombinedQuoteResult();
@@ -373,7 +428,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         CombinedQuoteResult result = new CombinedQuoteResult();
         Pattern pLine = Pattern.compile("\\$\\.extend\\(true,\\ss\\.USFdata\\.(\\w+).*"); //$NON-NLS-1$
         Pattern pSingleQuote = Pattern.compile("\\[(\\d+),([0-9.]+)\\]"); //$NON-NLS-1$
-        for (String line : p.contentLines)
+        for (String line : p.getContentLines())
         {
             line = line.trim();
             if (!line.isEmpty())
@@ -508,6 +563,66 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     /**
+     * Open a stream to the given {@link URL}.
+     *
+     * @param url
+     *            {@link URL}
+     * @param referrer
+     *            referrer URL (can be null)
+     * @return {@link InputStream}
+     * @throws IOException
+     */
+    private static InputStream openUrlStream(URL url, String referrer, SecurityPage p, String ajax) throws IOException
+    {
+        // encode data fields
+        HashMap<String, String> params = new HashMap<String, String>();
+        if (ajax != null)
+        {
+            params.put("ajax", ajax); //$NON-NLS-1$
+        }
+        if (p.getArbitrageId() != null)
+        {
+            params.put("arbitrageId", p.getArbitrageId()); //$NON-NLS-1$
+        }
+        if (p.getPushFrameId() != null)
+        {
+            params.put("pushFrameId", p.getPushFrameId()); //$NON-NLS-1$
+        }
+        if (p.getExchange() != null)
+        {
+            params.put("exchange", p.getExchange()); //$NON-NLS-1$
+        }
+        StringBuilder postData = new StringBuilder();
+        for (Map.Entry<String, String> param : params.entrySet())
+        {
+            if (postData.length() != 0)
+            {
+                postData.append('&');
+            }
+            postData.append(URLEncoder.encode(param.getKey(), "UTF-8")); //$NON-NLS-1$
+            postData.append('=');
+            postData.append(URLEncoder.encode(String.valueOf(param.getValue()), "UTF-8")); //$NON-NLS-1$
+        }
+        byte[] postDataBytes = postData.toString().getBytes("UTF-8"); //$NON-NLS-1$
+
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST"); //$NON-NLS-1$
+
+        // use a different user agent
+        conn.setRequestProperty("User-Agent", OnlineHelper.getUserAgent()); //$NON-NLS-1$
+        if (referrer != null)
+        {
+            conn.setRequestProperty("Referer", referrer); //$NON-NLS-1$
+        }
+        conn.setRequestProperty("Content-type", "application/x-www-form-urlencoded; charset=UTF-8"); //$NON-NLS-1$//$NON-NLS-2$
+        conn.setRequestProperty("Accept", "*/*"); //$NON-NLS-1$//$NON-NLS-2$
+        conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length)); //$NON-NLS-1$
+        conn.setDoOutput(true);
+        conn.getOutputStream().write(postDataBytes);
+        return conn.getInputStream();
+    }
+
+    /**
      * Reads the given {@link InputStream} to a list of lines.
      *
      * @param is
@@ -534,13 +649,13 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     {
         // try to get list of exchanges from security page
         SecurityPage p = getContentOfSecurityPage(subject, false, errors);
-        if ((p == null) || (p.contentLines != null))
+        if ((p == null) || (p.getContentLines() != null))
         {
             List<Exchange> exchanges = new ArrayList<Exchange>();
             // <a onclick="USFchangeSnapqoute('frankfurt');"
             // href="http://fonds.finanztreff.de/fonds_einzelkurs_uebersicht.htn?i=2401356">Frankfurt</a>
             Pattern pLine = Pattern.compile("USFchangeSnapqoute[^ ]+ href=\"([^\"]+)\">([^<]+)"); //$NON-NLS-1$
-            for (String line : p.contentLines)
+            for (String line : p.getContentLines())
             {
                 Matcher m = pLine.matcher(line);
                 while (m.find())
@@ -553,7 +668,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             // check if there are no other exchanges andjust the current one
             if (exchanges.isEmpty())
             {
-                exchanges.add(new Exchange(p.url, p.url));
+                exchanges.add(new Exchange(p.getUrl(), p.getUrl()));
             }
             if (!exchanges.isEmpty())
             { return exchanges; }
@@ -650,17 +765,26 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         /**
          * Content lines.
          */
-        public List<String> contentLines;
+        private List<String> contentLines;
         /**
          * Referrer of the query to get to the page.
          */
-        public String referrer;
+        private String referrer;
 
         /**
          * Url of the security's page.
          */
-        public String url;
+        private String url;
 
+        /**
+         * The exchange of this security's page.
+         */
+        private String exchange;
+        
+        private String arbitrageId;
+        
+        private String pushFrameId;
+        
         /**
          * Constructs an instance.
          *
@@ -671,8 +795,92 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
          */
         public SecurityPage(String url, String referrer)
         {
-            this.url = url;
+            this.setReferrer(referrer);
+            setUrl(url);
+        }
+
+        public String getArbitrageId()
+        {
+            return arbitrageId;
+        }
+        
+        public List<String> getContentLines()
+        {
+            return contentLines;
+        }
+
+        public String getExchange()
+        {
+            return exchange;
+        }
+
+        public String getPushFrameId()
+        {
+            return pushFrameId;
+        }
+
+        public String getReferrer()
+        {
+            return referrer;
+        }
+
+        public String getUrl()
+        {
+            return url;
+        }
+
+        public void setContentLines(List<String> contentLines)
+        {
+            this.contentLines = contentLines;
+            // parse contents
+            // &arbitrageId=5414514
+            Pattern pArbitrageId = Pattern.compile(".*&arbitrageId=([0-9]+)&.*"); //$NON-NLS-1$
+            // &pushFrameId=PFIG3wsqMgRaiipf547VjDtKw&
+            Pattern pPushFrameId = Pattern.compile(".*&pushFrameId=([^&]+)&.*"); //$NON-NLS-1$
+            for (String line : contentLines)
+            {
+                Matcher m = pArbitrageId.matcher(line);
+                if (m.matches())
+                {
+                    this.arbitrageId = m.group(1);
+                }
+                m = pPushFrameId.matcher(line);
+                if (m.matches())
+                {
+                    this.pushFrameId = m.group(1);
+                }
+            }
+        }
+
+        public void setExchange(String exchange)
+        {
+            this.exchange = exchange;
+        }
+        public void setReferrer(String referrer)
+        {
             this.referrer = referrer;
         }
+
+        /**
+         * Sets the url.
+         * 
+         * @param url
+         *            url of the security's page
+         */
+        public void setUrl(String url)
+        {
+            this.url = url;
+            // try to find exchange
+            int i = url.lastIndexOf('#');
+            if (i > 0)
+            {
+                this.setExchange(url.substring(i + 1));
+            }
+            else
+            {
+                this.setExchange(null);
+            }
+        }
+
     }
 }
