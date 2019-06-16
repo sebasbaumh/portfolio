@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?pde version="3.5"?>
 
-<product name="Portfolio Performance" uid="name.abuchen.portfolio.distro.product" id="name.abuchen.portfolio.bootstrap.product" application="org.eclipse.e4.ui.workbench.swt.E4Application" version="0.39.2.qualifier" useFeatures="true" includeLaunchers="true">
+<product name="Portfolio Performance" uid="name.abuchen.portfolio.distro.product" id="name.abuchen.portfolio.bootstrap.product" application="org.eclipse.e4.ui.workbench.swt.E4Application" version="0.39.2" useFeatures="true" includeLaunchers="true">
 
    <configIni use="default">
    </configIni>
@@ -34,6 +34,8 @@
 
    <features>
       <feature id="name.abuchen.portfolio.feature"/>
+      <feature id="name.abuchen.portfolio.dependencies.feature"/>
+
       <feature id="org.eclipse.e4.rcp"/>
       <feature id="org.eclipse.emf.ecore"/>
       <feature id="org.eclipse.emf.common"/>
