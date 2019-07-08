@@ -1,4 +1,4 @@
-package name.abuchen.portfolio.ui.views.dividends;
+package name.abuchen.portfolio.ui.views.earnings;
 
 import java.text.MessageFormat;
 import java.time.LocalDate;
@@ -30,6 +30,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.TableColumn;
 
+import name.abuchen.portfolio.model.Account;
 import name.abuchen.portfolio.model.InvestmentVehicle;
 import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.money.Values;
@@ -40,16 +41,16 @@ import name.abuchen.portfolio.ui.selection.SelectionService;
 import name.abuchen.portfolio.ui.util.SimpleAction;
 import name.abuchen.portfolio.ui.util.TableViewerCSVExporter;
 import name.abuchen.portfolio.ui.util.viewers.ColumnViewerSorter;
-import name.abuchen.portfolio.ui.views.dividends.DividendsViewModel.Line;
+import name.abuchen.portfolio.ui.views.earnings.EarningsViewModel.Line;
 import name.abuchen.portfolio.util.TextUtil;
 
-public class DividendsMatrixTab implements DividendsTab
+public class EarningsMatrixTab implements EarningsTab
 {
     @Inject
     private SelectionService selectionService;
 
     @Inject
-    protected DividendsViewModel model;
+    protected EarningsViewModel model;
 
     private boolean showOnlyOneYear = false;
 
@@ -62,7 +63,7 @@ public class DividendsMatrixTab implements DividendsTab
     @Override
     public String getLabel()
     {
-        return Messages.LabelDividendsByMonthAndVehicle;
+        return Messages.LabelEarningsByMonthAndVehicle;
     }
 
     @Override
@@ -111,7 +112,7 @@ public class DividendsMatrixTab implements DividendsTab
         tableViewer.setContentProvider(ArrayContentProvider.getInstance());
 
         tableViewer.addSelectionChangedListener(event -> {
-            InvestmentVehicle vehicle = ((DividendsViewModel.Line) ((IStructuredSelection) event.getSelection())
+            InvestmentVehicle vehicle = ((EarningsViewModel.Line) ((IStructuredSelection) event.getSelection())
                             .getFirstElement()).getVehicle();
             if (vehicle instanceof Security)
                 selectionService.setSelection(new SecuritySelection(model.getClient(), (Security) vehicle));
@@ -129,7 +130,7 @@ public class DividendsMatrixTab implements DividendsTab
 
     protected void createColumns(TableViewer records, TableColumnLayout layout)
     {
-        createSecurityColumn(records, layout, true);
+        createVehicleColumn(records, layout, true);
 
         // create monthly columns
         LocalDate date = LocalDate.of(model.getStartYear(), Month.JANUARY, 1);
@@ -146,10 +147,10 @@ public class DividendsMatrixTab implements DividendsTab
 
         // add security name at the end of the matrix table again because the
         // first column is most likely not visible anymore
-        createSecurityColumn(records, layout, false);
+        createVehicleColumn(records, layout, false);
     }
 
-    protected void createSecurityColumn(TableViewer records, TableColumnLayout layout, boolean isSorted)
+    protected void createVehicleColumn(TableViewer records, TableColumnLayout layout, boolean isSorted)
     {
         TableViewerColumn column = new TableViewerColumn(records, SWT.NONE);
         column.getColumn().setText(Messages.ColumnSecurity);
@@ -158,21 +159,26 @@ public class DividendsMatrixTab implements DividendsTab
             @Override
             public Image getImage(Object element)
             {
-                InvestmentVehicle vehicle = ((DividendsViewModel.Line) element).getVehicle();
-                return vehicle != null ? Images.SECURITY.image() : null;
+                InvestmentVehicle vehicle = ((EarningsViewModel.Line) element).getVehicle();
+                if (vehicle instanceof Account)
+                    return Images.ACCOUNT.image();
+                else if (vehicle instanceof Security)
+                    return Images.SECURITY.image();
+                else
+                    return null;
             }
 
             @Override
             public String getText(Object element)
             {
-                InvestmentVehicle vehicle = ((DividendsViewModel.Line) element).getVehicle();
+                InvestmentVehicle vehicle = ((EarningsViewModel.Line) element).getVehicle();
                 return vehicle != null ? vehicle.getName() : Messages.ColumnSum;
             }
 
             @Override
             public Font getFont(Object element)
             {
-                InvestmentVehicle vehicle = ((DividendsViewModel.Line) element).getVehicle();
+                InvestmentVehicle vehicle = ((EarningsViewModel.Line) element).getVehicle();
                 return vehicle != null ? null : boldFont;
             }
         });
@@ -183,13 +189,13 @@ public class DividendsMatrixTab implements DividendsTab
         layout.setColumnData(column.getColumn(), new ColumnPixelData(200));
     }
 
-    protected ColumnViewerSorter createSorter(Comparator<DividendsViewModel.Line> comparator)
+    protected ColumnViewerSorter createSorter(Comparator<EarningsViewModel.Line> comparator)
     {
         return ColumnViewerSorter.create((o1, o2) -> {
             int direction = ColumnViewerSorter.SortingContext.getSortDirection();
 
-            DividendsViewModel.Line line1 = (DividendsViewModel.Line) o1;
-            DividendsViewModel.Line line2 = (DividendsViewModel.Line) o2;
+            EarningsViewModel.Line line1 = (EarningsViewModel.Line) o1;
+            EarningsViewModel.Line line2 = (EarningsViewModel.Line) o2;
 
             if (line1.getVehicle() == null)
                 return direction == SWT.DOWN ? 1 : -1;
@@ -209,7 +215,7 @@ public class DividendsMatrixTab implements DividendsTab
             @Override
             public String getText(Object element)
             {
-                Line line = (DividendsViewModel.Line) element;
+                Line line = (EarningsViewModel.Line) element;
                 return line.getVehicle() != null ? Values.Amount.formatNonZero(line.getValue(index))
                                 : Values.Amount.format(line.getValue(index));
             }
@@ -217,14 +223,14 @@ public class DividendsMatrixTab implements DividendsTab
             @Override
             public String getToolTipText(Object element)
             {
-                InvestmentVehicle vehicle = ((DividendsViewModel.Line) element).getVehicle();
+                InvestmentVehicle vehicle = ((EarningsViewModel.Line) element).getVehicle();
                 return TextUtil.tooltip(vehicle != null ? vehicle.getName() : null);
             }
 
             @Override
             public Font getFont(Object element)
             {
-                InvestmentVehicle vehicle = ((DividendsViewModel.Line) element).getVehicle();
+                InvestmentVehicle vehicle = ((EarningsViewModel.Line) element).getVehicle();
                 return vehicle != null ? null : boldFont;
             }
         });
@@ -236,7 +242,7 @@ public class DividendsMatrixTab implements DividendsTab
 
     protected void createSumColumn(TableViewer records, TableColumnLayout layout)
     {
-        ToLongFunction<DividendsViewModel.Line> valueFunction = line -> {
+        ToLongFunction<EarningsViewModel.Line> valueFunction = line -> {
             if (showOnlyOneYear)
             {
                 int noOfMonths = Math.min(12, line.getNoOfMonths());
@@ -261,7 +267,7 @@ public class DividendsMatrixTab implements DividendsTab
             @Override
             public String getText(Object element)
             {
-                DividendsViewModel.Line line = (DividendsViewModel.Line) element;
+                EarningsViewModel.Line line = (EarningsViewModel.Line) element;
                 return Values.Amount.formatNonZero(valueFunction.applyAsLong(line));
             }
 

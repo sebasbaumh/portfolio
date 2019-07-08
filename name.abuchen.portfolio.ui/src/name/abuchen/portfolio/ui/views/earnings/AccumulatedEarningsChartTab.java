@@ -1,4 +1,4 @@
-package name.abuchen.portfolio.ui.views.dividends;
+package name.abuchen.portfolio.ui.views.earnings;
 
 import org.eclipse.swt.SWT;
 import org.swtchart.ILineSeries;
@@ -8,12 +8,12 @@ import org.swtchart.ISeries.SeriesType;
 import name.abuchen.portfolio.money.Values;
 import name.abuchen.portfolio.ui.Messages;
 
-public class AccumulatedDividendsChartTab extends AbstractChartTab
+public class AccumulatedEarningsChartTab extends AbstractChartTab
 {
     @Override
     public String getLabel()
     {
-        return Messages.LabelAccumulatedDividends;
+        return Messages.LabelAccumulatedEarnings;
     }
 
     @Override

@@ -1,4 +1,4 @@
-package name.abuchen.portfolio.ui.views.dividends;
+package name.abuchen.portfolio.ui.views.earnings;
 
 import java.text.MessageFormat;
 
@@ -21,6 +21,7 @@ import org.eclipse.swt.widgets.Control;
 
 import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.Client;
+import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.model.TransactionPair;
 import name.abuchen.portfolio.money.Values;
@@ -35,13 +36,13 @@ import name.abuchen.portfolio.ui.util.viewers.SharesLabelProvider;
 import name.abuchen.portfolio.ui.util.viewers.ShowHideColumnHelper;
 import name.abuchen.portfolio.util.TextUtil;
 
-public class TransactionsTab implements DividendsTab
+public class TransactionsTab implements EarningsTab
 {
     @Inject
     private Client client;
 
     @Inject
-    private DividendsViewModel model;
+    private EarningsViewModel model;
 
     @Inject
     private SelectionService selectionService;
@@ -125,7 +126,15 @@ public class TransactionsTab implements DividendsTab
             @Override
             public String getText(Object element)
             {
-                return ((TransactionPair<?>) element).getTransaction().getSecurity().getName();
+                Security security = ((TransactionPair<?>) element).getTransaction().getSecurity();
+                return security != null ? security.getName() : null;
+            }
+
+            @Override
+            public Image getImage(Object element)
+            {
+                Security security = ((TransactionPair<?>) element).getTransaction().getSecurity();
+                return security != null ? Images.SECURITY.image() : null;
             }
         });
         ColumnViewerSorter.create(e -> ((TransactionPair<?>) e).getTransaction().getSecurity().getName())
@@ -192,6 +201,12 @@ public class TransactionsTab implements DividendsTab
             public String getText(Object element)
             {
                 return ((TransactionPair<?>) element).getOwner().toString();
+            }
+
+            @Override
+            public Image getImage(Object element)
+            {
+                return Images.ACCOUNT.image();
             }
         });
         ColumnViewerSorter.create(e -> ((TransactionPair<?>) e).getOwner().toString()).attachTo(column);
