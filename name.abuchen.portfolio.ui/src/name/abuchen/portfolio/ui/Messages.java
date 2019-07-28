@@ -464,6 +464,7 @@ public class Messages extends NLS
     public static String LabelClientClearCustomItems;
     public static String LabelClientFilterDialogMessage;
     public static String LabelClientFilterDialogTitle;
+    public static String LabelClientFilter;
     public static String LabelClientFilterNew;
     public static String LabelClose;
     public static String LabelColorSchema;
@@ -570,6 +571,7 @@ public class Messages extends NLS
     public static String LabelSecurityCalendarToolTip;
     public static String LabelSecurityCalendarProvince;
     public static String LabelSecurityCalendarProvinceToolTip;
+    public static String LabelSelectedTransactions;
     public static String LabelSelectYear;
     public static String LabelSelectYearSince;
     public static String LabelSemiVolatility;
@@ -606,6 +608,7 @@ public class Messages extends NLS
     public static String LabelTotalValuePercent;
     public static String LabelTrades;
     public static String LabelTradesBasicStatistics;
+    public static String LabelTradesProfitLoss;
     public static String LabelTransactions;
     public static String LabelTransferals;
     public static String LabelTransfer;
