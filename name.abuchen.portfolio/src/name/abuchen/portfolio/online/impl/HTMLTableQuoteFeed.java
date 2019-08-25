@@ -42,7 +42,7 @@ import name.abuchen.portfolio.util.TextUtil;
 
 public class HTMLTableQuoteFeed implements QuoteFeed
 {
-    private abstract static class Column
+    protected abstract static class Column
     {
         static final ThreadLocal<DecimalFormat> DECIMAL_FORMAT_GERMAN = new ThreadLocal<DecimalFormat>()
         {
@@ -131,14 +131,20 @@ public class HTMLTableQuoteFeed implements QuoteFeed
         }
     }
 
-    private static class DateColumn extends Column
+    protected static class DateColumn extends Column
     {
         private DateTimeFormatter[] formatters;
 
         @SuppressWarnings("nls")
         public DateColumn()
         {
-            super(new String[] { "Datum.*", "Date.*" });
+            this(new String[] { "Datum.*", "Date.*" });
+        }
+
+        @SuppressWarnings("nls")
+        public DateColumn(String[] patterns)
+        {
+            super(patterns);
 
             formatters = new DateTimeFormatter[] { DateTimeFormatter.ofPattern("y-M-d"),
                             DateTimeFormatter.ofPattern("d.M.yy"), //$NON-NLS-1$
@@ -174,13 +180,18 @@ public class HTMLTableQuoteFeed implements QuoteFeed
         }
     }
 
-    private static class CloseColumn extends Column
+    protected static class CloseColumn extends Column
     {
         @SuppressWarnings("nls")
         public CloseColumn()
         {
             super(new String[] { "Schluss.*", "Schluß.*", "Rücknahmepreis.*", "Close.*", "Zuletzt", "Price",
                             "akt. Kurs" });
+        }
+
+        public CloseColumn(String[] patterns)
+        {
+            super(patterns);
         }
 
         @Override
@@ -190,12 +201,17 @@ public class HTMLTableQuoteFeed implements QuoteFeed
         }
     }
 
-    private static class HighColumn extends Column
+    protected static class HighColumn extends Column
     {
         @SuppressWarnings("nls")
         public HighColumn()
         {
             super(new String[] { "Hoch.*", "Tageshoch.*", "Max.*", "High.*" });
+        }
+
+        public HighColumn(String[] patterns)
+        {
+            super(patterns);
         }
 
         @Override
@@ -208,12 +224,17 @@ public class HTMLTableQuoteFeed implements QuoteFeed
         }
     }
 
-    private static class LowColumn extends Column
+    protected static class LowColumn extends Column
     {
         @SuppressWarnings("nls")
         public LowColumn()
         {
             super(new String[] { "Tief.*", "Tagestief.*", "Low.*" });
+        }
+
+        public LowColumn(String[] patterns)
+        {
+            super(patterns);
         }
 
         @Override
@@ -235,6 +256,18 @@ public class HTMLTableQuoteFeed implements QuoteFeed
         {
             this.column = column;
             this.index = index;
+        }
+    }
+
+    private static class HeaderInfo
+    {
+        private final int rowIndex;
+        private final int numberOfHeaderColumns;
+
+        public HeaderInfo(int rowIndex, int numberOfHeaderColumns)
+        {
+            this.rowIndex = rowIndex;
+            this.numberOfHeaderColumns = numberOfHeaderColumns;
         }
     }
 
@@ -389,7 +422,8 @@ public class HTMLTableQuoteFeed implements QuoteFeed
         {
             List<Spec> specs = new ArrayList<>();
 
-            int rowIndex = buildSpecFromTable(table, specs);
+            HeaderInfo headerInfo = buildSpecFromTable(table, specs);
+            int rowIndex = headerInfo.rowIndex;
 
             if (isSpecValid(specs))
             {
@@ -402,7 +436,8 @@ public class HTMLTableQuoteFeed implements QuoteFeed
 
                     try
                     {
-                        LatestSecurityPrice price = extractPrice(row, specs, language);
+                        LatestSecurityPrice price = extractPrice(row, specs, language,
+                                        headerInfo.numberOfHeaderColumns);
                         if (price != null)
                             prices.add(price);
                     }
@@ -425,21 +460,21 @@ public class HTMLTableQuoteFeed implements QuoteFeed
     }
 
     @SuppressWarnings("nls")
-    private int buildSpecFromTable(Element table, List<Spec> specs)
+    private HeaderInfo buildSpecFromTable(Element table, List<Spec> specs)
     {
         // check if thead exists
         Elements header = table.select("> thead > tr > th");
         if (!header.isEmpty())
         {
             buildSpecFromRow(header, specs);
-            return 0;
+            return new HeaderInfo(0, header.size());
         }
 
         header = table.select("> thead > tr > td");
         if (!header.isEmpty())
         {
             buildSpecFromRow(header, specs);
-            return 0;
+            return new HeaderInfo(0, header.size());
         }
 
         // check if th exist in body
@@ -447,34 +482,43 @@ public class HTMLTableQuoteFeed implements QuoteFeed
         if (!header.isEmpty())
         {
             buildSpecFromRow(header, specs);
-            return 0;
+            return new HeaderInfo(0, header.size());
         }
 
         // then check first two regular rows
         int rowIndex = 0;
 
         Elements rows = table.select("> tbody > tr");
+        Elements headerRow = null;
+
         if (!rows.isEmpty())
         {
             Element firstRow = rows.get(0);
-            buildSpecFromRow(firstRow.select("> td"), specs);
+            headerRow = firstRow.select("> td");
+            buildSpecFromRow(headerRow, specs);
             rowIndex++;
         }
 
         if (specs.isEmpty() && rows.size() > 1)
         {
             Element secondRow = rows.get(1);
-            buildSpecFromRow(secondRow.select("> td"), specs);
+            headerRow = secondRow.select("> td");
+            buildSpecFromRow(headerRow, specs);
             rowIndex++;
         }
 
-        return rowIndex;
+        return new HeaderInfo(rowIndex, headerRow != null ? headerRow.size() : 0);
+    }
+
+    protected Column[] getColumns()
+    {
+        return COLUMNS;
     }
 
     private void buildSpecFromRow(Elements row, List<Spec> specs)
     {
         Set<Column> available = new HashSet<>();
-        for (Column column : COLUMNS)
+        for (Column column : getColumns())
             available.add(column);
 
         for (int ii = 0; ii < row.size(); ii++)
@@ -510,12 +554,13 @@ public class HTMLTableQuoteFeed implements QuoteFeed
         return hasDate && hasClose;
     }
 
-    private LatestSecurityPrice extractPrice(Element row, List<Spec> specs, String languageHint) throws ParseException
+    private LatestSecurityPrice extractPrice(Element row, List<Spec> specs, String languageHint,
+                    int numberOfHeaderColumns) throws ParseException
     {
         Elements cells = row.select("> td"); //$NON-NLS-1$
 
-        // row can be empty if it contains only 'th' elements
-        if (cells.size() <= 1)
+        // we're only looking at rows having the same size as the header row
+        if (cells.size() != numberOfHeaderColumns)
             return null;
 
         LatestSecurityPrice price = new LatestSecurityPrice();
