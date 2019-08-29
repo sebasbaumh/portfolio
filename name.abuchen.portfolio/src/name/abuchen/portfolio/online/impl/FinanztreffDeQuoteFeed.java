@@ -49,8 +49,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * ID of the exchange.
      */
     public static final String ID_EXCHANGE = "FINANZTREFF_DE.SINGLEQUOTE"; //$NON-NLS-1$
-    private static final String QUERY_URL = "http://www.finanztreff.de/ftreffNG/ajax/get_search.htn?suchbegriff={key}"; //$NON-NLS-1$
-    private static final String QUERY_QUOTES_URL = "http://aktien.finanztreff.de/ftreffNG/kurse_einzelkurs_portrait.htn?ajax=undef"; //$NON-NLS-1$
+    private static final String QUERY_URL = "http://www.finanztreff.de/ajax/get_search.htn?suchbegriff={key}"; //$NON-NLS-1$
+    private static final String QUERY_QUOTES_URL = "http://www.finanztreff.de/kurse_einzelkurs_portrait.htn"; //$NON-NLS-1$
     private static final String REFERRER_URL = "http://www.finanztreff.de"; //$NON-NLS-1$
     /**
      * Ajax flag for quotes.
@@ -80,9 +80,14 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                     Matcher m = pLine.matcher(line);
                     while (m.find())
                     {
-                        // remember url
+                        // check url
                         String url = m.group(1);
-                        results.add(url);
+                        // filter news
+                        if (!url.contains("/news/")) //$NON-NLS-1$
+                        {
+                            // remember url
+                            results.add(url);
+                        }
                     }
                 }
             }
@@ -99,6 +104,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      */
     private static List<String> collectQuotePages(Iterable<String> lines)
     {
+        //FIX
         // USFchangeSnap[^ ]+ href="([^"]+)
         Pattern pLine = Pattern.compile("USFchangeSnap[^ ]+ href=\"([^\"]+)"); //$NON-NLS-1$
         ArrayList<String> results = new ArrayList<String>();
@@ -569,6 +575,9 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            {@link URL}
      * @param referrer
      *            referrer URL (can be null)
+     * @param p
+     *            related {@link SecurityPage}
+     * @param ajax
      * @return {@link InputStream}
      * @throws IOException
      */
@@ -652,9 +661,10 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         if ((p == null) || (p.getContentLines() != null))
         {
             List<Exchange> exchanges = new ArrayList<Exchange>();
-            // <a onclick="USFchangeSnapqoute('frankfurt');"
-            // href="http://fonds.finanztreff.de/fonds_einzelkurs_uebersicht.htn?i=2401356">Frankfurt</a>
-            Pattern pLine = Pattern.compile("USFchangeSnapqoute[^ ]+ href=\"([^\"]+)\">([^<]+)"); //$NON-NLS-1$
+            // <a onclick="window.location.href='http://www.finanztreff.de/aktien/kurse/DE0008404005-Allianz-SE-Namensaktie-vinkuliert/#113397'; window.location.reload();"
+            // href="http://www.finanztreff.de/aktien/kurse/DE0008404005-Allianz-SE-Namensaktie-vinkuliert/#113397"
+            // title="ALLIANZ SE VINK.NAMENS-AKTIEN O.N. an Börsenplatz: Xetra" class="selected">Xetra</a>
+            Pattern pLine = Pattern.compile("location.href[^>]+href=[^>]+(http.+[^#]+#[0-9]+).+title=.+rsenplatz[^>]+>([^<]+)<"); //$NON-NLS-1$
             for (String line : p.getContentLines())
             {
                 Matcher m = pLine.matcher(line);
@@ -665,13 +675,15 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                     exchanges.add(new Exchange(url, name));
                 }
             }
-            // check if there are no other exchanges andjust the current one
+            // check if there are no other exchanges than just the current one
             if (exchanges.isEmpty())
             {
                 exchanges.add(new Exchange(p.getUrl(), p.getUrl()));
             }
             if (!exchanges.isEmpty())
-            { return exchanges; }
+            {
+                return exchanges;
+            }
         }
         return null;
     }
@@ -837,6 +849,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             Pattern pArbitrageId = Pattern.compile(".*&arbitrageId=([0-9]+)&.*"); //$NON-NLS-1$
             // &pushFrameId=PFIG3wsqMgRaiipf547VjDtKw&
             Pattern pPushFrameId = Pattern.compile(".*&pushFrameId=([^&]+)&.*"); //$NON-NLS-1$
+            // <!-- instrumentId 113397 -->
+            Pattern pCurrentExchange = Pattern.compile(".*instrumentId ([0-9]+).*"); //$NON-NLS-1$
             for (String line : contentLines)
             {
                 Matcher m = pArbitrageId.matcher(line);
@@ -849,6 +863,15 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                 {
                     this.pushFrameId = m.group(1);
                 }
+                // try to get current exchange?
+                if (this.exchange == null)
+                {
+                    m = pCurrentExchange.matcher(line);
+                    if (m.matches())
+                    {
+                        this.exchange = m.group(1);
+                    }
+                }
             }
         }
 
@@ -856,6 +879,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         {
             this.exchange = exchange;
         }
+        
         public void setReferrer(String referrer)
         {
             this.referrer = referrer;
