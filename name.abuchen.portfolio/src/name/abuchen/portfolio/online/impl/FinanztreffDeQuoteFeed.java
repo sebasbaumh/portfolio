@@ -44,11 +44,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * ID of the provider.
      */
     public static final String ID = "FINANZTREFF_DE"; //$NON-NLS-1$
-
-    /**
-     * ID of the exchange.
-     */
-    public static final String ID_EXCHANGE = "FINANZTREFF_DE.SINGLEQUOTE"; //$NON-NLS-1$
     private static final String QUERY_URL = "http://www.finanztreff.de/ajax/get_search.htn?suchbegriff={key}"; //$NON-NLS-1$
     private static final String QUERY_QUOTES_URL = "http://www.finanztreff.de/kurse_einzelkurs_portrait.htn"; //$NON-NLS-1$
     private static final String REFERRER_URL = "http://www.finanztreff.de"; //$NON-NLS-1$
@@ -201,20 +196,10 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                 }
             }
         }
-        // retrieve data using the ISIN?
-        String key = s.getIsin();
-        if ((key == null) || key.isEmpty())
-        {
-            // then try WKN
-            key = s.getWkn();
-            if ((key == null) || key.isEmpty())
-            {
-                // then ticker symbol
-                key = s.getTickerSymbol();
-            }
-        }
+        // retrieve data using the security search key
+        String key = getKey(s);
         SecurityPage p = null;
-        if ((key != null) && !key.isEmpty())
+        if (key != null)
         {
             // execute query
             String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
@@ -653,36 +638,83 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         return lines;
     }
 
+    /**
+     * Gets the search key for the given {@link Security}.
+     * @param s {@link Security}
+     * @return search key on success, else null
+     */
+    private static String getKey(Security s)
+    {
+        // retrieve data using the ISIN?
+        String key = s.getIsin();
+        if ((key == null) || key.isEmpty())
+        {
+            // then try WKN
+            key = s.getWkn();
+            if ((key == null) || key.isEmpty())
+            {
+                // then ticker symbol
+                key = s.getTickerSymbol();
+            }
+        }
+        if ((key != null) && !key.trim().isEmpty())
+        {
+            return key;
+        }
+        return null;
+    }
+    
     @Override
     public List<Exchange> getExchanges(Security subject, List<Exception> errors)
     {
-        // try to get list of exchanges from security page
-        SecurityPage p = getContentOfSecurityPage(subject, false, errors);
-        if ((p == null) || (p.getContentLines() != null))
+        // retrieve data using the security search key
+        String key = getKey(subject);
+        if (key != null)
         {
-            List<Exchange> exchanges = new ArrayList<Exchange>();
-            // <a onclick="window.location.href='http://www.finanztreff.de/aktien/kurse/DE0008404005-Allianz-SE-Namensaktie-vinkuliert/#113397'; window.location.reload();"
-            // href="http://www.finanztreff.de/aktien/kurse/DE0008404005-Allianz-SE-Namensaktie-vinkuliert/#113397"
-            // title="ALLIANZ SE VINK.NAMENS-AKTIEN O.N. an Börsenplatz: Xetra" class="selected">Xetra</a>
-            Pattern pLine = Pattern.compile("location.href[^>]+href=[^>]+(http.+[^#]+#[0-9]+).+title=.+rsenplatz[^>]+>([^<]+)<"); //$NON-NLS-1$
-            for (String line : p.getContentLines())
+            // execute query to find actual security page
+            String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
+            try (InputStream is = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
             {
-                Matcher m = pLine.matcher(line);
-                while (m.find())
+                List<String> results = collectQueryResults(is);
+                // get first result
+                if (!results.isEmpty())
                 {
-                    String url = m.group(1);
-                    String name = m.group(2);
-                    exchanges.add(new Exchange(url, name));
+                    List<Exchange> exchanges = new ArrayList<Exchange>();
+                    String urlSecurityPage = results.get(0);
+                    // read the security page
+                    try (InputStream is2 = openUrlStream(new URL(urlSecurityPage), sQueryUrl))
+                    {
+                        // and process the data
+                        List<String> lines = readToLines(is2);
+                        //@formatter:off
+                        // <a onclick="window.location.href='http://www.finanztreff.de/aktien/kurse/DE0008404005-Allianz-SE-Namensaktie-vinkuliert/#113397'; window.location.reload();"
+                        // href="http://www.finanztreff.de/aktien/kurse/DE0008404005-Allianz-SE-Namensaktie-vinkuliert/#113397"
+                        // title="ALLIANZ SE VINK.NAMENS-AKTIEN O.N. an Börsenplatz: Xetra" class="selected">Xetra</a>
+                        //@formatter:on
+                        Pattern pLine = Pattern.compile(
+                                        "location.href[^>]+href=[^>]+(http.+[^#]+#[0-9]+).+title=.+rsenplatz[^>]+>([^<]+)<"); //$NON-NLS-1$
+                        for (String line : lines)
+                        {
+                            Matcher m = pLine.matcher(line);
+                            while (m.find())
+                            {
+                                String url = m.group(1);
+                                String name = m.group(2);
+                                exchanges.add(new Exchange(url, name));
+                            }
+                        }
+                    }
+                    // check if there are no other exchanges than just the current one
+                    if (exchanges.isEmpty())
+                    {
+                        exchanges.add(new Exchange(urlSecurityPage, urlSecurityPage));
+                    }
+                    return exchanges;
                 }
             }
-            // check if there are no other exchanges than just the current one
-            if (exchanges.isEmpty())
+            catch (IOException ex)
             {
-                exchanges.add(new Exchange(p.getUrl(), p.getUrl()));
-            }
-            if (!exchanges.isEmpty())
-            {
-                return exchanges;
+                errors.add(ex);
             }
         }
         return null;
