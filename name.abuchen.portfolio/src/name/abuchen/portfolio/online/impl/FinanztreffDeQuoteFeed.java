@@ -53,14 +53,14 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static final String AJAX_QUOTE = "2"; //$NON-NLS-1$
 
     /**
-     * Collects all query results from the given {@link InputStream}.
+     * Collects all query result URLs from the given {@link InputStream}.
      *
      * @param is
      *            {@link InputStream}
      * @return list of query result URLs
      * @throws IOException
      */
-    private static List<String> collectQueryResults(InputStream is) throws IOException
+    private static List<String> collectQueryResultUrls(InputStream is) throws IOException
     {
         ArrayList<String> results = new ArrayList<String>();
         Pattern pLine = Pattern.compile("location\\.href='([^']+)"); //$NON-NLS-1$
@@ -149,7 +149,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         if ((p.getContentLines() != null))
         {
             // retrieve the actual quotes page using an XHR request
-            try (InputStream is = openUrlStream(new URL(QUERY_QUOTES_URL), p.getUrl(), p, AJAX_QUOTE))
+            try (InputStream is = openUrlStreamUsingXmlHttpRequest(new URL(QUERY_QUOTES_URL), p.getUrl(), p, AJAX_QUOTE))
             {
                 // cache data
                 p.setContentLines(readToLines(is));
@@ -168,18 +168,13 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *
      * @param s
      *            {@link Security}
-     * @param forQuotes
-     *            return content for getting quotes? (should match currency and
-     *            selected exchange)
      * @param errors
      *            errors list
      * @return {@link SecurityPage} on success, else null
      */
-    private static SecurityPage getContentOfSecurityPage(Security s, boolean forQuotes, List<Exception> errors)
+    private static SecurityPage getContentOfSecurityPage(Security s, List<Exception> errors)
     {
         // get content for quotes then check for exchange
-        if (forQuotes)
-        {
             // check if ticker symbol is there
             String exchangeUrl = s.getTickerSymbol();
             if ((exchangeUrl != null) && !exchangeUrl.isEmpty())
@@ -195,7 +190,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                     // ignore if this is not an actual URL
                 }
             }
-        }
         // retrieve data using the security search key
         String key = getKey(s);
         SecurityPage p = null;
@@ -205,7 +199,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
             try (InputStream is = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
             {
-                List<String> results = collectQueryResults(is);
+                List<String> results = collectQueryResultUrls(is);
                 // get first result
                 if (!results.isEmpty())
                 {
@@ -229,7 +223,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             }
 
             // try to match currency of security?
-            if ((p.getContentLines() != null) && forQuotes)
+            if (p.getContentLines() != null)
             {
                 // check if currency matches
                 String securityCurrency = s.getCurrencyCode();
@@ -244,7 +238,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                         for (String sQuoteUrl : lQuoteUrls)
                         {
                             List<String> lines2 = null;
-                            try (InputStream is = openUrlStream(new URL(sQuoteUrl), p.getUrl(), p, AJAX_QUOTE))
+                            try (InputStream is = openUrlStreamUsingXmlHttpRequest(new URL(sQuoteUrl), p.getUrl(), p, AJAX_QUOTE))
                             {
                                 // cache data
                                 lines2 = readToLines(is);
@@ -408,7 +402,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      */
     private static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
     {
-        SecurityPage p = getContentOfSecurityPage(s, true, errors);
+        SecurityPage p = getContentOfSecurityPage(s, errors);
         if ((p == null) || (p.getContentLines() == null))
         {
             // return empty result
@@ -554,7 +548,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     /**
-     * Open a stream to the given {@link URL}.
+     * Open a stream to the given {@link URL} using a XHR.
      *
      * @param url
      *            {@link URL}
@@ -566,7 +560,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * @return {@link InputStream}
      * @throws IOException
      */
-    private static InputStream openUrlStream(URL url, String referrer, SecurityPage p, String ajax) throws IOException
+    private static InputStream openUrlStreamUsingXmlHttpRequest(URL url, String referrer, SecurityPage p, String ajax) throws IOException
     {
         // encode data fields
         HashMap<String, String> params = new HashMap<String, String>();
@@ -639,27 +633,42 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     /**
+     * Checks, if the given {@link String} is null or an empty string (only
+     * containing whitespace).
+     * 
+     * @param s
+     *            {@link String}
+     * @return true on sucess, else false
+     */
+    private static boolean stringIsNullOrEmpty(String s)
+    {
+        return (s == null) || s.trim().isEmpty();
+    }
+
+    /**
      * Gets the search key for the given {@link Security}.
-     * @param s {@link Security}
+     * 
+     * @param s
+     *            {@link Security}
      * @return search key on success, else null
      */
     private static String getKey(Security s)
     {
         // retrieve data using the ISIN?
         String key = s.getIsin();
-        if ((key == null) || key.isEmpty())
+        if (stringIsNullOrEmpty(key))
         {
             // then try WKN
             key = s.getWkn();
-            if ((key == null) || key.isEmpty())
+            if (stringIsNullOrEmpty(key))
             {
                 // then ticker symbol
                 key = s.getTickerSymbol();
             }
         }
-        if ((key != null) && !key.trim().isEmpty())
-        {
-            return key;
+        if (!stringIsNullOrEmpty(key))
+        { 
+            return key; 
         }
         return null;
     }
@@ -675,7 +684,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
             try (InputStream is = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
             {
-                List<String> results = collectQueryResults(is);
+                List<String> results = collectQueryResultUrls(is);
                 // get first result
                 if (!results.isEmpty())
                 {
