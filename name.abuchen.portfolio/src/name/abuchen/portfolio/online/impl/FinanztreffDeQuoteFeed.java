@@ -175,21 +175,21 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static SecurityPage getContentOfSecurityPage(Security s, List<Exception> errors)
     {
         // get content for quotes then check for exchange
-            // check if ticker symbol is there
-            String exchangeUrl = s.getTickerSymbol();
-            if ((exchangeUrl != null) && !exchangeUrl.isEmpty())
+        // check if ticker symbol is there
+        String exchangeUrl = s.getTickerSymbol();
+        if ((exchangeUrl != null) && !exchangeUrl.isEmpty())
+        {
+            try
             {
-                try
-                {
-                    SecurityPage p = new SecurityPage(exchangeUrl, null);
-                    getContentOfSecurityPage(p, exchangeUrl, REFERRER_URL, errors);
-                    return p;
-                }
-                catch (MalformedURLException ex)
-                {
-                    // ignore if this is not an actual URL
-                }
+                SecurityPage p = new SecurityPage(exchangeUrl, null);
+                getContentOfSecurityPage(p, exchangeUrl, REFERRER_URL, errors);
+                return p;
             }
+            catch (MalformedURLException ex)
+            {
+                // ignore if this is not an actual URL
+            }
+        }
         // retrieve data using the security search key
         String key = getKey(s);
         SecurityPage p = null;
@@ -400,17 +400,17 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            errors list
      * @return list of security prices
      */
-    private static CombinedQuoteResult getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
+    private static List<LatestSecurityPrice> getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
     {
         SecurityPage p = getContentOfSecurityPage(s, errors);
         if ((p == null) || (p.getContentLines() == null))
         {
             // return empty result
-            return new CombinedQuoteResult();
+            return new ArrayList<LatestSecurityPrice>();
         }
         LatestSecurityPrice latest = null;
         // now get the quotes
-        CombinedQuoteResult result = new CombinedQuoteResult();
+        List<LatestSecurityPrice> prices = new ArrayList<LatestSecurityPrice>();
         Pattern pLine = Pattern.compile("\\$\\.extend\\(true,\\ss\\.USFdata\\.(\\w+).*"); //$NON-NLS-1$
         Pattern pSingleQuote = Pattern.compile("\\[(\\d+),([0-9.]+)\\]"); //$NON-NLS-1$
         for (String line : p.getContentLines())
@@ -480,22 +480,22 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                                 // add latest quote to returned result
                                 latest = price;
                             }
-                            result.prices.add(price);
+                            prices.add(price);
                         }
                     }
                 }
             }
         }
         // now try to refine the data a bit...
-        if (!result.prices.isEmpty())
+        if (!prices.isEmpty())
         {
             // first sort prices to make sure they are in order
-            Collections.sort(result.prices);
+            Collections.sort(prices);
             // now try to find the previous close etc.
             LocalDate lastDay = null;
             long prevClose = -1;
             long nextClose = -1;
-            for (LatestSecurityPrice price : result.prices)
+            for (LatestSecurityPrice price : prices)
             {
                 // first one, just remember values
                 if (lastDay == null)
@@ -518,10 +518,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                     price.setPreviousClose(prevClose);
                 }
             }
-            // set the latest price
-            result.latest = latest;
         }
-        return result;
+        return prices;
     }
 
     /**
@@ -633,6 +631,23 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     /**
+     * Gets the last element of the given {@link List}.
+     * 
+     * @param elements
+     *            elements
+     * @return last element on success, else null
+     */
+    private static <T> T lastOrDefault(List<T> elements)
+    {
+        int size = elements.size();
+        if (size > 0)
+        {
+            return elements.get(size - 1);
+        }
+        return null;
+    }
+
+    /**
      * Checks, if the given {@link String} is null or an empty string (only
      * containing whitespace).
      * 
@@ -732,7 +747,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     @Override
     public List<LatestSecurityPrice> getHistoricalQuotes(Security security, LocalDate start, List<Exception> errors)
     {
-        return getQuotes(security, start, errors).prices;
+        return getQuotes(security, start, errors);
     }
 
     @Override
@@ -758,8 +773,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     public boolean updateHistoricalQuotes(Security security, List<Exception> errors)
     {
         boolean isUpdated = false;
-        CombinedQuoteResult result = getQuotes(security, null, errors);
-        for (SecurityPrice p : result.prices)
+        List<LatestSecurityPrice> prices = getQuotes(security, null, errors);
+        for (SecurityPrice p : prices)
         {
             if (security.addPrice(p))
             {
@@ -767,7 +782,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             }
         }
         // get latest price if possible
-        LatestSecurityPrice latest = result.latest;
+        LatestSecurityPrice latest = lastOrDefault(prices);
         if (latest != null)
         {
             // set it
@@ -783,31 +798,15 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     public boolean updateLatestQuotes(Security security, List<Exception> errors)
     {
         // get standard quotes
-        CombinedQuoteResult result = getQuotes(security, null, errors);
+        List<LatestSecurityPrice> prices = getQuotes(security, null, errors);
         // get latest price if possible
-        LatestSecurityPrice latest = result.latest;
+        LatestSecurityPrice latest = lastOrDefault(prices);
         if (latest != null)
         {
             // set it
             return security.setLatest(latest);
         }
         return false;
-    }
-
-    /**
-     * Combination of quotes and latest quote.
-     */
-    private static class CombinedQuoteResult
-    {
-        /**
-         * Latest quote.
-         */
-        public LatestSecurityPrice latest;
-
-        /**
-         * All prices.
-         */
-        public final List<LatestSecurityPrice> prices = new ArrayList<LatestSecurityPrice>();
     }
 
     /**
@@ -940,10 +939,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             if (i > 0)
             {
                 this.setExchange(url.substring(i + 1));
-            }
-            else
-            {
-                this.setExchange(null);
             }
         }
 
