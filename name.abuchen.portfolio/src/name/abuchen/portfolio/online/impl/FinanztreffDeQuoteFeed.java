@@ -47,49 +47,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private static final String QUERY_URL = "http://www.finanztreff.de/ajax/get_search.htn?suchbegriff={key}"; //$NON-NLS-1$
     private static final String QUERY_QUOTES_URL = "http://www.finanztreff.de/kurse_einzelkurs_portrait.htn"; //$NON-NLS-1$
     private static final String REFERRER_URL = "http://www.finanztreff.de"; //$NON-NLS-1$
-    /**
-     * Ajax flag for quotes.
-     */
-    private static final String AJAX_QUOTE = "2"; //$NON-NLS-1$
-
-    /**
-     * Collects all query result URLs from the given {@link InputStream}.
-     *
-     * @param is
-     *            {@link InputStream}
-     * @return list of query result URLs
-     * @throws IOException
-     */
-    private static List<String> collectQueryResultUrls(InputStream is) throws IOException
-    {
-        ArrayList<String> results = new ArrayList<String>();
-        Pattern pLine = Pattern.compile("location\\.href='([^']+)"); //$NON-NLS-1$
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(is)))
-        {
-            String line;
-            while ((line = br.readLine()) != null)
-            {
-                line = line.trim();
-                if (!line.isEmpty())
-                {
-                    Matcher m = pLine.matcher(line);
-                    while (m.find())
-                    {
-                        // check url
-                        String url = m.group(1);
-                        // filter news
-                        if (!url.contains("/news/")) //$NON-NLS-1$
-                        {
-                            // remember url
-                            results.add(url);
-                        }
-                    }
-                }
-            }
-        }
-        return results;
-    }
-
+    
     /**
      * Gets the content of the web page for the given {@link Security}.
      *
@@ -149,8 +107,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                     {
                         p.setExchange(exchange);
                         // retrieve the actual quotes page using an XHR request
-                        try (InputStream is = openUrlStreamUsingXmlHttpRequest(new URL(QUERY_QUOTES_URL), p.getUrl(), p,
-                                        AJAX_QUOTE))
+                        try (InputStream is = openUrlStreamUsingXmlHttpRequest(new URL(QUERY_QUOTES_URL), p.getUrl(), p))
                         {
                             // cache data
                             p.setContentLines(readToLines(is));
@@ -289,7 +246,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private List<LatestSecurityPrice> getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
     {
         SecurityPage p = getContentOfSecurityPage(s, errors);
-        if ((p == null) || (p.getContentLines() == null))
+        if ((p == null) || p.getContentLines().isEmpty())
         {
             // return empty result
             return new ArrayList<LatestSecurityPrice>();
@@ -440,19 +397,16 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *            referrer URL (can be null)
      * @param p
      *            related {@link SecurityPage}
-     * @param ajax
      * @return {@link InputStream}
      * @throws IOException
      */
-    private static InputStream openUrlStreamUsingXmlHttpRequest(URL url, String referrer, SecurityPage p, String ajax)
+    private static InputStream openUrlStreamUsingXmlHttpRequest(URL url, String referrer, SecurityPage p)
                     throws IOException
     {
         // encode data fields
         HashMap<String, String> params = new HashMap<String, String>();
-        if (ajax != null)
-        {
-            params.put("ajax", ajax); //$NON-NLS-1$
-        }
+        // AJAX flag for quotes
+        params.put("ajax", "2"); //$NON-NLS-1$ //$NON-NLS-2$
         if (p.getArbitrageId() != null)
         {
             params.put("arbitrageId", p.getArbitrageId()); //$NON-NLS-1$
@@ -603,7 +557,32 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
             try (InputStream is = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
             {
-                List<String> results = collectQueryResultUrls(is);
+                ArrayList<String> results1 = new ArrayList<String>();
+                Pattern pLine1 = Pattern.compile("location\\.href='([^']+)"); //$NON-NLS-1$
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(is)))
+                {
+                    String line1;
+                    while ((line1 = br.readLine()) != null)
+                    {
+                        line1 = line1.trim();
+                        if (!line1.isEmpty())
+                        {
+                            Matcher m1 = pLine1.matcher(line1);
+                            while (m1.find())
+                            {
+                                // check url
+                                String url1 = m1.group(1);
+                                // filter news
+                                if (!url1.contains("/news/")) //$NON-NLS-1$
+                                {
+                                    // remember url
+                                    results1.add(url1);
+                                }
+                            }
+                        }
+                    }
+                }
+                List<String> results = results1;
                 // get first result
                 if (!results.isEmpty())
                 {
