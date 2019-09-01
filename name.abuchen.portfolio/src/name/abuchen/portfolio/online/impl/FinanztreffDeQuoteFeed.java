@@ -60,9 +60,14 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private SecurityPage getContentOfSecurityPage(Security s, List<Exception> errors)
     {
         // check if ticker symbol is there
-        String exchangeUrl = s.getTickerSymbol();
+        String exchangeUrl = s.getFeedURL();
+        // check for URL and use ticker symbol
+        if (stringIsNullOrEmpty(exchangeUrl) || !exchangeUrl.startsWith("http")) //$NON-NLS-1$
+        {
+            exchangeUrl = s.getTickerSymbol();
+        }
         // retrieve data using the first exchange URL (if it is an URL)
-        if (stringIsNullOrEmpty(exchangeUrl)||!exchangeUrl.startsWith("http")) //$NON-NLS-1$
+        if (stringIsNullOrEmpty(exchangeUrl) || !exchangeUrl.startsWith("http")) //$NON-NLS-1$
         {
             Exchange e = firstOrDefault(getExchanges(s, errors));
             if (e != null)
@@ -107,7 +112,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                     {
                         p.setExchange(exchange);
                         // retrieve the actual quotes page using an XHR request
-                        try (InputStream is = openUrlStreamUsingXmlHttpRequest(new URL(QUERY_QUOTES_URL), p.getUrl(), p))
+                        try (InputStream is = openUrlStreamUsingXmlHttpRequest(new URL(QUERY_QUOTES_URL), p.getUrl(),
+                                        p))
                         {
                             // cache data
                             p.setContentLines(readToLines(is));
