@@ -43,7 +43,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     /**
      * ID of the provider.
      */
-    private static final String ID = "FINANZTREFF_DE"; //$NON-NLS-1$
+    public static final String ID = "FINANZTREFF_DE"; //$NON-NLS-1$
     private static final String QUERY_URL = "http://www.finanztreff.de/ajax/get_search.htn?suchbegriff={key}"; //$NON-NLS-1$
     private static final String QUERY_QUOTES_URL = "http://www.finanztreff.de/kurse_einzelkurs_portrait.htn"; //$NON-NLS-1$
     private static final String REFERRER_URL = "http://www.finanztreff.de"; //$NON-NLS-1$
@@ -60,13 +60,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     private SecurityPage getContentOfSecurityPage(Security s, List<Exception> errors)
     {
         // check if ticker symbol is there
-        String exchangeUrl = s.getFeedURL();
-        // check for URL and use ticker symbol
-        if (stringIsNullOrEmpty(exchangeUrl) || !exchangeUrl.startsWith("http")) //$NON-NLS-1$
-        {
-            exchangeUrl = s.getTickerSymbol();
-        }
-        // retrieve data using the first exchange URL (if it is an URL)
+        String exchangeUrl = s.getTickerSymbol();
+        // check URL and retrieve data using the first exchange URL (if it is an URL)
         if (stringIsNullOrEmpty(exchangeUrl) || !exchangeUrl.startsWith("http")) //$NON-NLS-1$
         {
             Exchange e = firstOrDefault(getExchanges(s, errors));

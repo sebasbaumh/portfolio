@@ -95,7 +95,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
                                 // exchanges, select this exchange in the
                                 // combo list
                                 exchanges.stream() //
-                                                .filter(e -> e.getId().equals(model.getTickerSymbol()) || e.getId().equals(model.getFeedURL())) //
+                                                .filter(e -> e.getId().equals(model.getTickerSymbol())) //
                                                 .findAny() //
                                                 .ifPresent(e -> comboExchange.setSelection(new StructuredSelection(e)));
                             }
@@ -208,22 +208,16 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
     {
         QuoteFeed feed = (QuoteFeed) ((IStructuredSelection) comboProvider.getSelection()).getFirstElement();
         setFeed(feed.getId());
+
         if (comboExchange != null && feed.getId() != null
                         && (feed.getId().startsWith(YAHOO) || feed.getId().equals(EurostatHICPQuoteFeed.ID) || (feed instanceof FinanztreffDeQuoteFeed)))
         {
             Exchange exchange = (Exchange) ((IStructuredSelection) comboExchange.getSelection()).getFirstElement();
             if (exchange != null)
             {
-                if (feed instanceof FinanztreffDeQuoteFeed)
-                {
-                    setFeedURL(exchange.getId());
-                }
-                else
-                {
-                    model.setTickerSymbol(exchange.getId());
-                    tickerSymbol = exchange.getId();
-                    setFeedURL(null);
-                }
+                model.setTickerSymbol(exchange.getId());
+                tickerSymbol = exchange.getId();
+                setFeedURL(null);
             }
         }
         else if (textFeedURL != null)
@@ -393,17 +387,9 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
         createDetailDataWidgets(feed);
 
         if (model.getTickerSymbol() != null && feed != null && feed.getId() != null
-                        && (feed.getId().startsWith(YAHOO) || feed.getId().equals(EurostatHICPQuoteFeed.ID)))
+                        && (feed.getId().startsWith(YAHOO) || feed.getId().equals(EurostatHICPQuoteFeed.ID) || feed.getId().equals(FinanztreffDeQuoteFeed.ID)))
         {
             Exchange exchange = new Exchange(model.getTickerSymbol(), model.getTickerSymbol());
-            ArrayList<Exchange> input = new ArrayList<>();
-            input.add(exchange);
-            comboExchange.setInput(input);
-            comboExchange.setSelection(new StructuredSelection(exchange));
-        }
-        else if (model.getFeedURL() != null && (feed instanceof FinanztreffDeQuoteFeed))
-        {
-            Exchange exchange = new Exchange(model.getFeedURL(), model.getFeedURL());
             ArrayList<Exchange> input = new ArrayList<>();
             input.add(exchange);
             comboExchange.setInput(input);
