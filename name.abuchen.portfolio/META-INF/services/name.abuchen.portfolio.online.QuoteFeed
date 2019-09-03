@@ -6,3 +6,4 @@ name.abuchen.portfolio.online.impl.AlphavantageQuoteFeed
 name.abuchen.portfolio.online.impl.FinanztreffDeQuoteFeed
 name.abuchen.portfolio.online.impl.KrakenQuoteFeed
 name.abuchen.portfolio.online.impl.EurostatHICPQuoteFeed
+name.abuchen.portfolio.online.impl.CSQuoteFeed
