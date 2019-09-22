@@ -32,6 +32,7 @@ import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.model.SecurityPrice;
 import name.abuchen.portfolio.money.Values;
 import name.abuchen.portfolio.online.QuoteFeed;
+import name.abuchen.portfolio.util.OnlineHelper;
 
 /**
  * A quote feed for finanztreff.de.
@@ -556,53 +557,52 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         {
             // execute query to find actual security page
             String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
-            try (InputStream is = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
+            try (InputStream isQuery = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
             {
-                ArrayList<String> results1 = new ArrayList<String>();
-                Pattern pLine1 = Pattern.compile("location\\.href='([^']+)"); //$NON-NLS-1$
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(is)))
+                ArrayList<String> results = new ArrayList<String>();
+                Pattern pLineSubPages = Pattern.compile("location\\.href='([^']+)"); //$NON-NLS-1$
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(isQuery)))
                 {
-                    String line1;
-                    while ((line1 = br.readLine()) != null)
+                    String line;
+                    while ((line = br.readLine()) != null)
                     {
-                        line1 = line1.trim();
-                        if (!line1.isEmpty())
+                        line = line.trim();
+                        if (!line.isEmpty())
                         {
-                            Matcher m1 = pLine1.matcher(line1);
-                            while (m1.find())
+                            Matcher m = pLineSubPages.matcher(line);
+                            while (m.find())
                             {
                                 // check url
-                                String url1 = m1.group(1);
+                                String url = m.group(1);
                                 // filter news
-                                if (!url1.contains("/news/")) //$NON-NLS-1$
+                                if (!url.contains("/news/")) //$NON-NLS-1$
                                 {
                                     // remember url
-                                    results1.add(url1);
+                                    results.add(url);
                                 }
                             }
                         }
                     }
                 }
-                List<String> results = results1;
                 // get first result
                 if (!results.isEmpty())
                 {
                     String urlSecurityPage = firstOrDefault(results);
                     // read the security page
-                    try (InputStream is2 = openUrlStream(new URL(urlSecurityPage), sQueryUrl))
+                    try (InputStream isSecurityPage = openUrlStream(new URL(urlSecurityPage), sQueryUrl))
                     {
                         // and process the data
-                        List<String> lines = readToLines(is2);
+                        List<String> lines = readToLines(isSecurityPage);
                         //@formatter:off
                         // <a onclick="window.location.href='http://www.finanztreff.de/aktien/kurse/DE0008404005-Allianz-SE-Namensaktie-vinkuliert/#113397'; window.location.reload();"
                         // href="http://www.finanztreff.de/aktien/kurse/DE0008404005-Allianz-SE-Namensaktie-vinkuliert/#113397"
                         // title="ALLIANZ SE VINK.NAMENS-AKTIEN O.N. an Börsenplatz: Xetra" class="selected">Xetra</a>
                         //@formatter:on
-                        Pattern pLine = Pattern.compile(
+                        Pattern pLineExchange = Pattern.compile(
                                         "location.href[^>]+href=[^>]+(http.+[^#]+#[0-9]+).+title=.+rsenplatz[^>]+>([^<]+)<"); //$NON-NLS-1$
                         for (String line : lines)
                         {
-                            Matcher m = pLine.matcher(line);
+                            Matcher m = pLineExchange.matcher(line);
                             while (m.find())
                             {
                                 String url = m.group(1);
