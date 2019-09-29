@@ -41,6 +41,7 @@ public class Messages extends NLS
     public static String BtnLabelOpenInvestmentPlanView;
     public static String BtnLabelRestartLater;
     public static String BtnLabelRestartNow;
+    public static String BtnTooltipInvertExchangeRate;
     public static String CellEditor_NotANumber;
     public static String ChartBringForward;
     public static String ChartBringToFront;
@@ -499,6 +500,10 @@ public class Messages extends NLS
     public static String LabelEarningsSelectStartYear;
     public static String LabelError;
     public static String LabelEurostatRegion;
+    public static String LabelExcessReturnBaselineDataSeries;
+    public static String LabelExcessReturnOperator;
+    public static String LabelExcessReturnOperatorAlpha;
+    public static String LabelExcessReturnOperatorRelative;
     public static String LabelExchange;
     public static String LabelExchangeRate;
     public static String LabelExchangeRates;
