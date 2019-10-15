@@ -1,127 +1,137 @@
 
-REM.label    = Schwellenl\u00E4nder
+REM.label  = Schwellenl\u00E4nder
 
-REM11.label = Argentinien
+REM2.label = Europa, Mittlerer Osten & Afrika
 
-REM12.label = Brasilien
-
-REM14.label = Kolumbien
-
-REM15.label = Mexiko
-
-REM16.label = Peru
-
-REM2.label   = Europa, Mittlerer Osten & Afrika
-
-REM21.label  = Tschechische Republik
-
-REM210.label = Turkei
-
-REM211.label = Vereinigte Arabische Emirate
-
-REM22.label = \u00C4gypten
-
-REM23.label = Griechenland
-
-REM24.label = Ungarn
-
-REM25.label = Polen
-
-REM27.label = Russland
-
-REM28.label = Saudi Arabien
-
-REM29.label = S\u00FCdafrika
-
-REM3.label  = Asien
-
-REM31.label = China
-
-REM32.label = Indien
-
-REM33.label = Indonesien
-
-REM35.label = Malaysia
-
-REM36.label = Pakistan
-
-REM37.label = Philippinen
-
-REM38.label = Taiwan
-
-REM39.label = Thailand
-
-RFM11.label = Kroatien
-
-RFM12.label = Estland
-
-RFM16.label = Serbien
-
-RFM17.label = Slovenien
+REM3.label = Asien
 
 RFM2.label  = Afrika
 
-RFM21.label = Kenia
+RFM26.label = Serbien
 
-RFM25.label = Tunesien
+RFM3.label = Naher Osten
 
-RFM3.label  = Naher Osten
+RFM4.label = Asien
 
-RFM33.label = Kuwait
+RW.label  = Welt
 
-RFM4.label  = Asien
+RW2.label = Europa & Mittlerer Osten
 
-RFM43.label = Vietnam
+country_AE.label = Vereinigte Arabische Emirate
 
-RSM21.label = Bosnien-Herzegowina
+country_AR.label = Argentinien
 
-RSM22.label = Bulgarien
+country_AT.label = \u00D6sterreich
 
-RW.label    = Welt
+country_AU.label = Australien
 
-RW11.label = Kanada
+country_BA.label = Bosnien-Herzegowina
 
-RW12.label = Vereinigte Staaten
+country_BE.label = Belgien
 
-RW2.label   = Europa & Mittlerer Osten
+country_BG.label = Bulgarien
 
-RW21.label  = \u00D6sterreich
+country_BH.label = Kenia
 
-RW210.label = Italien
+country_BR.label = Brasilien
 
-RW211.label = Niederlande
+country_CA.label = Kanada
 
-RW212.label = Norwegen
+country_CH.label = Schweiz
 
-RW213.label = Portugal
+country_CL.label = Chile
 
-RW214.label = Spanien
+country_CN.label = China
 
-RW215.label = Schweden
+country_CO.label = Kolumbien
 
-RW216.label = Schweiz
+country_CZ.label = Tschechische Republik
 
-RW22.label = Belgien
+country_DE.label = Deutschland
 
-RW23.label = D\u00E4nemark
+country_DK.label = D\u00E4nemark
 
-RW24.label = Finnland
+country_EE.label = Estland
 
-RW25.label = Frankreich
+country_EG.label = \u00C4gypten
 
-RW26.label = Deutschland
+country_ES.label = Spanien
 
-RW27.label = Irland
+country_FI.label = Finnland
 
-RW29.label = Israel
+country_FR.label = Frankreich
 
-RW31.label = Australien
+country_GR.label = Griechenland
 
-RW33.label = Japan
+country_HR.label = Kroatien
 
-RW34.label = Neuseeland
+country_HU.label = Ungarn
 
-RW35.label = Singapur
+country_ID.label = Indonesien
+
+country_IE.label = Irland
+
+country_IL.label = Israel
+
+country_IN.label = Indien
+
+country_IT.label = Italien
+
+country_JP.label = Japan
+
+country_KE.label = Kenia
+
+country_KW.label = Kuwait
+
+country_MU.label = Estland
+
+country_MX.label = Mexiko
+
+country_MY.label = Malaysia
+
+country_NL.label = Niederlande
+
+country_NO.label = Norwegen
+
+country_NZ.label = Neuseeland
+
+country_OM.label = Oman
+
+country_PE.label = Peru
+
+country_PH.label = Philippinen
+
+country_PK.label = Pakistan
+
+country_PL.label = Polen
+
+country_PT.label = Portugal
+
+country_RS.label = Serbien
+
+country_RU.label = Russland
+
+country_SA.label = Saudi Arabien
+
+country_SE.label = Schweden
+
+country_SG.label = Singapur
+
+country_SI.label = Slovenien
+
+country_TH.label = Thailand
+
+country_TN.label = Tunesien
+
+country_TR.label = Turkei
+
+country_TW.label = Taiwan
+
+country_US.label = Vereinigte Staaten
+
+country_VN.label = Vietnam
+
+country_ZA.label = S\u00FCdafrika
 
 labels = Markt,Region,Land
 
