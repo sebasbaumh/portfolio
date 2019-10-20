@@ -246,6 +246,8 @@ public class Messages extends NLS
     public static String ColumnSharesOwned;
     public static String ColumnSource;
     public static String ColumnStartDate;
+    public static String ColumnLastDate;
+    public static String ColumnNextDate;
     public static String ColumnStatus;
     public static String ColumnSubTotal;
     public static String ColumnSum;
@@ -893,6 +895,7 @@ public class Messages extends NLS
     public static String SecurityTabChart6M;
     public static String SecurityTabChartYTD;
     public static String SecurityTabChartAll;
+    public static String SecurityTabChartHoldingPeriod;
     public static String SecurityTabEvents;
     public static String SecurityTabHistoricalQuotes;
     public static String SecurityTabTrades;
