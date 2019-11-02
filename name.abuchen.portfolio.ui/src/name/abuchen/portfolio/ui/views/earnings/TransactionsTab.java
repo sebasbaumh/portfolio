@@ -1,6 +1,7 @@
 package name.abuchen.portfolio.ui.views.earnings;
 
 import java.text.MessageFormat;
+import java.util.function.Function;
 
 import javax.inject.Inject;
 
@@ -15,20 +16,24 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.window.ToolTip;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 
 import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.Client;
+import name.abuchen.portfolio.model.PortfolioTransaction;
 import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.model.TransactionPair;
+import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
 import name.abuchen.portfolio.ui.Images;
 import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.selection.SecuritySelection;
 import name.abuchen.portfolio.ui.selection.SelectionService;
+import name.abuchen.portfolio.ui.util.Colors;
 import name.abuchen.portfolio.ui.util.TableViewerCSVExporter;
 import name.abuchen.portfolio.ui.util.viewers.Column;
 import name.abuchen.portfolio.ui.util.viewers.ColumnViewerSorter;
@@ -117,7 +122,33 @@ public class TransactionsTab implements EarningsTab
                 return Values.DateTime.format(((TransactionPair<?>) element).getTransaction().getDateTime());
             }
         });
-        ColumnViewerSorter.create(e -> ((TransactionPair<?>) e).getTransaction().getDateTime()).attachTo(column, SWT.UP);
+        ColumnViewerSorter.create(e -> ((TransactionPair<?>) e).getTransaction().getDateTime()).attachTo(column,
+                        SWT.UP);
+        support.addColumn(column);
+
+        Function<Object, Comparable<?>> tx2type = element -> ((TransactionPair<?>) element)
+                        .getTransaction() instanceof AccountTransaction
+                                        ? ((AccountTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                        .getType().toString()
+                                        : ((PortfolioTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                        .getType().toString();
+
+        column = new Column(Messages.ColumnTransactionType, SWT.LEFT, 80);
+        column.setLabelProvider(new ColumnLabelProvider()
+        {
+            @Override
+            public String getText(Object element)
+            {
+                return (String) tx2type.apply(element);
+            }
+
+            @Override
+            public Color getForeground(Object element)
+            {
+                return colorFor(element);
+            }
+        });
+        ColumnViewerSorter.create(tx2type).attachTo(column);
         support.addColumn(column);
 
         column = new Column(Messages.ColumnSecurity, SWT.None, 250);
@@ -151,6 +182,12 @@ public class TransactionsTab implements EarningsTab
             {
                 return ((TransactionPair<?>) element).getTransaction().getShares();
             }
+
+            @Override
+            public Color getForeground(Object element)
+            {
+                return colorFor(element);
+            }
         });
         ColumnViewerSorter.create(e -> ((TransactionPair<?>) e).getTransaction().getShares()).attachTo(column);
         support.addColumn(column);
@@ -161,12 +198,28 @@ public class TransactionsTab implements EarningsTab
             @Override
             public String getText(Object element)
             {
-                return Values.Money.format(
-                                ((AccountTransaction) ((TransactionPair<?>) element).getTransaction()).getGrossValue(),
-                                client.getBaseCurrency());
+                Money transactionGrossValue = ((TransactionPair<?>) element)
+                                .getTransaction() instanceof AccountTransaction
+                                                ? ((AccountTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                                .getGrossValue()
+                                                : ((PortfolioTransaction) ((TransactionPair<?>) element)
+                                                                .getTransaction()).getGrossValue();
+                return Values.Money.format(transactionGrossValue, client.getBaseCurrency());
+            }
+
+            @Override
+            public Color getForeground(Object element)
+            {
+                return colorFor(element);
             }
         });
-        ColumnViewerSorter.create(e -> ((TransactionPair<?>) e).getTransaction().getMonetaryAmount()).attachTo(column);
+        ColumnViewerSorter
+                        .create(element -> ((TransactionPair<?>) element).getTransaction() instanceof AccountTransaction
+                                        ? ((AccountTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                        .getGrossValue()
+                                        : ((PortfolioTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                        .getGrossValue())
+                        .attachTo(column);
         support.addColumn(column);
 
         column = new Column(Messages.ColumnTaxes, SWT.RIGHT, 80);
@@ -175,11 +228,55 @@ public class TransactionsTab implements EarningsTab
             @Override
             public String getText(Object element)
             {
-                return Values.Money.format(((TransactionPair<?>) element).getTransaction().getUnitSum(Unit.Type.TAX),
-                                client.getBaseCurrency());
+                Money transactionTaxes = ((TransactionPair<?>) element).getTransaction() instanceof AccountTransaction
+                                ? ((AccountTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                .getUnitSum(Unit.Type.TAX)
+                                : ((PortfolioTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                .getUnitSum(Unit.Type.TAX);
+                return Values.Money.format(transactionTaxes, client.getBaseCurrency());
+            }
+
+            @Override
+            public Color getForeground(Object element)
+            {
+                return colorFor(element);
             }
         });
-        ColumnViewerSorter.create(e -> ((TransactionPair<?>) e).getTransaction().getUnitSum(Unit.Type.TAX))
+        ColumnViewerSorter
+                        .create(element -> ((TransactionPair<?>) element).getTransaction() instanceof AccountTransaction
+                                        ? ((AccountTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                        .getUnitSum(Unit.Type.TAX)
+                                        : ((PortfolioTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                        .getUnitSum(Unit.Type.TAX))
+                        .attachTo(column);
+        support.addColumn(column);
+
+        column = new Column(Messages.ColumnFees, SWT.RIGHT, 80);
+        column.setLabelProvider(new ColumnLabelProvider()
+        {
+            @Override
+            public String getText(Object element)
+            {
+                Money transactionFees = ((TransactionPair<?>) element).getTransaction() instanceof AccountTransaction
+                                ? ((AccountTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                .getUnitSum(Unit.Type.FEE)
+                                : ((PortfolioTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                .getUnitSum(Unit.Type.FEE);
+                return Values.Money.format(transactionFees, client.getBaseCurrency());
+            }
+
+            @Override
+            public Color getForeground(Object element)
+            {
+                return colorFor(element);
+            }
+        });
+        ColumnViewerSorter
+                        .create(element -> ((TransactionPair<?>) element).getTransaction() instanceof AccountTransaction
+                                        ? ((AccountTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                        .getUnitSum(Unit.Type.FEE)
+                                        : ((PortfolioTransaction) ((TransactionPair<?>) element).getTransaction())
+                                                        .getUnitSum(Unit.Type.FEE))
                         .attachTo(column);
         support.addColumn(column);
 
@@ -191,6 +288,12 @@ public class TransactionsTab implements EarningsTab
             {
                 return Values.Money.format(((TransactionPair<?>) element).getTransaction().getMonetaryAmount(),
                                 client.getBaseCurrency());
+            }
+
+            @Override
+            public Color getForeground(Object element)
+            {
+                return colorFor(element);
             }
         });
         ColumnViewerSorter.create(e -> ((TransactionPair<?>) e).getTransaction().getMonetaryAmount()).attachTo(column);
@@ -238,5 +341,20 @@ public class TransactionsTab implements EarningsTab
         });
         ColumnViewerSorter.create(e -> ((TransactionPair<?>) e).getTransaction().getNote()).attachTo(column);
         support.addColumn(column);
+    }
+
+    private Color colorFor(Object element)
+    {
+        TransactionPair<?> tx = (TransactionPair<?>) element;
+        if (tx.getTransaction() instanceof AccountTransaction)
+        {
+            return ((AccountTransaction) tx.getTransaction()).getType().isCredit() ? Colors.DARK_GREEN
+                            : Colors.DARK_RED;
+        }
+        else
+        {
+            return ((PortfolioTransaction) tx.getTransaction()).getType().isPurchase() ? Colors.DARK_GREEN
+                            : Colors.DARK_RED;
+        }
     }
 }

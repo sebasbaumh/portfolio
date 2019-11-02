@@ -500,6 +500,8 @@ public class Messages extends NLS
     public static String LabelEarningsPerQuarter;
     public static String LabelEarningsPerYear;
     public static String LabelEarningsSelectStartYear;
+    public static String LabelEarningsExpenses;
+    public static String LabelExpenses;
     public static String LabelError;
     public static String LabelEurostatRegion;
     public static String LabelExcessReturnBaselineDataSeries;
@@ -633,7 +635,7 @@ public class Messages extends NLS
     public static String LabelUnnamedFile;
     public static String LabelUnnamedXml;
     public static String LabelUpdatesAvailable;
-    public static String LabelUseGrossDividends;
+    public static String LabelUseGrossValue;
     public static String LabelUsingDashboardDefaultReportingPeriod;
     public static String LabelValueInboundDelivery;
     public static String LabelValueOutboundDelivery;
@@ -948,5 +950,6 @@ public class Messages extends NLS
     }
 
     private Messages()
-    {}
+    {
+    }
 }
