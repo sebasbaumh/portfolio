@@ -75,6 +75,7 @@ public class Messages extends NLS
     public static String ColumnAbsolutePerformancePercent;
     public static String ColumnAbsolutePerformancePercent_Option;
     public static String ColumnAccount;
+    public static String ColumnAccount2nd;
     public static String ColumnAccountFrom;
     public static String ColumnAccountTo;
     public static String ColumnActualPercent;
@@ -157,6 +158,12 @@ public class Messages extends NLS
     public static String ColumnEntryValue;
     public static String ColumnErrorMessages;
     public static String ColumnExchangeRate;
+    public static String ColumnExpectedReturn;
+    public static String ColumnExpectedReturn_MenuLabel;
+    public static String ColumnExpectedReturn_Description;
+    public static String ColumnExpectedReturn_Tooltip_NotInUse;
+    public static String ColumnExpectedReturn_Tooltip_InUse;
+    public static String ColumnExpectedReturn_Tooltip_TotalPortfolioReturn;
     public static String ColumnExDate;
     public static String ColumnExitValue;
     public static String ColumnFeedURLHistoric;
@@ -205,6 +212,7 @@ public class Messages extends NLS
     public static String ColumnNote;
     public static String ColumnNumberOfTransactions;
     public static String ColumnOffsetAccount;
+    public static String ColumnOffsetPortfolio;
     public static String ColumnPctOfTotal;
     public static String ColumnPctOfTotal_MenuLabel;
     public static String ColumnPeer;
@@ -652,6 +660,7 @@ public class Messages extends NLS
     public static String LabelYear;
     public static String LabelYearlyHeatmap;
     public static String LabelYes;
+    public static String LabelYTD;
     public static String MarkSecurityPageDescription;
     public static String MarkSecurityPageTitle;
     public static String MenuAddAll;

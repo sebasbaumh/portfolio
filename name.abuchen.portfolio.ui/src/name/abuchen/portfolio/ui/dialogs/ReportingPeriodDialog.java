@@ -52,6 +52,9 @@ public class ReportingPeriodDialog extends Dialog
     private Spinner year;
 
     private Button radioCurrentMonth;
+
+    private Button radioYTD;
+
     private List<Button> radioBtnList;
 
     public ReportingPeriodDialog(Shell parentShell, ReportingPeriod template)
@@ -125,6 +128,9 @@ public class ReportingPeriodDialog extends Dialog
         radioCurrentMonth = new Button(editArea, SWT.RADIO);
         radioCurrentMonth.setText(Messages.LabelCurrentMonth);
 
+        radioYTD = new Button(editArea, SWT.RADIO);
+        radioYTD.setText(Messages.LabelYTD);
+
         //
         // form layout
         //
@@ -164,13 +170,16 @@ public class ReportingPeriodDialog extends Dialog
 
         FormDataFactory.startingWith(radioCurrentMonth).top(new FormAttachment(radioYearX, 20));
 
+        FormDataFactory.startingWith(radioYTD).top(new FormAttachment(radioCurrentMonth, 20));
+
         //
         // wiring
         //
 
         presetFromTemplate();
 
-        radioBtnList = Arrays.asList(radioLast, radioLastDays, radioLastTradingDays, radioFromXtoY, radioSinceX, radioYearX);
+        radioBtnList = Arrays.asList(radioLast, radioLastDays, radioLastTradingDays, radioFromXtoY, radioSinceX,
+                        radioYearX, radioCurrentMonth, radioYTD);
         activateRadioOnChange(radioLast, years, months);
         activateRadioOnChange(radioLastDays, days);
         activateRadioOnChange(radioLastTradingDays, tradingDays);
@@ -180,17 +189,19 @@ public class ReportingPeriodDialog extends Dialog
 
         return composite;
     }
-    
-    private void deselectSelectedRadioButtons(final Button radio) {
-        radioBtnList.stream()
-            .filter(btn -> !btn.equals(radio))
-            .filter(btn -> btn.getSelection())
-            .forEach(btn -> btn.setSelection(false));
+
+    private void deselectSelectedRadioButtons(final Button radio)
+    {
+        radioBtnList.stream() //
+                        .filter(btn -> !btn.equals(radio)) //
+                        .filter(Button::getSelection) //
+                        .forEach(btn -> btn.setSelection(false));
     }
-    
+
     private void activateRadioOnChange(final Button radio, Control... controls)
     {
-        for (Control c : controls) {
+        for (Control c : controls)
+        {
             c.addListener(SWT.Selection, event -> {
                 deselectSelectedRadioButtons(radio);
                 radio.setSelection(true);
@@ -214,6 +225,8 @@ public class ReportingPeriodDialog extends Dialog
             radioYearX.setSelection(true);
         else if (template instanceof ReportingPeriod.CurrentMonth)
             radioCurrentMonth.setSelection(true);
+        else if (template instanceof ReportingPeriod.YearToDate)
+            radioYTD.setSelection(true);
         else
             throw new IllegalArgumentException();
 
@@ -273,6 +286,10 @@ public class ReportingPeriodDialog extends Dialog
         else if (radioCurrentMonth.getSelection())
         {
             result = new ReportingPeriod.CurrentMonth();
+        }
+        else if (radioYTD.getSelection())
+        {
+            result = new ReportingPeriod.YearToDate();
         }
         else
         {

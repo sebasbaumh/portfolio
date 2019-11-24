@@ -38,6 +38,10 @@ public class Messages extends NLS
     public static String CSVColumn_Type;
     public static String CSVColumn_Value;
     public static String CSVColumn_WKN;
+    public static String CSVColumn_AccountName;
+    public static String CSVColumn_AccountName2nd;
+    public static String CSVColumn_PortfolioName;
+    public static String CSVColumn_PortfolioName2nd;
     public static String CSVColumn_CumulatedPerformanceInPercent;
     public static String CSVColumn_Currency;
     public static String CSVColumn_CurrencyGrossAmount;
@@ -59,8 +63,10 @@ public class Messages extends NLS
     public static String CSVFormatDDMMMYYYY_German;
     public static String CSVFormatDDMMYY;
     public static String CSVFormatDDMMYY1;
+    public static String CSVFormatDDMMYY2;
     public static String CSVFormatDDMMYYYY;
     public static String CSVFormatDDMMYYYY1;
+    public static String CSVFormatDDMMYYYY2;
     public static String CSVFormatISO;
     public static String CSVFormatMMDDYY;
     public static String CSVFormatMMDDYY1;
@@ -133,6 +139,7 @@ public class Messages extends NLS
     public static String LabelReportingPeriodMonths;
     public static String LabelReportingPeriodSince;
     public static String LabelReportingPeriodYears;
+    public static String LabelReportingPeriodYTD;
     public static String LabelSearchAll;
     public static String LabelSearchBond;
     public static String LabelSearchShare;
