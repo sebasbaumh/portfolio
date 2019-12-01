@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -19,10 +20,12 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.layout.TableColumnLayout;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
+import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.ViewerFilter;
+import org.eclipse.jface.window.ToolTip;
 import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.DND;
@@ -38,7 +41,6 @@ import org.eclipse.swt.widgets.Shell;
 
 import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.Client;
-import name.abuchen.portfolio.model.LatestSecurityPrice;
 import name.abuchen.portfolio.model.PortfolioTransaction;
 import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.model.SecurityPrice;
@@ -75,12 +77,13 @@ import name.abuchen.portfolio.ui.util.viewers.StringEditingSupport;
 import name.abuchen.portfolio.ui.views.columns.AttributeColumn;
 import name.abuchen.portfolio.ui.views.columns.IsinColumn;
 import name.abuchen.portfolio.ui.views.columns.NoteColumn;
-import name.abuchen.portfolio.ui.views.columns.TaxonomyColumn;
 import name.abuchen.portfolio.ui.views.columns.SymbolColumn;
+import name.abuchen.portfolio.ui.views.columns.TaxonomyColumn;
 import name.abuchen.portfolio.ui.views.columns.WknColumn;
 import name.abuchen.portfolio.ui.wizards.security.EditSecurityDialog;
 import name.abuchen.portfolio.ui.wizards.splits.StockSplitWizard;
 import name.abuchen.portfolio.util.Interval;
+import name.abuchen.portfolio.util.Pair;
 
 public final class SecuritiesTable implements ModificationListener
 {
@@ -114,6 +117,7 @@ public final class SecuritiesTable implements ModificationListener
         this.securities = new TableViewer(container, SWT.FULL_SELECTION | SWT.MULTI);
 
         ColumnEditingSupport.prepare(securities);
+        ColumnViewerToolTipSupport.enableFor(securities, ToolTip.NO_RECREATE);
 
         support = new ShowHideColumnHelper(SecuritiesTable.class.getName(), getClient(), view.getPreferenceStore(),
                         securities, layout);
@@ -280,35 +284,56 @@ public final class SecuritiesTable implements ModificationListener
         column = new Column("5", Messages.ColumnChangeOnPrevious, SWT.RIGHT, 60); //$NON-NLS-1$
         column.setMenuLabel(Messages.ColumnChangeOnPrevious_MenuLabel);
         column.setLabelProvider(new NumberColorLabelProvider<>(Values.Percent2, element -> {
-            SecurityPrice price = ((Security) element).getSecurityPrice(LocalDate.now());
-            if (!(price instanceof LatestSecurityPrice))
+            Optional<Pair<SecurityPrice, SecurityPrice>> previous = ((Security) element).getLatestTwoSecurityPrices();
+            if (previous.isPresent())
+            {
+                double latestQuote = previous.get().getLeft().getValue() / Values.Quote.divider();
+                double previousQuote = previous.get().getRight().getValue() / Values.Quote.divider();
+                return (latestQuote - previousQuote) / previousQuote;
+            }
+            else
+            {
                 return null;
-
-            LatestSecurityPrice latest = (LatestSecurityPrice) price;
-            if (latest.getPreviousClose() == LatestSecurityPrice.NOT_AVAILABLE)
+            }
+        }, element -> {
+            Optional<Pair<SecurityPrice, SecurityPrice>> previous = ((Security) element).getLatestTwoSecurityPrices();
+            if (previous.isPresent())
+            {
+                return Messages.ColumnLatestPrice + ": " //$NON-NLS-1$
+                                + MessageFormat.format(Messages.TooltipQuoteAtDate,
+                                                Values.Quote.format(previous.get().getLeft().getValue()),
+                                                Values.Date.format(previous.get().getLeft().getDate()))
+                                + "\n" // //$NON-NLS-1$
+                                + Messages.ColumnPreviousPrice + ": " //$NON-NLS-1$
+                                + MessageFormat.format(Messages.TooltipQuoteAtDate,
+                                                Values.Quote.format(previous.get().getRight().getValue()),
+                                                Values.Date.format(previous.get().getRight().getDate()));
+            }
+            else
+            {
                 return null;
-
-            return (latest.getValue() - latest.getPreviousClose()) / (double) latest.getPreviousClose();
+            }
         }));
         column.setSorter(ColumnViewerSorter.create((o1, o2) -> { // NOSONAR
-            SecurityPrice p1 = ((Security) o1).getSecurityPrice(LocalDate.now());
-            SecurityPrice p2 = ((Security) o2).getSecurityPrice(LocalDate.now());
 
-            if (!(p1 instanceof LatestSecurityPrice))
-                p1 = null;
-            if (!(p2 instanceof LatestSecurityPrice))
-                p2 = null;
+            Optional<Pair<SecurityPrice, SecurityPrice>> previous1 = ((Security) o1).getLatestTwoSecurityPrices();
+            Optional<Pair<SecurityPrice, SecurityPrice>> previous2 = ((Security) o2).getLatestTwoSecurityPrices();
 
-            if (p1 == null)
-                return p2 == null ? 0 : -1;
-            if (p2 == null)
+            if (!previous1.isPresent() && !previous2.isPresent())
+                return 0;
+            if (!previous1.isPresent() && previous2.isPresent())
+                return -1;
+            if (previous1.isPresent() && !previous2.isPresent())
                 return 1;
 
-            LatestSecurityPrice l1 = (LatestSecurityPrice) p1;
-            LatestSecurityPrice l2 = (LatestSecurityPrice) p2;
+            double latestQuote1 = previous1.get().getLeft().getValue() / Values.Quote.divider();
+            double previousQuote1 = previous1.get().getRight().getValue() / Values.Quote.divider();
+            double v1 = (latestQuote1 - previousQuote1) / previousQuote1 * 100;
 
-            double v1 = ((double) (l1.getValue() - l1.getPreviousClose())) / l1.getPreviousClose() * 100;
-            double v2 = ((double) (l2.getValue() - l2.getPreviousClose())) / l2.getPreviousClose() * 100;
+            double latestQuote2 = previous2.get().getLeft().getValue() / Values.Quote.divider();
+            double previousQuote2 = previous2.get().getRight().getValue() / Values.Quote.divider();
+            double v2 = (latestQuote2 - previousQuote2) / previousQuote2 * 100;
+
             return Double.compare(v1, v2);
         }));
         support.addColumn(column);
