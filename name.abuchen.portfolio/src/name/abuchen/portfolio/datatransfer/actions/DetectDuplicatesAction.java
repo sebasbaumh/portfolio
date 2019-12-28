@@ -19,7 +19,7 @@ public class DetectDuplicatesAction implements ImportAction
     @Override
     public Status process(AccountTransaction transaction, Account account)
     {
-        return check(transaction, account.getTransactions()); 
+        return check(transaction, account.getTransactions());
     }
 
     @Override
