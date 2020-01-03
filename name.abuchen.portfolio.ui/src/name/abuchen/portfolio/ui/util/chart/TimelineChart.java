@@ -373,4 +373,10 @@ public class TimelineChart extends Chart // NOSONAR
             setRedraw(true);
         }
     }
+
+    @Override
+    public void save(String filename, int format)
+    {
+        ChartUtil.save(this, filename, format);
+    }
 }

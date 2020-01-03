@@ -15,6 +15,9 @@ import java.util.function.Function;
 
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.GridLayoutFactory;
+import org.eclipse.jface.resource.FontDescriptor;
+import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.resource.LocalResourceManager;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.RowLayout;
@@ -31,10 +34,13 @@ import org.swtchart.ISeries;
 import name.abuchen.portfolio.money.Values;
 import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.util.Colors;
+import name.abuchen.portfolio.util.Pair;
 import name.abuchen.portfolio.util.TextUtil;
 
 public class TimelineChartToolTip extends AbstractChartToolTip
 {
+    private LocalResourceManager resourceManager;
+
     private Function<Object, String> xAxisFormat;
 
     private DecimalFormat valueFormat = new DecimalFormat("#,##0.00"); //$NON-NLS-1$
@@ -55,6 +61,8 @@ public class TimelineChartToolTip extends AbstractChartToolTip
     public TimelineChartToolTip(Chart chart)
     {
         super(chart);
+
+        this.resourceManager = new LocalResourceManager(JFaceResources.getResources(), chart);
     }
 
     public void enableCategory(boolean enabled)
@@ -188,11 +196,49 @@ public class TimelineChartToolTip extends AbstractChartToolTip
         right.setForeground(foregroundColor);
         right.setText(formatXAxisData(getFocusedObject()));
 
-        ISeries[] allSeries = getChart().getSeriesSet().getSeries();
-        if (reverseLabels)
-            Collections.reverse(Arrays.asList(allSeries));
+        List<Pair<ISeries, Double>> values = computeValues(getChart().getSeriesSet().getSeries());
 
-        for (ISeries series : allSeries)
+        if (reverseLabels)
+            Collections.reverse(values);
+
+        if (isAltPressed())
+            Collections.sort(values, (l, r) -> r.getValue().compareTo(l.getValue()));
+
+        for (Pair<ISeries, Double> value : values)
+        {
+            ISeries series = value.getKey();
+
+            Color color = series instanceof ILineSeries ? ((ILineSeries) series).getLineColor()
+                            : ((IBarSeries) series).getBarColor();
+
+            left = new Label(data, SWT.NONE);
+            left.setBackground(color);
+            left.setForeground(Colors.getTextColor(color));
+            left.setText(TextUtil.tooltip(series.getId()));
+            GridDataFactory.fillDefaults().grab(true, false).applyTo(left);
+
+            right = new Label(data, SWT.RIGHT);
+            right.setForeground(foregroundColor);
+            right.setText(valueFormat.format(value.getRight()));
+            GridDataFactory.fillDefaults().align(SWT.END, SWT.FILL).applyTo(right);
+        }
+
+        Object focus = getFocusedObject();
+        extraInfoProvider.forEach(provider -> provider.accept(container, focus));
+
+        Label hint = new Label(data, SWT.NONE);
+        hint.setForeground(Colors.DARK_GRAY);
+        hint.setText(Messages.TooltipHintPressAlt);
+        hint.setFont(this.resourceManager.createFont(
+                        FontDescriptor.createFrom(data.getFont()).increaseHeight(-3).withStyle(SWT.ITALIC)));
+        GridDataFactory.fillDefaults().span(2, 1).applyTo(hint);
+    }
+
+    private List<Pair<ISeries, Double>> computeValues(ISeries[] allSeries)
+    {
+        List<Pair<ISeries, Double>> values = new ArrayList<>();
+
+        for (ISeries series : allSeries) // NOSONAR
         {
             if (excludeFromTooltip.contains(series.getId()))
                 continue;
@@ -214,23 +260,10 @@ public class TimelineChartToolTip extends AbstractChartToolTip
                 value = series.getYSeries()[line];
             }
 
-            Color color = series instanceof ILineSeries ? ((ILineSeries) series).getLineColor()
-                            : ((IBarSeries) series).getBarColor();
-
-            left = new Label(data, SWT.NONE);
-            left.setBackground(color);
-            left.setForeground(Colors.getTextColor(color));
-            left.setText(TextUtil.tooltip(series.getId()));
-            GridDataFactory.fillDefaults().grab(true, false).applyTo(left);
-
-            right = new Label(data, SWT.RIGHT);
-            right.setForeground(foregroundColor);
-            right.setText(valueFormat.format(value));
-            GridDataFactory.fillDefaults().align(SWT.END, SWT.FILL).applyTo(right);
+            values.add(new Pair<>(series, value));
         }
 
-        Object focus = getFocusedObject();
-        extraInfoProvider.forEach(provider -> provider.accept(container, focus));
+        return values;
     }
 
     private String formatXAxisData(Object obj)
