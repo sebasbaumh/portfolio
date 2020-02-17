@@ -382,6 +382,7 @@ public class Messages extends NLS
     public static String IntroLabelSamples;
     public static String IntroLabelTranslation;
     public static String IntroLabelTranslationInfo;
+    public static String IntroNewAndNoteworthyText;
     public static String IntroNewFile;
     public static String IntroNewFileText;
     public static String IntroOpenDaxSample;
@@ -572,6 +573,8 @@ public class Messages extends NLS
     public static String LabelPortfolioTimeMachine;
     public static String LabelPreTax;
     public static String LabelQuandlCode;
+    public static String LabelQuandlColumnNameQuote;
+    public static String LabelQuandlColumnNameQuoteHint;
     public static String LabelQuote;
     public static String LabelQuoteFeed;
     public static String LabelQuoteFeedProvider;
@@ -854,8 +857,10 @@ public class Messages extends NLS
     public static String PrefCheckOnStartup;
     public static String PrefCreateBackupBeforeSaving;
     public static String PrefDescriptionAlphaVantage;
+    public static String PrefDescriptionFinnhub;
     public static String PrefDescriptionProxy;
     public static String PrefDescriptionQuandl;
+    public static String PrefFinnhubAPIKey;
     public static String PrefLabelNote;
     public static String PrefLabelProxyHost;
     public static String PrefLabelProxyPort;
@@ -871,11 +876,13 @@ public class Messages extends NLS
     public static String PrefUpdateSite;
     public static String PrefTitle;
     public static String PrefTitleAlphaVantage;
+    public static String PrefTitleAPIKeys;
     public static String PrefTitleGeneral;
     public static String PrefTitleLanguage;
     public static String PrefTitlePresentation;
     public static String PrefTitleProxy;
     public static String PrefTitleCalendar;
+    public static String PrefTitleFinnhub;
     public static String PrefTitleQuandl;
     public static String SecurityFilter;
     public static String SecurityFilterSharesHeldEqualZero;
@@ -940,6 +947,7 @@ public class Messages extends NLS
     public static String SplitWizardReviewTransactionsTitle;
     public static String SystemMenuChangelog;
     public static String SystemMenuCheckForUpdates;
+    public static String SystemMenuNewAndNoteworthy;
     public static String TabAccountBalanceChart;
     public static String TabTransactions;
     public static String TitlePasswordDialog;
