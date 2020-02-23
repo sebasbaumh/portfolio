@@ -534,15 +534,25 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         {
             // then try WKN
             key = s.getWkn();
-            if (stringIsNullOrEmpty(key))
+        }
+        if (stringIsNullOrEmpty(key))
+        {
+            // then ticker symbol
+            key = s.getTickerSymbol();
+        }
+        if (stringIsNullOrEmpty(key))
+        {
+            // check for currencies
+            String c1 = s.getCurrencyCode();
+            String c2 = s.getTargetCurrencyCode();
+            if (!stringIsNullOrEmpty(c1) && !stringIsNullOrEmpty(c2))
             {
-                // then ticker symbol
-                key = s.getTickerSymbol();
+                key = c1 + "/" + c2; //$NON-NLS-1$
             }
         }
         if (!stringIsNullOrEmpty(key))
-        { 
-            return key; 
+        {
+            return key;
         }
         return null;
     }
@@ -555,8 +565,17 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         String key = getKey(subject);
         if (key != null)
         {
+            String sQueryUrl;
+            // check for URLs
+            if (key.startsWith("http://") || key.startsWith("https://")) //$NON-NLS-1$ //$NON-NLS-2$
+            {
+                sQueryUrl = key;
+            }
+            else
+            {
+                sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
+            }
             // execute query to find actual security page
-            String sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
             try (InputStream isQuery = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
             {
                 ArrayList<String> results = new ArrayList<String>();
