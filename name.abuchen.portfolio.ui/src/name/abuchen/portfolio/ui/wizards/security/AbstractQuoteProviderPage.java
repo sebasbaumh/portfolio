@@ -390,7 +390,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
     {
         boolean dropDown = feed != null && feed.getId() != null
                         && (feed.getId().startsWith(YAHOO) || feed.getId().equals(EurostatHICPQuoteFeed.ID)
-                                        || feed.getId().equals(PortfolioReportQuoteFeed.ID)) || feed.getId().equals(FinanztreffDeQuoteFeed.ID));
+                                        || feed.getId().equals(PortfolioReportQuoteFeed.ID)) || feed.getId().equals(FinanztreffDeQuoteFeed.ID);
 
         boolean feedURL = feed != null && feed.getId() != null && (feed.getId().equals(HTMLTableQuoteFeed.ID)
                         || feed.getId().equals(CSQuoteFeed.ID) || feed.getId().equals(GenericJSONQuoteFeed.ID));
