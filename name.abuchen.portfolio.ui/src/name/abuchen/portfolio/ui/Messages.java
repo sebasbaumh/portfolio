@@ -32,6 +32,9 @@ public class Messages extends NLS
     public static String BookmarksListView_LabelAttributeReplacements;
     public static String BookmarksListView_LabelDefaultReplacements;
     public static String BookmarksListView_LabelReplaceFirstAvailable;
+    public static String MenuDashboardColumnWidth;
+    public static String MenuDashboardColumnWidthDecrease;
+    public static String MenuDashboardColumnWidthIncrease;
     public static String MenuDuplicateDashboardColumn;
     public static String MenuMoveDown;
     public static String MenuMoveUp;
@@ -714,6 +717,8 @@ public class Messages extends NLS
     public static String MenuConfigureView;
     public static String MenuConfirmDeleteAllTransactions;
     public static String MenuConvertToBuy;
+    public static String MenuConvertToBuySell;
+    public static String MenuConvertToDelivery;
     public static String MenuConvertToInboundDelivery;
     public static String MenuConvertToOutboundDelivery;
     public static String MenuConvertToSell;
@@ -752,6 +757,7 @@ public class Messages extends NLS
     public static String MenuShow;
     public static String MenuShowHideColumns;
     public static String MenuShowSidebar;
+    public static String MenuSwitchCurrencies;
     public static String MenuTaxonomyAssignmentRemove;
     public static String MenuTaxonomyClassificationCreate;
     public static String MenuTaxonomyClassificationDelete;
@@ -777,7 +783,6 @@ public class Messages extends NLS
     public static String MsgAccountFromMissing;
     public static String MsgAccountMustBeDifferent;
     public static String MsgAccountToMissing;
-    public static String MsgCannotRestartBecauseOfOpenDialog;
     public static String MsgConfirmInstall;
     public static String MsgCreateTransactionsAutomaticallyUponOpening;
     public static String MsgDateIsInTheFuture;
