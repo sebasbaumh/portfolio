@@ -32,6 +32,7 @@ import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.model.SecurityPrice;
 import name.abuchen.portfolio.money.Values;
 import name.abuchen.portfolio.online.QuoteFeed;
+import name.abuchen.portfolio.online.QuoteFeedData;
 import name.abuchen.portfolio.util.OnlineHelper;
 
 /**
@@ -45,9 +46,9 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      * ID of the provider.
      */
     public static final String ID = "FINANZTREFF_DE"; //$NON-NLS-1$
-    private static final String QUERY_URL = "http://www.finanztreff.de/ajax/get_search.htn?suchbegriff={key}"; //$NON-NLS-1$
+    private static final String QUERY_URL = "https://www.finanztreff.de/suchlayer/"; //$NON-NLS-1$
     private static final String QUERY_QUOTES_URL = "http://www.finanztreff.de/kurse_einzelkurs_portrait.htn"; //$NON-NLS-1$
-    private static final String REFERRER_URL = "http://www.finanztreff.de"; //$NON-NLS-1$
+    private static final String REFERRER_URL = "https://www.finanztreff.de"; //$NON-NLS-1$
     
     /**
      * Gets the content of the web page for the given {@link Security}.
@@ -239,13 +240,11 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      *
      * @param s
      *            {@link Security}
-     * @param dateStart
-     *            start date (can be null)
      * @param errors
      *            errors list
      * @return list of security prices
      */
-    private List<LatestSecurityPrice> getQuotes(Security s, LocalDate dateStart, List<Exception> errors)
+    private List<LatestSecurityPrice> getQuotes(Security s, List<Exception> errors)
     {
         SecurityPage p = getContentOfSecurityPage(s, errors);
         if ((p == null) || p.getContentLines().isEmpty())
@@ -317,16 +316,13 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                         // check if start date is given and if so, if
                         // current
                         // date is not before it
-                        if ((dateStart == null) || (date.compareTo(dateStart) >= 0))
+                        LatestSecurityPrice price = new LatestSecurityPrice(date, getPrice(dValue));
+                        if ((latest == null) || (latest.compareTo(price) <= 0))
                         {
-                            LatestSecurityPrice price = new LatestSecurityPrice(date, getPrice(dValue));
-                            if ((latest == null) || (latest.compareTo(price) <= 0))
-                            {
-                                // add latest quote to returned result
-                                latest = price;
-                            }
-                            prices.add(price);
+                            // add latest quote to returned result
+                            latest = price;
                         }
+                        prices.add(price);
                     }
                 }
             }
@@ -421,6 +417,25 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         {
             params.put("exchange", p.getExchange()); //$NON-NLS-1$
         }
+        return openUrlStreamUsingXmlHttpRequest(url, params, referrer);
+    }
+
+    /**
+     * Open a stream to the given {@link URL} using a XHR.
+     *
+     * @param url
+     *            {@link URL}
+     * @param params
+     *            parameters
+     * @param referrer
+     *            referrer URL (can be null)
+     * @return {@link InputStream}
+     * @throws IOException
+     */
+    private static InputStream openUrlStreamUsingXmlHttpRequest(URL url, Map<String, String> params, String referrer)
+                    throws IOException
+    {
+        // encode data fields
         StringBuilder postData = new StringBuilder();
         for (Map.Entry<String, String> param : params.entrySet())
         {
@@ -565,19 +580,24 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         String key = getKey(subject);
         if (key != null)
         {
-            String sQueryUrl;
-            // check for URLs
-            if (key.startsWith("http://") || key.startsWith("https://")) //$NON-NLS-1$ //$NON-NLS-2$
+            InputStream isQuery = null;
+            try
             {
-                sQueryUrl = key;
-            }
-            else
-            {
-                sQueryUrl = QUERY_URL.replace("{key}", key); //$NON-NLS-1$
-            }
-            // execute query to find actual security page
-            try (InputStream isQuery = openUrlStream(new URL(sQueryUrl), REFERRER_URL))
-            {
+                HashMap<String, String> params = new HashMap<String, String>();
+                String sQueryUrl;
+                // check for URLs
+                if (key.startsWith("http://") || key.startsWith("https://")) //$NON-NLS-1$ //$NON-NLS-2$
+                {
+                    sQueryUrl = key;
+                    isQuery = openUrlStream(new URL(sQueryUrl), REFERRER_URL);
+                }
+                else
+                {
+                    sQueryUrl = QUERY_URL;
+                    params.put("suchbegriff", key); //$NON-NLS-1$
+                    isQuery = openUrlStreamUsingXmlHttpRequest(new URL(sQueryUrl), params, REFERRER_URL);
+                }
+                // execute query to find actual security page
                 ArrayList<String> results = new ArrayList<String>();
                 Pattern pLineSubPages = Pattern.compile("location\\.href='([^']+)"); //$NON-NLS-1$
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(isQuery)))
@@ -642,21 +662,22 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             {
                 errors.add(ex);
             }
+            finally
+            {
+                if (isQuery != null)
+                {
+                    try
+                    {
+                        isQuery.close();
+                    }
+                    catch (IOException e)
+                    {
+                        errors.add(e);
+                    }
+                }
+            }
         }
         return exchanges;
-    }
-
-    @Override
-    public List<LatestSecurityPrice> getHistoricalQuotes(Security security, LocalDate start, List<Exception> errors)
-    {
-        return getQuotes(security, start, errors);
-    }
-
-    @Override
-    public List<LatestSecurityPrice> getHistoricalQuotes(String response, List<Exception> errors)
-    {
-        // not supported
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -669,46 +690,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     public String getName()
     {
         return Messages.LabelFinanztreffDe;
-    }
-
-    @Override
-    public boolean updateHistoricalQuotes(Security security, List<Exception> errors)
-    {
-        boolean isUpdated = false;
-        List<LatestSecurityPrice> prices = getQuotes(security, null, errors);
-        for (SecurityPrice p : prices)
-        {
-            if (security.addPrice(p))
-            {
-                isUpdated = true;
-            }
-        }
-        // get latest price if possible
-        LatestSecurityPrice latest = lastOrDefault(prices);
-        if (latest != null)
-        {
-            // set it
-            if (security.setLatest(latest))
-            {
-                isUpdated = true;
-            }
-        }
-        return isUpdated;
-    }
-
-    @Override
-    public boolean updateLatestQuotes(Security security, List<Exception> errors)
-    {
-        // get standard quotes
-        List<LatestSecurityPrice> prices = getQuotes(security, null, errors);
-        // get latest price if possible
-        LatestSecurityPrice latest = lastOrDefault(prices);
-        if (latest != null)
-        {
-            // set it
-            return security.setLatest(latest);
-        }
-        return false;
     }
 
     /**
@@ -845,5 +826,30 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
             }
         }
 
+    }
+
+    @Override
+    public QuoteFeedData getHistoricalQuotes(Security security)
+    {
+        ArrayList<Exception> errors = new ArrayList<Exception>();
+        List<LatestSecurityPrice> prices = getQuotes(security, errors);
+        for (SecurityPrice p : prices)
+        {
+            security.addPrice(p);
+        }
+        // get latest price if possible
+        LatestSecurityPrice latest = lastOrDefault(prices);
+        if (latest != null)
+        {
+            // set it
+            security.setLatest(latest);
+        }
+        QuoteFeedData data = new QuoteFeedData();
+        for (Exception e : errors)
+        {
+            data.addError(e);
+        }
+        data.addAllPrices(prices);
+        return data;
     }
 }
