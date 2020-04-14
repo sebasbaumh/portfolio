@@ -23,6 +23,14 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Whitelist;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 
 import name.abuchen.portfolio.online.QuoteFeedData.RawResponse;
 import name.abuchen.portfolio.ui.Messages;
@@ -78,7 +86,8 @@ public class RawResponsesDialog extends Dialog
                         .thenBelow(rawText, 10).left(new FormAttachment(0, 10)).right(new FormAttachment(100, -10))
                         .width(500).height(300);
 
-        comboURL.setSelection(new StructuredSelection(rawResponses.get(0)));
+        if (!rawResponses.isEmpty())
+            comboURL.setSelection(new StructuredSelection(rawResponses.get(0)));
 
         return composite;
     }
@@ -96,5 +105,31 @@ public class RawResponsesDialog extends Dialog
             TextTransfer textTransfer = TextTransfer.getInstance();
             cb.setContents(new Object[] { rawText.getText() }, new Transfer[] { textTransfer });
         }));
+
+        button = createButton(parent, 9998, Messages.LabelFormatJSON, false);
+        button.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> {
+            if (rawText.isDisposed())
+                return;
+
+            try
+            {
+                JsonElement jsonElement = new JsonParser().parse(rawText.getText());
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                rawText.setText(gson.toJson(jsonElement));
+            }
+            catch (JsonSyntaxException ignore)
+            {
+                // text is not json, do nothing
+            }
+        }));
+
+        button = createButton(parent, 9997, Messages.LabelCleanHTML, false);
+        button.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> {
+            if (rawText.isDisposed())
+                return;
+
+            rawText.setText(Jsoup.clean(rawText.getText(), Whitelist.relaxed()));
+        }));
+
     }
 }
