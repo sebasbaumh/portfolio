@@ -829,7 +829,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
     }
 
     @Override
-    public QuoteFeedData getHistoricalQuotes(Security security)
+    public QuoteFeedData getHistoricalQuotes(Security security, boolean collectRawResponse)
     {
         ArrayList<Exception> errors = new ArrayList<Exception>();
         List<LatestSecurityPrice> prices = getQuotes(security, errors);
@@ -852,4 +852,5 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         data.addAllPrices(prices);
         return data;
     }
+
 }
