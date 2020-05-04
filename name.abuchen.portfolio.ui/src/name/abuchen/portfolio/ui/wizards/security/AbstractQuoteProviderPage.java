@@ -224,14 +224,14 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
             new LoadExchangesJob().schedule();
         }
 
-            QuoteFeed feed = (QuoteFeed) ((IStructuredSelection) comboProvider.getSelection()).getFirstElement();
+        QuoteFeed feed = (QuoteFeed) ((IStructuredSelection) comboProvider.getSelection()).getFirstElement();
         if (feed != null && feed.getId() != null && feed.getId().indexOf(HTML) >= 0)
-            {
-                if (getFeedURL() == null || getFeedURL().length() == 0)
-                    clearSampleQuotes();
-                else
-                    showSampleQuotes(feed, null);
-            }
+        {
+            if (getFeedURL() == null || getFeedURL().length() == 0)
+                clearSampleQuotes();
+            else
+                showSampleQuotes(feed, null);
+        }
 
         if (textQuandlCode != null && !textQuandlCode.getText()
                         .equals(model.getFeedProperty(QuandlQuoteFeed.QUANDL_CODE_PROPERTY_NAME)))
@@ -252,7 +252,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
         {
             String path = model.getFeedProperty(GenericJSONQuoteFeed.DATE_PROPERTY_NAME);
             textJsonPathDate.setText(path != null ? path : ""); //$NON-NLS-1$
-    }
+        }
 
         if (textJsonPathClose != null && !textJsonPathClose.getText()
                         .equals(model.getFeedProperty(GenericJSONQuoteFeed.CLOSE_PROPERTY_NAME)))
@@ -410,6 +410,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
 
         boolean feedURL = feed != null && feed.getId() != null && (feed.getId().equals(HTMLTableQuoteFeed.ID)
                         || feed.getId().equals(CSQuoteFeed.ID) || feed.getId().equals(GenericJSONQuoteFeed.ID));
+
         boolean needsTicker = feed != null && feed.getId() != null
                         && (feed.getId().equals(AlphavantageQuoteFeed.ID) || feed.getId().equals(FinnhubQuoteFeed.ID));
 
@@ -635,7 +636,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
             String closePath = model.getFeedProperty(GenericJSONQuoteFeed.CLOSE_PROPERTY_NAME);
             if (closePath != null)
                 textJsonPathClose.setText(closePath);
-    }
+        }
     }
 
     private void onFeedProviderChanged(SelectionChangedEvent event)
