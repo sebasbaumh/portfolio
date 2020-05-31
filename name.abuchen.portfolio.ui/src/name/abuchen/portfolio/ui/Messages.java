@@ -373,6 +373,7 @@ public class Messages extends NLS
     public static String ExportWizardSelectDirectory;
     public static String ExportWizardTitle;
     public static String ExportWizardUnsupportedExport;
+    public static String ExportWizardVINISApp;
     public static String GroupLabelAttributes;
     public static String GroupLabelDataQuality;
     public static String GroupLabelDividends;
@@ -420,6 +421,7 @@ public class Messages extends NLS
     public static String InvestmentPlanTxForMultiplePlansCreated;
     public static String InvestmentPlanTypeBuyDelivery;
     public static String InvestmentPlanTypeDeposit;
+    public static String JobLabelAutoSave;
     public static String JobLabelSyncSecuritiesOnline;
     public static String JobLabelUpdateCPI;
     public static String JobLabelUpdateQuotes;
@@ -476,6 +478,8 @@ public class Messages extends NLS
     public static String LabelChartDetailIndicatorBollingerBandsLower;
     public static String LabelChartDetailIndicatorBollingerBandsUpper;
     public static String LabelChartDetailMovingAverage;
+    public static String LabelChartDetailMovingAverageSMA;
+    public static String LabelChartDetailMovingAverageEMA;
     public static String LabelChartDetailMovingAverage_50days;
     public static String LabelChartDetailMovingAverage_5days;
     public static String LabelChartDetailMovingAverage_20days;
@@ -484,15 +488,6 @@ public class Messages extends NLS
     public static String LabelChartDetailMovingAverage_90days;
     public static String LabelChartDetailMovingAverage_100days;
     public static String LabelChartDetailMovingAverage_200days;
-    public static String LabelChartDetailExponentialMovingAverage;
-    public static String LabelChartDetailExponentialMovingAverage_50days;
-    public static String LabelChartDetailExponentialMovingAverage_5days;
-    public static String LabelChartDetailExponentialMovingAverage_20days;
-    public static String LabelChartDetailExponentialMovingAverage_30days;
-    public static String LabelChartDetailExponentialMovingAverage_38days;
-    public static String LabelChartDetailExponentialMovingAverage_90days;
-    public static String LabelChartDetailExponentialMovingAverage_100days;
-    public static String LabelChartDetailExponentialMovingAverage_200days;
     public static String LabelChartDetailSettings;
     public static String LabelChartDetailSettingsShowMarkerLines;
     public static String LabelChartDetailSettingsShowDataLabel;
@@ -888,6 +883,7 @@ public class Messages extends NLS
     public static String PrefAlphaVantageCallFrequencyLimit;
     public static String PrefCheckOnStartup;
     public static String PrefCreateBackupBeforeSaving;
+    public static String PrefAutoSaveFrequency;
     public static String PrefDescriptionAlphaVantage;
     public static String PrefDescriptionFinnhub;
     public static String PrefDescriptionProxy;
