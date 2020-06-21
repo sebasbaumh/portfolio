@@ -31,6 +31,7 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.ToolTip;
 import org.eclipse.jface.window.Window;
+import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
@@ -90,11 +91,13 @@ import name.abuchen.portfolio.ui.util.viewers.ColumnViewerSorter;
 import name.abuchen.portfolio.ui.util.viewers.DateEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.SharesLabelProvider;
 import name.abuchen.portfolio.ui.util.viewers.ShowHideColumnHelper;
+import name.abuchen.portfolio.ui.util.viewers.StringEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.TransactionOwnerListEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.ValueEditingSupport;
 import name.abuchen.portfolio.ui.views.actions.ConvertBuySellToDeliveryAction;
 import name.abuchen.portfolio.ui.views.actions.ConvertDeliveryToBuySellAction;
 import name.abuchen.portfolio.ui.views.columns.NoteColumn;
+import name.abuchen.portfolio.ui.wizards.events.CustomEventWizard;
 import name.abuchen.portfolio.ui.wizards.security.EditSecurityDialog;
 import name.abuchen.portfolio.ui.wizards.security.SearchSecurityWizardDialog;
 import name.abuchen.portfolio.util.TradeCalendar;
@@ -1044,6 +1047,55 @@ public class SecurityListView extends AbstractListView implements ModificationLi
                         }));
     }
 
+    private void eventsMenuAboutToShow(IMenuManager manager) // NOSONAR
+    {
+        Security security = (Security) prices.getData(Security.class.toString());
+        if (security == null)
+            return;
+
+        manager.add(new Action(Messages.SecurityMenuAddEvent)
+        {
+            @Override
+            public void run()
+            {
+                CustomEventWizard wizard = new CustomEventWizard(getClient(), security);
+                WizardDialog dialog = new WizardDialog(getActiveShell(), wizard);
+                if (dialog.open() == Window.OK)
+                {
+                    markDirty();
+                    notifyModelUpdated();
+                }
+            }
+        });
+
+        IStructuredSelection selection = events.getStructuredSelection();
+        if (selection.isEmpty())
+            return;
+
+        manager.add(new Separator());
+
+        manager.add(new Action(Messages.MenuTransactionDelete)
+        {
+            @Override
+            public void run()
+            {
+                IStructuredSelection selection = events.getStructuredSelection();
+
+                // allow deletion (but not creation) of stock split events.
+                // Background: once we refactor stock splits, we might want to
+                // rely on the fact that a stock split was created technically
+                // in the program, but deletion should be possible anyway
+
+                Iterator<?> iter = selection.iterator();
+                while (iter.hasNext())
+                    security.removeEvent((SecurityEvent) iter.next());
+
+                markDirty();
+                notifyModelUpdated();
+            }
+        });
+    }
+
     private Action createEditAction(TransactionPair<?> transactionPair)
     {
         if (transactionPair.getTransaction().getCrossEntry() instanceof BuySellEntry)
@@ -1088,7 +1140,7 @@ public class SecurityListView extends AbstractListView implements ModificationLi
         TableColumnLayout layout = new TableColumnLayout();
         container.setLayout(layout);
 
-        events = new TableViewer(container, SWT.FULL_SELECTION);
+        events = new TableViewer(container, SWT.FULL_SELECTION | SWT.MULTI);
 
         ShowHideColumnHelper support = new ShowHideColumnHelper(SecurityListView.class.getSimpleName() + "@events", //$NON-NLS-1$
                         getPreferenceStore(), events, layout);
@@ -1103,6 +1155,14 @@ public class SecurityListView extends AbstractListView implements ModificationLi
             }
         });
         column.setSorter(ColumnViewerSorter.create(e -> ((SecurityEvent) e).getDate()), SWT.UP);
+        column.setEditingSupport(new DateEditingSupport(SecurityEvent.class, "date") //$NON-NLS-1$
+        {
+            @Override
+            public boolean canEdit(Object element)
+            {
+                return ((SecurityEvent) element).getType().isUserEditable();
+            }
+        });
         support.addColumn(column);
 
         column = new Column(Messages.ColumnTransactionType, SWT.None, 80);
@@ -1114,6 +1174,7 @@ public class SecurityListView extends AbstractListView implements ModificationLi
                 return ((SecurityEvent) element).getType().toString();
             }
         });
+        column.setSorter(ColumnViewerSorter.create(e -> ((SecurityEvent) e).getType()), SWT.UP);
         support.addColumn(column);
 
         column = new Column(Messages.ColumnDetails, SWT.None, 80);
@@ -1125,6 +1186,15 @@ public class SecurityListView extends AbstractListView implements ModificationLi
                 return ((SecurityEvent) element).getDetails();
             }
         });
+        column.setSorter(ColumnViewerSorter.create(e -> ((SecurityEvent) e).getDetails().toLowerCase()), SWT.UP);
+        column.setEditingSupport(new StringEditingSupport(SecurityEvent.class, "details") //$NON-NLS-1$
+        {
+            @Override
+            public boolean canEdit(Object element)
+            {
+                return ((SecurityEvent) element).getType().isUserEditable();
+            }
+        });
         support.addColumn(column);
 
         support.createColumns();
@@ -1133,6 +1203,8 @@ public class SecurityListView extends AbstractListView implements ModificationLi
         events.getTable().setLinesVisible(true);
 
         events.setContentProvider(ArrayContentProvider.getInstance());
+
+        hookContextMenu(events.getControl(), this::eventsMenuAboutToShow);
 
         return container;
     }

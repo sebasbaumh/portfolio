@@ -6,6 +6,7 @@ public class Messages extends NLS
 {
     private static final String BUNDLE_NAME = "name.abuchen.portfolio.ui.messages"; //$NON-NLS-1$
     public static String AboutText;
+    public static String AboutTextContributions;
     public static String AccountFilterRetiredAccounts;
     public static String AccountMenuActivate;
     public static String AccountMenuAdd;
@@ -115,6 +116,7 @@ public class Messages extends NLS
     public static String ColumnLatestDate_MenuLabel;
     public static String ColumnLatestHistoricalDate_MenuLabel;
     public static String ColumnCurrency;
+    public static String ColumnCurrencyGains;
     public static String ColumnCurrencyProvider;
     public static String ColumnCurrentQuote;
     public static String ColumnCurrentShares;
@@ -251,11 +253,13 @@ public class Messages extends NLS
     public static String ColumnQuoteChange_Option;
     public static String ColumnQuoteFeedHistoric;
     public static String ColumnQuoteFeedLatest;
+    public static String ColumnRealizedCapitalGains;
     public static String ColumnRebalancingIndicatorAbsoluteThreshold;
     public static String ColumnRebalancingIndicatorBarLength;
     public static String ColumnRebalancingIndicatorRelativeThreshold;
     public static String ColumnReferenceAccount;
     public static String ColumnRetired;
+    public static String ColumnReturn;
     public static String ColumnSecurity;
     public static String ColumnSecurityExchange;
     public static String ColumnSecurityType;
@@ -284,6 +288,7 @@ public class Messages extends NLS
     public static String ColumnTTWROR_Option;
     public static String ColumnTWROR;
     public static String ColumnTWROR_Description;
+    public static String ColumnUnrealizedCapitalGains;
     public static String ColumnUpdatedQuote;
     public static String ColumnUpdatedShares;
     public static String ColumnValue;
@@ -458,6 +463,7 @@ public class Messages extends NLS
     public static String LabelAvailableAttributes;
     public static String LabelAverageHoldingPeriod;
     public static String LabelBenchmarks;
+    public static String LabelCapitalGains;
     public static String LabelCategoryOtherMovements;
     public static String LabelChartDetailChartScaling;
     public static String LabelChartDetailChartScalingLinear;
@@ -946,6 +952,7 @@ public class Messages extends NLS
     public static String SecurityMenuSearch4Securities;
     public static String SecurityMenuSell;
     public static String SecurityMenuStockSplit;
+    public static String SecurityMenuAddEvent;
     public static String SecurityMenuTransfer;
     public static String SecurityMenuUpdateQuotes;
     public static String SecurityTabChart;
@@ -975,6 +982,9 @@ public class Messages extends NLS
     public static String SplitWizardReviewQuotesTitle;
     public static String SplitWizardReviewTransactionsDescription;
     public static String SplitWizardReviewTransactionsTitle;
+    public static String EventWizardTitle;
+    public static String EventWizardDescription;
+    public static String EventWizardLabelMessage;
     public static String SystemMenuChangelog;
     public static String SystemMenuCheckForUpdates;
     public static String SystemMenuNewAndNoteworthy;
