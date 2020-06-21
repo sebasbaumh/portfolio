@@ -7,9 +7,21 @@ public class SecurityEvent
 {
     public enum Type
     {
-        STOCK_SPLIT;
+        STOCK_SPLIT(false), NOTE(true);
 
         private static final ResourceBundle RESOURCES = ResourceBundle.getBundle("name.abuchen.portfolio.model.labels"); //$NON-NLS-1$
+
+        private boolean isUserEditable;
+
+        private Type(boolean isUserEditable)
+        {
+            this.isUserEditable = isUserEditable;
+        }
+
+        public boolean isUserEditable()
+        {
+            return isUserEditable;
+        }
 
         @Override
         public String toString()
@@ -39,13 +51,28 @@ public class SecurityEvent
         return date;
     }
 
+    public void setDate(LocalDate date)
+    {
+        this.date = date;
+    }
+
     public Type getType()
     {
         return type;
     }
 
+    public void setType(Type type)
+    {
+        this.type = type;
+    }
+
     public String getDetails()
     {
         return details;
+    }
+
+    public void setDetails(String details)
+    {
+        this.details = details;
     }
 }
