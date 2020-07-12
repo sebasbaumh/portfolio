@@ -232,7 +232,7 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
         DocumentType type = new DocumentType("Steuerausgleichsrechnung");
         this.addDocumentTyp(type);
 
-        Block block = new Block("Unterschleißheim, (\\d+.\\d+.\\d+)");
+        Block block = new Block("Seite .*");
         type.addBlock(block);
         block.set(new Transaction<AccountTransaction>().subject(() -> {
             AccountTransaction t = new AccountTransaction();
@@ -240,10 +240,18 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
             return t;
         })
 
-                        .section("date")
-                        .match("Unterschleißheim, (?<date>\\d+.\\d+.\\d{4})")
-                        .assign((t, v) -> t.setDateTime(asDate(v.get("date"))))
+                        .oneOf(
 
+                                        section -> section.attributes("date")
+                                                        .match("Unterschleißheim, (?<date>\\d+.\\d+.\\d{4})")
+                                                        .assign((t, v) -> t.setDateTime(asDate(v.get("date"))))
+
+                                        ,
+                                        section -> section.attributes("date")
+                                                        .match("^(?<date>\\d+.\\d+.\\d{4})")
+                                                        .assign((t, v) -> t.setDateTime(asDate(v.get(
+                                                                        "date")))))
+                      
                         .section("amount", "currency")
                         .match("Erstattung *(?<currency>\\w{3}) *(?<amount>[\\d.]+,\\d{2})")
                         .assign((t, v) -> {
