@@ -64,6 +64,7 @@
 								<requireJavaVersion>
 									<version>1.8</version>
 								</requireJavaVersion>
+								<!-- 
 								<evaluateBeanshell>
 									<condition>String version = "${project.version}".replace("-SNAPSHOT", ".qualifier");
 												new String(java.nio.file.Files.readAllBytes(
@@ -80,6 +81,7 @@
 												.contains("version=\"" + version + "\"")</condition>
 									<message>releng/x86/x86-product.product does not contain the correct version</message>
 								</evaluateBeanshell>
+								 -->
 							</rules>
 						</configuration>
 					</execution>
