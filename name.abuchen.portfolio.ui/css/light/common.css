@@ -50,3 +50,23 @@ CTabItem:selected {
 .MPart .sidebarBorder {
 	background-color: #F4F5F5;
 }
+
+.tooltip Label,
+.tooltip Composite {
+	color: black;
+	background-color: #ECECEC;
+}
+
+.chart {
+	background-color: white;
+	axis-color: black;
+	grid-color: lightgrey;
+	highlight-color: black;
+}
+
+.dashboard Composite,
+.dashboard Label,
+.dashboard StyledLabel,
+.dashboard ImageHyperlink {
+	background-color: white;
+}
