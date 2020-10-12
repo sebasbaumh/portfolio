@@ -671,6 +671,53 @@ public class FinTechGroupBankPDFExtractorTest
     }
 
     @Test
+    public void testKontoauszug4()
+    {
+        Client client = new Client();
+        FinTechGroupBankPDFExtractor extractor = new FinTechGroupBankPDFExtractor(client);
+    
+        Security existingSecurity = new Security("Ohne Name AG",
+                        CurrencyUnit.EUR);
+        existingSecurity.setIsin("ISIN12345678");
+        client.addSecurity(existingSecurity);
+    
+        List<Exception> errors = new ArrayList<>();
+    
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "FlatexKontoauszug4.txt"), errors);
+    
+        assertThat(errors, empty());
+        assertThat(results.size(), is(3));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+    
+        Optional<Item> item = results.stream().filter(i -> i instanceof TransactionItem).findFirst();
+        assertThat(item.isPresent(), is(true));
+        AccountTransaction transaction = (AccountTransaction) item.orElseThrow(IllegalArgumentException::new)
+                        .getSubject();
+    
+        assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
+        assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2020-07-07T00:00")));
+        assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(250))));
+        
+        item = results.stream().filter(i -> i instanceof TransactionItem).skip(1).findFirst();
+        assertThat(item.isPresent(), is(true));
+        transaction = (AccountTransaction) item.orElseThrow(IllegalArgumentException::new)
+                        .getSubject();
+        
+        assertThat(transaction.getType(), is(AccountTransaction.Type.FEES));
+        assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2020-07-20T00:00")));
+        assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(0.26))));
+
+        item = results.stream().filter(i -> i instanceof TransactionItem).skip(2).findFirst();
+        assertThat(item.isPresent(), is(true));
+        transaction = (AccountTransaction) item.orElseThrow(IllegalArgumentException::new)
+                        .getSubject();
+        
+        assertThat(transaction.getType(), is(AccountTransaction.Type.INTEREST_CHARGE));
+        assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2020-06-30T00:00")));
+        assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(0.05))));
+    }
+
+    @Test
     public void testErtragsgutschrift()
     {
         FinTechGroupBankPDFExtractor extractor = new FinTechGroupBankPDFExtractor(new Client());
@@ -847,6 +894,70 @@ public class FinTechGroupBankPDFExtractorTest
         assertThat(transaction.getUnitSum(Unit.Type.TAX),
                         is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(0.00))));
         assertThat(transaction.getShares(), is(Values.Share.factorize(31.89)));
+    }
+
+    @Test
+    public void testErtragsgutschrift7()
+    {
+        FinTechGroupBankPDFExtractor extractor = new FinTechGroupBankPDFExtractor(new Client());
+    
+        List<Exception> errors = new ArrayList<>();
+    
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "FlatexErtragsgutschrift7.txt"),
+                        errors);
+    
+        assertThat(errors, empty());
+        assertThat(results.size(), is(2));
+    
+        // security
+        Security security = checkSecurity(results, "US46284V1017", "A14MS9", "IRON MOUNTAIN (NEW)DL-,01",
+                        CurrencyUnit.EUR);
+    
+        Optional<Item> item = results.stream().filter(i -> i instanceof TransactionItem).findFirst();
+        assertThat(item.isPresent(), is(true));
+        AccountTransaction transaction = (AccountTransaction) item.orElseThrow(IllegalArgumentException::new)
+                        .getSubject();
+    
+        assertThat(transaction.getType(), is(AccountTransaction.Type.DIVIDENDS));
+        assertThat(transaction.getSecurity(), is(security));
+        assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2020-10-02T00:00")));
+        assertThat(transaction.getAmount(), is(Values.Amount.factorize(75.30)));
+        assertThat(transaction.getUnitSum(Unit.Type.TAX),
+                        is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(28.57))));
+        assertThat(transaction.getShares(), is(Values.Share.factorize(197)));
+    }
+
+    @Test
+    public void testErtragsgutschrift7withSecurity()
+    {
+        Client client = new Client();
+        FinTechGroupBankPDFExtractor extractor = new FinTechGroupBankPDFExtractor(client);
+
+        Security existingSecurity = new Security("IRON MOUNTAIN (NEW)DL-,01",
+                        CurrencyUnit.USD);
+        existingSecurity.setIsin("US46284V1017");
+        existingSecurity.setWkn("A14MS9");
+        client.addSecurity(existingSecurity);
+    
+        List<Exception> errors = new ArrayList<>();
+    
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "FlatexErtragsgutschrift7.txt"),
+                        errors);
+    
+        assertThat(errors, empty());
+        assertThat(results.size(), is(1));
+    
+        Optional<Item> item = results.stream().filter(i -> i instanceof TransactionItem).findFirst();
+        assertThat(item.isPresent(), is(true));
+        AccountTransaction transaction = (AccountTransaction) item.orElseThrow(IllegalArgumentException::new)
+                        .getSubject();
+    
+        assertThat(transaction.getType(), is(AccountTransaction.Type.DIVIDENDS));
+        assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2020-10-02T00:00")));
+        assertThat(transaction.getAmount(), is(Values.Amount.factorize(75.30)));
+        assertThat(transaction.getUnitSum(Unit.Type.TAX),
+                        is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(28.57))));
+        assertThat(transaction.getShares(), is(Values.Share.factorize(197)));
     }
 
     @Test
