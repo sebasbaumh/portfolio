@@ -55,6 +55,12 @@
             adapter="name.abuchen.portfolio.ui.theme.ColorsThemeElementAdapter"
             handler="name.abuchen.portfolio.ui.theme.ColorsThemeCSSHandler">
          <property-name
+               name="default-foreground">
+         </property-name>
+         <property-name
+               name="default-background">
+         </property-name>
+         <property-name
                name="warning-background">
          </property-name>
          <property-name
@@ -68,6 +74,20 @@
          </property-name>
          <property-name
                name="green-foreground">
+         </property-name>
+      </handler>
+      <handler
+            adapter="name.abuchen.portfolio.ui.theme.TableElementAdapter"
+            handler="name.abuchen.portfolio.ui.theme.ColumnViewerCSSHandler">
+         <property-name
+               name="swt-lines-visible">
+         </property-name>
+      </handler>
+      <handler
+            adapter="name.abuchen.portfolio.ui.theme.TreeElementAdapter"
+            handler="name.abuchen.portfolio.ui.theme.ColumnViewerCSSHandler">
+         <property-name
+               name="swt-lines-visible">
          </property-name>
       </handler>
    </extension>
@@ -92,6 +112,12 @@
          </widget>
          <widget
                class="name.abuchen.portfolio.ui.util.Colors$Theme">
+         </widget>
+         <widget
+               class="org.eclipse.swt.widgets.Table">
+         </widget>
+         <widget
+               class="org.eclipse.swt.widgets.Tree">
          </widget>
       </provider>
    </extension>
