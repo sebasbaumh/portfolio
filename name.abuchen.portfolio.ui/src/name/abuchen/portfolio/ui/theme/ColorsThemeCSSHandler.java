@@ -20,6 +20,12 @@ public class ColorsThemeCSSHandler implements ICSSPropertyHandler
 
             switch (property)
             {
+                case "default-foreground": //$NON-NLS-1$
+                    theme.setDefaultForeground(CSSSWTColorHelper.getRGBA(value));
+                    break;
+                case "default-background": //$NON-NLS-1$
+                    theme.setDefaultBackground(CSSSWTColorHelper.getRGBA(value));
+                    break;
                 case "warning-background": //$NON-NLS-1$
                     theme.setWarningBackground(CSSSWTColorHelper.getRGBA(value));
                     break;
