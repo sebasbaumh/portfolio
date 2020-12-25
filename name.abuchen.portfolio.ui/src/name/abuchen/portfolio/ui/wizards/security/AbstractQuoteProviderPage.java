@@ -196,6 +196,10 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
 
     protected abstract void setFeedURL(String feedURL);
 
+    protected abstract String getJSONDatePropertyName();
+
+    protected abstract String getJSONClosePropertyName();
+
     protected abstract void setStatus(String status);
 
     protected abstract void createSampleArea(Composite parent);
@@ -247,17 +251,17 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
             textQuandlCloseColumnName.setText(columnName != null ? columnName : ""); //$NON-NLS-1$
         }
 
-        if (textJsonPathDate != null && !textJsonPathDate.getText()
-                        .equals(model.getFeedProperty(GenericJSONQuoteFeed.DATE_PROPERTY_NAME)))
+        if (textJsonPathDate != null
+                        && !textJsonPathDate.getText().equals(model.getFeedProperty(getJSONDatePropertyName())))
         {
-            String path = model.getFeedProperty(GenericJSONQuoteFeed.DATE_PROPERTY_NAME);
+            String path = model.getFeedProperty(getJSONDatePropertyName());
             textJsonPathDate.setText(path != null ? path : ""); //$NON-NLS-1$
         }
 
-        if (textJsonPathClose != null && !textJsonPathClose.getText()
-                        .equals(model.getFeedProperty(GenericJSONQuoteFeed.CLOSE_PROPERTY_NAME)))
+        if (textJsonPathClose != null
+                        && !textJsonPathClose.getText().equals(model.getFeedProperty(getJSONClosePropertyName())))
         {
-            String path = model.getFeedProperty(GenericJSONQuoteFeed.CLOSE_PROPERTY_NAME);
+            String path = model.getFeedProperty(getJSONClosePropertyName());
             textJsonPathClose.setText(path != null ? path : ""); //$NON-NLS-1$
         }
     }
@@ -383,8 +387,9 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
                 if (feed != null && feed.getHelpURL().isPresent())
                     url = feed.getHelpURL().get();
 
-                // Use Google translate for non-German users (as the help pages are
-                // currently only available in German). Taking care to encode the #.
+                // Use Google translate for non-German users (as the help pages
+                // are currently only available in German). Taking care to
+                // encode the #.
                 if (!Locale.getDefault().getLanguage().equals(Locale.GERMAN.getLanguage()))
                     url = MessageFormat.format(Messages.HelpURL, URLEncoder.encode(url, StandardCharsets.UTF_8.name()));
 
@@ -537,7 +542,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
             textJsonPathDate = new Text(grpQuoteFeed, SWT.BORDER);
             GridDataFactory.fillDefaults().span(2, 1).hint(100, SWT.DEFAULT).applyTo(textJsonPathDate);
             textJsonPathDate.addModifyListener(e -> onJsonPathDateChanged());
-           
+
             ControlDecoration deco = new ControlDecoration(textJsonPathDate, SWT.CENTER | SWT.RIGHT);
             deco.setDescriptionText(Messages.LabelJSONPathHint);
             deco.setImage(Images.INFO.image());
@@ -550,7 +555,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
             textJsonPathClose = new Text(grpQuoteFeed, SWT.BORDER);
             GridDataFactory.fillDefaults().span(2, 1).hint(100, SWT.DEFAULT).applyTo(textJsonPathClose);
             textJsonPathClose.addModifyListener(e -> onJsonPathCloseChanged());
-            
+
             deco = new ControlDecoration(textJsonPathClose, SWT.CENTER | SWT.RIGHT);
             deco.setDescriptionText(Messages.LabelJSONPathHint);
             deco.setImage(Images.INFO.image());
@@ -629,11 +634,11 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
 
         if (textJsonPathDate != null)
         {
-            String datePath = model.getFeedProperty(GenericJSONQuoteFeed.DATE_PROPERTY_NAME);
+            String datePath = model.getFeedProperty(getJSONDatePropertyName());
             if (datePath != null)
                 textJsonPathDate.setText(datePath);
 
-            String closePath = model.getFeedProperty(GenericJSONQuoteFeed.CLOSE_PROPERTY_NAME);
+            String closePath = model.getFeedProperty(getJSONClosePropertyName());
             if (closePath != null)
                 textJsonPathClose.setText(closePath);
         }
@@ -718,11 +723,11 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
 
         if (textJsonPathDate != null)
         {
-            String datePath = model.getFeedProperty(GenericJSONQuoteFeed.DATE_PROPERTY_NAME);
+            String datePath = model.getFeedProperty(getJSONDatePropertyName());
             if (datePath != null)
                 textJsonPathDate.setText(datePath);
 
-            String closePath = model.getFeedProperty(GenericJSONQuoteFeed.CLOSE_PROPERTY_NAME);
+            String closePath = model.getFeedProperty(getJSONClosePropertyName());
             if (closePath != null)
                 textJsonPathClose.setText(closePath);
         }
@@ -830,7 +835,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
     {
         String datePath = textJsonPathDate.getText();
 
-        model.setFeedProperty(GenericJSONQuoteFeed.DATE_PROPERTY_NAME, datePath.isEmpty() ? null : datePath);
+        model.setFeedProperty(getJSONDatePropertyName(), datePath.isEmpty() ? null : datePath);
 
         QuoteFeed feed = (QuoteFeed) ((IStructuredSelection) comboProvider.getSelection()).getFirstElement();
         showSampleQuotes(feed, null);
@@ -841,7 +846,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
     {
         String closePath = textJsonPathClose.getText();
 
-        model.setFeedProperty(GenericJSONQuoteFeed.CLOSE_PROPERTY_NAME, closePath.isEmpty() ? null : closePath);
+        model.setFeedProperty(getJSONClosePropertyName(), closePath.isEmpty() ? null : closePath);
 
         QuoteFeed feed = (QuoteFeed) ((IStructuredSelection) comboProvider.getSelection()).getFirstElement();
         showSampleQuotes(feed, null);
