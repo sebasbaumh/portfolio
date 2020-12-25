@@ -5,7 +5,7 @@
 
 	<groupId>name.abuchen.portfolio</groupId>
 	<artifactId>portfolio-app</artifactId>
-	<version>0.49.4</version>
+	<version>0.49.5-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<name>Portfolio Performance</name>
@@ -224,6 +224,7 @@
 					<artifactId>tycho-surefire-plugin</artifactId>
 					<version>${tycho-version}</version>
 					<configuration>
+						<argLine>-Duser.country=US -Duser.language=en</argLine>
 						<trimStackTrace>false</trimStackTrace>
 					</configuration>
 				</plugin>
