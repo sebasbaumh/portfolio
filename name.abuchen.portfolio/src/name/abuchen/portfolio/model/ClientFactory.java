@@ -64,6 +64,7 @@ import name.abuchen.portfolio.online.impl.YahooFinanceQuoteFeed;
 import name.abuchen.portfolio.util.ProgressMonitorInputStream;
 import name.abuchen.portfolio.util.XStreamLocalDateConverter;
 import name.abuchen.portfolio.util.XStreamLocalDateTimeConverter;
+import name.abuchen.portfolio.util.XStreamSecurityPriceConverter;
 
 @SuppressWarnings("deprecation")
 public class ClientFactory
@@ -586,6 +587,8 @@ public class ClientFactory
             case 46:
                 // added dividend payment security event
                 addDefaultLogoAttributes(client);
+            case 47:
+                // added fees to dividend transactions
 
                 client.setVersion(Client.CURRENT_VERSION);
                 break;
@@ -1102,6 +1105,7 @@ public class ClientFactory
 
             xstream.registerConverter(new XStreamLocalDateConverter());
             xstream.registerConverter(new XStreamLocalDateTimeConverter());
+            xstream.registerConverter(new XStreamSecurityPriceConverter());
             xstream.registerConverter(
                             new PortfolioTransactionConverter(xstream.getMapper(), xstream.getReflectionProvider()));
 
