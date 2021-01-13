@@ -5,7 +5,7 @@
 
 	<groupId>name.abuchen.portfolio</groupId>
 	<artifactId>portfolio-app</artifactId>
-	<version>0.50.0</version>
+	<version>0.50.2-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<name>Portfolio Performance</name>
@@ -62,8 +62,9 @@
 									<version>3.5.2</version>
 								</requireMavenVersion>
 								<requireJavaVersion>
-									<version>1.8</version>
+									<version>11</version>
 								</requireJavaVersion>
+<<<<<<< HEAD
 								<!-- 
 								<evaluateBeanshell>
 									<condition>String version = "${project.version}".replace("-SNAPSHOT", ".qualifier");
@@ -82,6 +83,8 @@
 									<message>releng/x86/x86-product.product does not contain the correct version</message>
 								</evaluateBeanshell>
 								 -->
+=======
+>>>>>>> master
 							</rules>
 						</configuration>
 					</execution>
