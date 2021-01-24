@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.zip.Deflater;
@@ -594,6 +595,8 @@ public class ClientFactory
                 // add 4 more decimal places to the quote to make it 8
                 addDecimalPlacesToQuotes(client);
                 addDecimalPlacesToQuotes(client);
+            case 49:
+                fixLimitQuotesWith4AdditionalDecimalPlaces(client);
 
                 client.setVersion(Client.CURRENT_VERSION);
                 break;
@@ -998,7 +1001,8 @@ public class ClientFactory
 
         for (Security security : client.getSecurities())
         {
-            security.getPrices().stream().forEach(p -> p.setValue(p.getValue() * decimalPlacesAdded));
+            security.getPrices().stream().filter(Objects::nonNull)
+                            .forEach(p -> p.setValue(p.getValue() * decimalPlacesAdded));
             if (security.getLatest() != null)
             {
                 LatestSecurityPrice l = security.getLatest();
@@ -1107,6 +1111,25 @@ public class ClientFactory
         for (Account account : client.getAccounts())
             for (AccountTransaction accountTransaction : account.getTransactions())
                 accountTransaction.setShares(accountTransaction.getShares() * 100);
+    }
+
+    private static void fixLimitQuotesWith4AdditionalDecimalPlaces(Client client)
+    {
+        List<AttributeType> typesWithLimit = client.getSettings().getAttributeTypes()
+                        .filter(t -> t.getConverter() instanceof AttributeType.LimitPriceConverter)
+                        .collect(Collectors.toList());
+
+        client.getSecurities().stream().map(Security::getAttributes).forEach(attributes -> {
+            for (AttributeType t : typesWithLimit)
+            {
+                Object value = attributes.get(t);
+                if (value instanceof LimitPrice)
+                {
+                    LimitPrice lp = (LimitPrice) value;
+                    attributes.put(t, new LimitPrice(lp.getRelationalOperator(), lp.getValue() * 10000));
+                }
+            }
+        });
     }
 
     @SuppressWarnings("nls")
