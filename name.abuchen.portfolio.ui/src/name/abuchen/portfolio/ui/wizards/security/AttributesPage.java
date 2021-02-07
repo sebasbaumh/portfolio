@@ -1,6 +1,7 @@
 package name.abuchen.portfolio.ui.wizards.security;
 
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -17,6 +18,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.databinding.swt.typed.WidgetProperties;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.swt.SWT;
@@ -98,7 +100,7 @@ public class AttributesPage extends AbstractPage implements IMenuListener
         @Override
         public Object convert(String fromObject)
         {
-            return attribute.getType().getConverter().fromString((String) fromObject);
+            return attribute.getType().getConverter().fromString(fromObject);
         }
     }
 
@@ -230,7 +232,11 @@ public class AttributesPage extends AbstractPage implements IMenuListener
                     {
                         String b64 = ImageUtil.loadAndPrepare(filename, ImageConverter.MAXIMUM_SIZE_EMBEDDED_IMAGE,
                                         ImageConverter.MAXIMUM_SIZE_EMBEDDED_IMAGE);
-                        attributeModel.setValue(b64);
+                        if (b64 == null)
+                            MessageDialog.openError(getShell(), Messages.MsgInvalidImage,
+                                            MessageFormat.format(Messages.MsgInvalidImageDetail, filename));
+                        else
+                            attributeModel.setValue(b64);
                     }
                     catch (IOException ex)
                     {
