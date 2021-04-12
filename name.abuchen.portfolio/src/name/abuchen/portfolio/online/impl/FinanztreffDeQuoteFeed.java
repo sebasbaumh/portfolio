@@ -640,7 +640,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                         // title="ALLIANZ SE VINK.NAMENS-AKTIEN O.N. an Börsenplatz: Xetra" class="selected">Xetra</a>
                         //@formatter:on
                         Pattern pLineExchange = Pattern.compile(
-                                        "location.href[^>]+href=[^>]+(http.+[^#]+#[0-9]+).+title=.+rsenplatz[^>]+>([^<]+)<"); //$NON-NLS-1$
+                                        "location.href[^>]+href=[^>]+(http.+[^#]+#[0-9A-Za-z]+).+title=.+rsenplatz[^>]+>([^<]+)<"); //$NON-NLS-1$
                         for (String line : lines)
                         {
                             Matcher m = pLineExchange.matcher(line);
