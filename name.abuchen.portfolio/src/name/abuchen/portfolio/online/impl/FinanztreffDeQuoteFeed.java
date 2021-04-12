@@ -47,7 +47,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
      */
     public static final String ID = "FINANZTREFF_DE"; //$NON-NLS-1$
     private static final String QUERY_URL = "https://www.finanztreff.de/suchlayer/"; //$NON-NLS-1$
-    private static final String QUERY_QUOTES_URL = "http://www.finanztreff.de/kurse_einzelkurs_portrait.htn"; //$NON-NLS-1$
+    private static final String QUERY_QUOTES_URL = "https://www.finanztreff.de/kurse/detail/"; //$NON-NLS-1$
     private static final String REFERRER_URL = "https://www.finanztreff.de"; //$NON-NLS-1$
     
     /**
@@ -173,7 +173,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                 value = Long.parseLong((String) value);
             }
             catch (NumberFormatException ex)
-            {}
+            {
+            }
         }
         if (value instanceof Long)
         {
@@ -216,7 +217,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                     v = Double.parseDouble((String) value);
                 }
                 catch (NumberFormatException ex)
-                {}
+                {
+                }
             }
             else if (value instanceof Long)
             {
@@ -404,7 +406,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         // encode data fields
         HashMap<String, String> params = new HashMap<String, String>();
         // AJAX flag for quotes
-        params.put("ajax", "2"); //$NON-NLS-1$ //$NON-NLS-2$
+        params.put("ajax", "1"); //$NON-NLS-1$ //$NON-NLS-2$
         if (p.getArbitrageId() != null)
         {
             params.put("arbitrageId", p.getArbitrageId()); //$NON-NLS-1$
@@ -646,7 +648,20 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                             {
                                 String url = m.group(1);
                                 String name = m.group(2);
-                                exchanges.add(new Exchange(url, name));
+                                boolean bAdd = true;
+                                // check if exchange is already known
+                                for (Exchange e : exchanges)
+                                {
+                                    if (e.getId().equals(url))
+                                    {
+                                        bAdd = false;
+                                        break;
+                                    }
+                                }
+                                if (bAdd)
+                                {
+                                    exchanges.add(new Exchange(url, name));
+                                }
                             }
                         }
                     }
