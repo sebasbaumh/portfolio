@@ -715,7 +715,7 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         /**
          * Content lines.
          */
-        private List<String> contentLines;
+        private List<String> contentLines = Collections.emptyList();
 
         /**
          * Referrer of the query to get to the page.
