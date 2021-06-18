@@ -200,7 +200,6 @@ public class Messages extends NLS
     public static String ColumnLabel;
     public static String ColumnLastDividendPayment;
     public static String ColumnLastDividendPayment_MenuLabel;
-    public static String ColumnLastTrade;
     public static String ColumnLatest;
     public static String ColumnLatestDate;
     public static String ColumnLatestHistoricalDate;
@@ -463,6 +462,7 @@ public class Messages extends NLS
     public static String LabelAccumulatedInterest;
     public static String LabelAccumulatedInterestCharge;
     public static String LabelAccumulatedTaxes;
+    public static String LabelAfterTaxAndFees;
     public static String LabelAggregation;
     public static String LabelAggregationDaily;
     public static String LabelAllCurrencies;
@@ -473,6 +473,7 @@ public class Messages extends NLS
     public static String LabelAssetChart;
     public static String LabelAvailableAttributes;
     public static String LabelAverageHoldingPeriod;
+    public static String LabelBeforeTaxAndFees;
     public static String LabelBenchmarks;
     public static String LabelCapitalGains;
     public static String LabelCategoryOtherMovements;
@@ -535,6 +536,8 @@ public class Messages extends NLS
     public static String LabelCurrencyConverter;
     public static String LabelCurrentDate;
     public static String LabelCurrentMonth;
+    public static String LabelCurrentQuarter;
+    public static String LabelCurrentWeek;
     public static String LabelDashboard;
     public static String LabelDataSeries;
     public static String LabelDateXToY;
@@ -610,9 +613,11 @@ public class Messages extends NLS
     public static String LabelPerformanceChart;
     public static String LabelPerformanceIRR;
     public static String LabelPerformanceMetric;
+    public static String LabelPortfolioFeeRate;
     public static String LabelPortfolioPerformance;
     public static String LabelPortfolioPerformanceFile;
     public static String LabelPortfolios;
+    public static String LabelPortfolioTaxRate;
     public static String LabelPortfolioTimeMachine;
     public static String LabelPreTax;
     public static String LabelQuandlCode;
@@ -1071,6 +1076,8 @@ public class Messages extends NLS
     public static String TooltipMaxDrawdownDurationEndOfPeriod;
     public static String TooltipMaxDrawdownDurationFromXtoY;
     public static String TooltipMaxDurationLowToHigh;
+    public static String TooltipPortfolioFeeRate;
+    public static String TooltipPortfolioTaxRate;
     public static String TooltipQuoteAtDate;
     public static String TooltipRebalancingIndicator;
     public static String TooltipSemiVolatility;

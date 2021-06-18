@@ -116,6 +116,13 @@ import name.abuchen.portfolio.ui.util.SimpleAction;
             }
             else
             {
+                // on Linux (and Linux only) the toolbar items are indented -
+                // typically 4 pixels on the left and 3 pixels on the right. We
+                // determine this by looking at the first item
+
+                if (index == 0 && itemBounds.x > 0)
+                    width += (2 * itemBounds.x) - 1;
+
                 width += itemBounds.width;
             }
         }
@@ -127,8 +134,9 @@ import name.abuchen.portfolio.ui.util.SimpleAction;
         }
         else
         {
-            chevron.setBounds(availableBounds.width - chevronSize.x, (availableBounds.height - chevronSize.y) / 2,
-                            chevronSize.x, chevronSize.y);
+            int x = alignment == SWT.LEFT ? width : availableBounds.width - chevronSize.x;
+
+            chevron.setBounds(x, (availableBounds.height - chevronSize.y) / 2, chevronSize.x, chevronSize.y);
 
             if (!chevron.isVisible())
                 chevron.setVisible(true);
