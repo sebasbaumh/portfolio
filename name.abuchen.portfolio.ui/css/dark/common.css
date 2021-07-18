@@ -47,3 +47,23 @@ CustomColors {
 	
 	hyperlink: #6FC5EE;
 }
+
+.heading1 {
+	font-size: 14px;
+	font-weight: bold;
+	color: #D7D8D8;
+}
+
+.heading2 {
+	font-weight: bold;
+	color: #D7D8D8;
+}
+
+.kpi {
+	font-size: 21px;
+	font-weight: normal;
+}
+
+.datapoint {
+	font-size: 10px;
+}

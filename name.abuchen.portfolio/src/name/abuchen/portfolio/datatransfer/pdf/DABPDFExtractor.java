@@ -2,8 +2,13 @@ package name.abuchen.portfolio.datatransfer.pdf;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
@@ -27,18 +32,20 @@ public class DABPDFExtractor extends AbstractPDFExtractor
         addBuySellTransaction();
         addDividendTransaction();
         addTransferOutInTransaction();
+        addDepositRemovalAccountTransaction();
+        addFeePaymentAccountTransaction();
     }
 
     @Override
     public String getPDFAuthor()
     {
-        return "Computershare Communication Services GmbH"; //$NON-NLS-1$
+        return ""; //$NON-NLS-1$
     }
 
     @Override
     public String getLabel()
     {
-        return "DAB Bank"; //$NON-NLS-1$
+        return "DAB Bank / BNP Paribas S.A."; //$NON-NLS-1$
     }
 
     @SuppressWarnings("nls")
@@ -61,22 +68,51 @@ public class DABPDFExtractor extends AbstractPDFExtractor
         pdfTransaction
                 // Is type --> "Verkauf" change from BUY to SELL
                 .section("type").optional()
-                .match("^(?<type>Verkauf) .*")
+                .match("^(?<type>(Kauf|Verkauf)) .*")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Verkauf"))
                     {
                         t.setType(PortfolioTransaction.Type.SELL);
                     }
+
+                    /***
+                     * If we have multiple entries in the document,
+                     * with taxes and tax refunds,
+                     * then the "negative" flag must be removed.
+                     */
+                    type.getCurrentContext().remove("negative");
                 })
 
                 // ComStage-MSCI USA TRN UCIT.ETF Inhaber-Anteile I o.N. LU0392495700
                 // STK 43,000 EUR 47,8310
-                .section("isin", "name", "shares", "currency")
-                .find("Gattungsbezeichnung ISIN")
+                .section("isin", "name", "shares", "currency").optional()
+                .find("^Gattungsbezeichnung ISIN$")
                 .match("^(?<name>.*) (?<isin>[\\w]{12})$")
                 .match("STK (?<shares>[.,\\d]+) (?<currency>[\\w]{3}) [.,\\d]+$")
                 .assign((t, v) -> {
                     t.setShares(asShares(v.get("shares")));
+                    t.setSecurity(getOrCreateSecurity(v));
+                })
+
+                // Gattungsbezeichnung Fälligkeit näch. Zinstermin ISIN
+                // 4,75% Ranft Invest GmbH Inh.-Schv. 01.07.2030 01.07.2021 DE000A2LQLH9
+                // v.2018(2030)
+                // Nominal Kurs
+                // EUR 1.000,000 100,0000 %
+                .section("isin", "name", "name1", "shares", "currency").optional()
+                .find("^Gattungsbezeichnung F.lligkeit näch. Zinstermin ISIN$")
+                .match("^(?<name>.*) [\\d]+.[\\d]+.[\\d]{4} [\\d]+.[\\d]+.[\\d]{4} (?<isin>[\\w]{12})$")
+                .match("^(?<name1>.*)$")
+                .match("^Nominal Kurs$")
+                .match("(?<currency>[\\w]{3}) (?<shares>[.,\\d]+) [.,\\d]+ %$")
+                .assign((t, v) -> {
+                    if (!v.get("name1").startsWith("Nominal"))
+                        v.put("name", v.get("name") + " " + v.get("name1"));
+
+                    /***
+                     * Workaround for bonds 
+                     */
+                    t.setShares((asShares(v.get("shares")) / 100));
                     t.setSecurity(getOrCreateSecurity(v));
                 })
 
@@ -163,12 +199,20 @@ public class DABPDFExtractor extends AbstractPDFExtractor
         DocumentType type = new DocumentType("(Dividende|Ertr.gnisgutschrift)");
         this.addDocumentTyp(type);
 
-        Block block = new Block("^(Dividendengutschrift|Erträgnisgutschrift (?!aus)).*$");
+        Block block = new Block("^(Dividendengutschrift|Ertr.gnisgutschrift(?! aus))(.*)?$");
         type.addBlock(block);
         Transaction<AccountTransaction> pdfTransaction = new Transaction<>();
         pdfTransaction.subject(() -> {
             AccountTransaction entry = new AccountTransaction();
             entry.setType(AccountTransaction.Type.DIVIDENDS);
+
+            /***
+             * If we have multiple entries in the document,
+             * with taxes and tax refunds,
+             * then the "negative" flag must be removed.
+             */
+            type.getCurrentContext().remove("negative");
+
             return entry;
         });
 
@@ -404,6 +448,14 @@ public class DABPDFExtractor extends AbstractPDFExtractor
         pdfTransaction.subject(() -> {
             PortfolioTransaction entry = new PortfolioTransaction();
             entry.setType(PortfolioTransaction.Type.DELIVERY_INBOUND);
+
+            /***
+             * If we have multiple entries in the document,
+             * with taxes and tax refunds,
+             * then the "negative" flag must be removed.
+             */
+            type.getCurrentContext().remove("negative");
+
             return entry;
         });
 
@@ -496,12 +548,34 @@ public class DABPDFExtractor extends AbstractPDFExtractor
 
                 // ComStage-MSCI USA TRN UCIT.ETF Inhaber-Anteile I o.N. LU0392495700
                 // STK 43,000 EUR 47,8310
-                .section("isin", "name", "shares")
+                .section("isin", "name", "shares").optional()
                 .find("Gattungsbezeichnung ISIN")
                 .match("^(?<name>.*) (?<isin>[\\w]{12})$")
                 .match("STK (?<shares>[.,\\d]+) [\\w]{3} [.,\\d]+$")
                 .assign((t, v) -> {
                     t.setShares(asShares(v.get("shares")));
+                    t.setSecurity(getOrCreateSecurity(v));
+                })
+
+                // Gattungsbezeichnung Fälligkeit näch. Zinstermin ISIN
+                // 4,75% Ranft Invest GmbH Inh.-Schv. 01.07.2030 01.07.2021 DE000A2LQLH9
+                // v.2018(2030)
+                // Nominal Kurs
+                // EUR 1.000,000 100,0000 %
+                .section("isin", "name", "name1", "shares", "currency").optional()
+                .find("^Gattungsbezeichnung F.lligkeit näch. Zinstermin ISIN$")
+                .match("^(?<name>.*) [\\d]+.[\\d]+.[\\d]{4} [\\d]+.[\\d]+.[\\d]{4} (?<isin>[\\w]{12})$")
+                .match("^(?<name1>.*)$")
+                .match("^Nominal Kurs$")
+                .match("(?<currency>[\\w]{3}) (?<shares>[.,\\d]+) [.,\\d]+ %$")
+                .assign((t, v) -> {
+                    if (!v.get("name1").startsWith("Nominal"))
+                        v.put("name", v.get("name") + " " + v.get("name1"));
+
+                    /***
+                     * Workaround for bonds 
+                     */
+                    t.setShares((asShares(v.get("shares")) / 100));
                     t.setSecurity(getOrCreateSecurity(v));
                 })
 
@@ -563,9 +637,120 @@ public class DABPDFExtractor extends AbstractPDFExtractor
     }
 
     @SuppressWarnings("nls")
+    private void addDepositRemovalAccountTransaction()
+    {
+        final DocumentType type = new DocumentType("Konto.bersicht", (context, lines) -> {
+            Pattern pCurrency = Pattern.compile("^Verrechnungskonto .* nach Buchungsdatum (?<currency>[\\w]{3})$");
+
+            for (String line : lines)
+            {
+                Matcher m = pCurrency.matcher(line);
+                if (m.matches())
+                {
+                    context.put("currency", m.group(1));
+                }
+            }
+        });
+        this.addDocumentTyp(type);
+
+        Block block = new Block("^(SEPA-Gutschrift|SEPA-Lastschrift) [^Lastschrift].*$");
+        type.addBlock(block);
+        block.set(new Transaction<AccountTransaction>()
+
+                        .subject(() -> {
+                            AccountTransaction transaction = new AccountTransaction();
+                            transaction.setType(AccountTransaction.Type.DEPOSIT);
+                            return transaction;
+                        })
+
+                        /***
+                         * A regular "SEPA-Lastschrift" is a deposit (delivery inbound) 
+                         * form a account to the reference account. (automatic savings plan)
+                         */
+
+                        // Is type --> "SEPA-XXXX" change from DEPOSIT to REMOVAL
+                        // 
+                        // At this time, we don't know the correct regEX for
+                        // a removal transaction.
+                        // 
+                        // .section("type").optional()
+                        // .match("^(?<type>SEPA-XXXX) .*$")
+                        // .assign((t, v) -> {
+                        //    if (v.get("type").equals("SEPA-XXXX"))
+                        //    {
+                        //       t.setType(AccountTransaction.Type.REMOVAL);
+                        //    }
+                        // })
+
+                        // SEPA-Lastschrift Max Mustermann 15.07.19 300,00
+                        // SEPA-Gutschrift Max Mustermann 05.07.19 15.000,00
+                        .section("date", "amount")
+                        .match("^(SEPA-Gutschrift|SEPA-Lastschrift) [^Lastschrift].* (?<date>[\\d]{2}.[\\d]{2}.[\\d]{2}) (?<amount>[.,\\d]+)$")
+                        .assign((t, v) -> {
+                            Map<String, String> context = type.getCurrentContext();
+
+                            // Formate the date from 10.07.19 to 10.07.2019
+                            v.put("date", DateTimeFormatter.ofPattern("dd.MM.yyyy").format(LocalDate.parse(v.get("date"), DateTimeFormatter.ofPattern("dd.MM.yy", Locale.GERMANY))));
+                            t.setDateTime(asDate(v.get("date")));
+
+                            t.setAmount(asAmount(v.get("amount")));
+                            t.setCurrencyCode(asCurrencyCode(context.get("currency")));
+                        })
+
+                        .wrap(TransactionItem::new));
+    }
+
+    @SuppressWarnings("nls")
+    private void addFeePaymentAccountTransaction()
+    {
+        final DocumentType type = new DocumentType("Konto.bersicht", (context, lines) -> {
+            Pattern pCurrency = Pattern.compile("^Verrechnungskonto .* nach Buchungsdatum (?<currency>[\\w]{3})$");
+
+            for (String line : lines)
+            {
+                Matcher m = pCurrency.matcher(line);
+                if (m.matches())
+                {
+                    context.put("currency", m.group(1));
+                }
+            }
+        });
+        this.addDocumentTyp(type);
+
+        Block block = new Block("^SEPA-Lastschrift Lastschrift Managementgeb.hr .*$");
+        type.addBlock(block);
+        block.set(new Transaction<AccountTransaction>()
+
+                        .subject(() -> {
+                            AccountTransaction transaction = new AccountTransaction();
+                            transaction.setType(AccountTransaction.Type.FEES);
+                            return transaction;
+                        })
+
+                        // SEPA-Lastschrift Lastschrift Managementgebühr 29.06.20 53,02
+                        .section("date", "amount")
+                        .match("^SEPA-Lastschrift Lastschrift Managementgeb.hr (?<date>[\\d]{2}.[\\d]{2}.[\\d]{2}) (?<amount>[.,\\d]+)$")
+                        .assign((t, v) -> {
+                            Map<String, String> context = type.getCurrentContext();
+
+                            // Formate the date from 29.06.20 to 29.06.2020
+                            v.put("date", DateTimeFormatter.ofPattern("dd.MM.yyyy").format(LocalDate.parse(v.get("date"), DateTimeFormatter.ofPattern("dd.MM.yy", Locale.GERMANY))));
+                            t.setDateTime(asDate(v.get("date")));
+
+                            t.setAmount(asAmount(v.get("amount")));
+                            t.setCurrencyCode(asCurrencyCode(context.get("currency")));
+                        })
+
+                        .wrap(TransactionItem::new));
+    }
+
+    @SuppressWarnings("nls")
     private <T extends Transaction<?>> void addTaxesSectionsTransaction(T transaction, DocumentType type)
     {
-        // if we have a tax return, we set a flag and don't book tax below
+        /***
+         * if we have a tax refunds,
+         * we set a flag and don't book tax below
+         */
         transaction
                 .section("n").optional()
                 .match("zu versteuern \\(negativ\\) (?<n>.*)")
@@ -708,6 +893,11 @@ public class DABPDFExtractor extends AbstractPDFExtractor
                 // Börse außerbörslich Bezugspreis EUR 27,00-
                 .section("fee", "currency").optional()
                 .match("^B.rse außerb.rslich Bezugspreis (?<currency>[\\w]{3}) (?<fee>[.,\\d]+)-$")
+                .assign((t, v) -> processFeeEntries(t, v, type))
+
+                // Verwahrart Girosammelverwahrung Variabl. Transaktionsentgelt EUR 0,75-
+                .section("fee", "currency").optional()
+                .match("^.* Transaktionsentgelt (?<currency>[\\w]{3}) (?<fee>[.,\\d]+)-$")
                 .assign((t, v) -> processFeeEntries(t, v, type));
     }
 
