@@ -32,6 +32,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
         addAccountStatementTransaction();
         addTaxStatementTransaction();
         addAdvanceTaxTransaction();
+        addCaptialReductionTransaction();
     }
 
     @Override
@@ -65,12 +66,18 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
         pdfTransaction
                 // Is type --> "Verkauf" change from BUY to SELL
                 .section("type").optional()
-                .match("^((Limit|Stop-Market|Market)-Order )?(?<type>Verkauf) .*$")
+                .match("^((Limit|Stop-Market|Market)-Order )?(?<type>(Kauf|Verkauf|Sparplanausf.hrung)) .*$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Verkauf"))
                     {
                         t.setType(PortfolioTransaction.Type.SELL);
                     }
+
+                    /***
+                     * If we have multiple entries in the document,
+                     * then the "negative" flag must be removed.
+                     */
+                    type.getCurrentContext().remove("negative");
                 })
 
                 // Clinuvel Pharmaceuticals Ltd. 80 Stk. 22,82 EUR 1.825,60 EUR
@@ -216,6 +223,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
         pdfTransaction.subject(() -> {
             BuySellEntry entry = new BuySellEntry();
             entry.setType(PortfolioTransaction.Type.SELL);
+
+            /***
+             * If we have multiple entries in the document,
+             * then the "negative" flag must be removed.
+             */
+            type.getCurrentContext().remove("negative");
+
             return entry;
         });
 
@@ -277,12 +291,19 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
         Block block = new Block("^(AUSSCH.TTUNG|DIVIDENDE)$");
         type.addBlock(block);
-        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.DIVIDENDS);
-                return entry;
-            });
+        Transaction<AccountTransaction> pdfTransaction = new Transaction<>();
+        pdfTransaction.subject(() -> {
+            AccountTransaction entry = new AccountTransaction();
+            entry.setType(AccountTransaction.Type.DIVIDENDS);
+
+            /***
+             * If we have multiple entries in the document,
+             * then the "negative" flag must be removed.
+             */
+            type.getCurrentContext().remove("negative");
+
+            return entry;
+        });
 
         pdfTransaction
                 // iShsV-EM Dividend UCITS ETF 10 Stk. 0,563 USD 5,63 USD
@@ -334,6 +355,88 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 // GESAMT 4,18 EUR
                 .section("forexCurrency", "exchangeRate", "amount", "currency").optional()
                 .match("^GESAMT [.,\\d]+ (?<forexCurrency>[\\w]{3})$")
+                .match("^Zwischensumme (?<exchangeRate>[.,\\d]+) [\\w]{3}\\/[\\w]{3} [.,\\d]+ [\\w]{3}$")
+                .match("^GESAMT (?<amount>[.,\\d]+) (?<currency>[\\w]{3})$")
+                .assign((t, v) -> {
+                    t.setAmount(asAmount(v.get("amount")));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+
+                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate")).setScale(10,
+                                    RoundingMode.HALF_DOWN);
+                    BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
+
+                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+
+                    Money forex = Money.of(asCurrencyCode(v.get("forexCurrency")),
+                                    Math.round(t.getAmount() / inverseRate.doubleValue()));
+                    Unit unit = new Unit(Unit.Type.GROSS_VALUE, t.getMonetaryAmount(), forex, inverseRate);
+                    if (unit.getForex().getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
+                        t.addUnit(unit);
+                })
+
+                .wrap(TransactionItem::new);
+
+        addTaxesSectionsTransaction(pdfTransaction, type);
+        addFeesSectionsTransaction(pdfTransaction, type);
+
+        block.set(pdfTransaction);
+    }
+
+    private void addCaptialReductionTransaction()
+    {
+        DocumentType type = new DocumentType("KAPITALREDUKTION");
+        this.addDocumentTyp(type);
+
+        Block block = new Block("^KAPITALREDUKTION$");
+        type.addBlock(block);
+        Transaction<AccountTransaction> pdfTransaction = new Transaction<>();
+        pdfTransaction.subject(() -> {
+            AccountTransaction entry = new AccountTransaction();
+            entry.setType(AccountTransaction.Type.DIVIDENDS);
+
+            /***
+             * If we have multiple entries in the document,
+             * then the "negative" flag must be removed.
+             */
+            type.getCurrentContext().remove("negative");
+
+            return entry;
+        });
+
+        pdfTransaction
+                // 1 Kapitalmaßnahme Barrick Gold Corp. 8,4226 Stk.
+                // Registered Shares o.N.
+                // CA0679011084
+                .section("name", "shares", "nameContinued", "isin", "currency")
+                .match("^[\\d]+ Kapitalmaßnahme (?<name>.*) (?<shares>[.,\\d]+) Stk\\.$")
+                .match("^(?<nameContinued>.*)$")
+                .match("^(?<isin>[\\w]{12})$")
+                .match("^[\\d]+ Barausgleich [.,\\d]+ (?<currency>[\\w]{3})$")
+                .assign((t, v) -> {
+                    t.setShares(asShares(v.get("shares")));
+                    t.setSecurity(getOrCreateSecurity(v));
+                })
+
+                // DE12345689234567671 15.06.2021 0,71 EUR
+                .section("date")
+                .match("^[\\w]+ (?<date>\\d+.\\d+.\\d{4}) [.,\\d+]+ [\\w]{3}$")
+                .assign((t, v) -> {
+                    t.setDateTime(asDate(v.get("date")));
+                })
+
+                // GESAMT 1,630 EUR
+                .section("amount", "currency").optional()
+                .match("^GESAMT (?<amount>[.,\\d]+) (?<currency>[\\w]{3})$")
+                .assign((t, v) -> {
+                    t.setAmount(asAmount(v.get("amount")));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                })
+
+                // GESAMT 5,63 USD
+                // Zwischensumme 1,102 EUR/USD 5,11 EUR
+                // GESAMT 4,18 EUR
+                .section("forexCurrency", "exchangeRate", "amount", "currency").optional()
+                .match("^Zwischensumme [.,\\d]+ (?<forexCurrency>[\\w]{3})$")
                 .match("^Zwischensumme (?<exchangeRate>[.,\\d]+) [\\w]{3}\\/[\\w]{3} [.,\\d]+ [\\w]{3}$")
                 .match("^GESAMT (?<amount>[.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
@@ -428,6 +531,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
         pdfTransaction.subject(() -> {
             AccountTransaction entry = new AccountTransaction();
             entry.setType(AccountTransaction.Type.TAX_REFUND);
+
+            /***
+             * If we have multiple entries in the document,
+             * then the "negative" flag must be removed.
+             */
+            type.getCurrentContext().remove("negative");
+
             return entry;
         });
 
@@ -492,6 +602,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
         pdfTransaction.subject(() -> {
             AccountTransaction entry = new AccountTransaction();
             entry.setType(AccountTransaction.Type.TAXES);
+
+            /***
+             * If we have multiple entries in the document,
+             * then the "negative" flag must be removed.
+             */
+            type.getCurrentContext().remove("negative");
+
             return entry;
         });
 
@@ -542,6 +659,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .subject(() -> {
                     AccountTransaction t = new AccountTransaction();
                     t.setType(AccountTransaction.Type.TAX_REFUND);
+
+                    /***
+                     * If we have multiple entries in the document,
+                     * then the "negative" flag must be removed.
+                     */
+                    type.getCurrentContext().remove("negative");
+
                     return t;
                 })
 
@@ -623,6 +747,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .subject(() -> {
                     AccountTransaction t = new AccountTransaction();
                     t.setType(AccountTransaction.Type.TAX_REFUND);
+
+                    /***
+                     * If we have multiple entries in the document,
+                     * then the "negative" flag must be removed.
+                     */
+                    type.getCurrentContext().remove("negative");
+
                     return t;
                 })
 
@@ -690,12 +821,21 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
         Block block = new Block("^(.*-Order )?Verkauf.*$");
         type.addBlock(block);
-        block.set(new Transaction<AccountTransaction>().subject(() -> {
+        Transaction<AccountTransaction> pdfTransaction = new Transaction<>();
+        pdfTransaction.subject(() -> {
             AccountTransaction t = new AccountTransaction();
             t.setType(AccountTransaction.Type.FEES);
-            return t;
-        })
 
+            /***
+             * If we have multiple entries in the document,
+             * then the "negative" flag must be removed.
+             */
+            type.getCurrentContext().remove("negative");
+
+            return t;
+        });
+
+        pdfTransaction
                 // Clinuvel Pharmaceuticals Ltd. 80 Stk. 22,82 EUR 1.825,60 EUR
                 // Registered Shares o.N.
                 // AU000000CUV3
@@ -753,7 +893,9 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                     if (t.getCurrencyCode() != null && t.getAmount() != 0)
                         return new TransactionItem(t);
                     return null;
-                }));
+                });
+
+        block.set(pdfTransaction);
     }
 
     private <T extends Transaction<?>> void addTaxesSectionsTransaction(T transaction, DocumentType type)

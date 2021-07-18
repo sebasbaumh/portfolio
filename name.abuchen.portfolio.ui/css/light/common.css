@@ -83,3 +83,23 @@ CustomColors {
 	green-foreground: #008000;
 
 }
+
+.heading1 {
+	font-size: 14px;
+	font-weight: bold;
+	color: #393E42;
+}
+
+.heading2 {
+	font-weight: bold;
+	color: #393E42;
+}
+
+.kpi {
+	font-size: 21px;
+	font-weight: normal;
+}
+
+.datapoint {
+	font-size: 10px;
+}
