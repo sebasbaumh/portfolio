@@ -81,11 +81,13 @@ CustomColors {
 
 	red-foreground: #800000;
 	green-foreground: #008000;
+}
 
+SecuritiesChart {
+	quote-color: #4D34EB;
 }
 
 .heading1 {
-	font-size: 14px;
 	font-weight: bold;
 	color: #393E42;
 }
@@ -96,10 +98,5 @@ CustomColors {
 }
 
 .kpi {
-	font-size: 21px;
 	font-weight: normal;
-}
-
-.datapoint {
-	font-size: 10px;
 }
