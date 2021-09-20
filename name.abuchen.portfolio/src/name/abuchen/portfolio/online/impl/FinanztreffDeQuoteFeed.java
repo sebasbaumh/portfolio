@@ -296,7 +296,6 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
                                         // set all known properties
                                         price.setLow(getPrice(ojIntraday, "low"));//$NON-NLS-1$
                                         price.setHigh(getPrice(ojIntraday, "high"));//$NON-NLS-1$
-                                        price.setPreviousClose(getPrice(ojIntraday, "yesterdayPrice"));//$NON-NLS-1$
                                         // add latest quote to returned result
                                         latest = price;
                                     }
@@ -332,35 +331,8 @@ public class FinanztreffDeQuoteFeed implements QuoteFeed
         // now try to refine the data a bit...
         if (!prices.isEmpty())
         {
-            // first sort prices to make sure they are in order
+            // sort prices to make sure they are in order
             Collections.sort(prices);
-            // now try to find the previous close etc.
-            LocalDate lastDay = null;
-            long prevClose = -1;
-            long nextClose = -1;
-            for (LatestSecurityPrice price : prices)
-            {
-                // first one, just remember values
-                if (lastDay == null)
-                {
-                    lastDay = price.getDate();
-                    nextClose = price.getValue();
-                    continue;
-                }
-                // check if this is a new day
-                if (lastDay.isBefore(price.getDate()))
-                {
-                    // switch close prices
-                    prevClose = nextClose;
-                }
-                // remember the price as the next one
-                nextClose = price.getValue();
-                // check if previous close is missing and set it then
-                if ((price.getPreviousClose() <= 0) && (prevClose > 0))
-                {
-                    price.setPreviousClose(prevClose);
-                }
-            }
         }
         return prices;
     }
