@@ -54,6 +54,7 @@ import name.abuchen.portfolio.online.impl.BitfinexQuoteFeed;
 import name.abuchen.portfolio.online.impl.CSQuoteFeed;
 import name.abuchen.portfolio.online.impl.CoinGeckoQuoteFeed;
 import name.abuchen.portfolio.online.impl.ECBStatisticalDataWarehouseQuoteFeed;
+import name.abuchen.portfolio.online.impl.EODHistoricalDataQuoteFeed;
 import name.abuchen.portfolio.online.impl.EurostatHICPQuoteFeed;
 import name.abuchen.portfolio.online.impl.FinanztreffDeQuoteFeed;
 import name.abuchen.portfolio.online.impl.FinnhubQuoteFeed;
@@ -469,10 +470,10 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
         boolean feedURL = feed != null && feed.getId() != null && (feed.getId().equals(HTMLTableQuoteFeed.ID)
                         || feed.getId().equals(CSQuoteFeed.ID) || feed.getId().equals(GenericJSONQuoteFeed.ID));
 
-        boolean needsTicker = feed != null && feed.getId() != null
-                        && Set.of(AlphavantageQuoteFeed.ID, FinnhubQuoteFeed.ID, BinanceQuoteFeed.ID,
-                                        BitfinexQuoteFeed.ID, CoinGeckoQuoteFeed.ID, KrakenQuoteFeed.ID)
-                                        .contains(feed.getId());
+        boolean needsTicker = feed != null && feed.getId() != null && Set
+                        .of(AlphavantageQuoteFeed.ID, FinnhubQuoteFeed.ID, BinanceQuoteFeed.ID, BitfinexQuoteFeed.ID,
+                                        CoinGeckoQuoteFeed.ID, KrakenQuoteFeed.ID, EODHistoricalDataQuoteFeed.ID)
+                        .contains(feed.getId());
 
         boolean needsQuandlCode = feed != null && feed.getId() != null && feed.getId().equals(QuandlQuoteFeed.ID);
 
