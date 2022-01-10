@@ -5,8 +5,11 @@ import org.eclipse.osgi.util.NLS;
 public class Messages extends NLS
 {
     private static final String BUNDLE_NAME = "name.abuchen.portfolio.ui.messages"; //$NON-NLS-1$
+    public static String AboutTextOtherSoftware;
+    public static String AboutTextTranslationDevelopers;
+    public static String AboutTextDeveloped;
     public static String AboutText;
-    public static String AboutTextContributions;
+    public static String AboutTextDevelopers;
     public static String AccountFilterRetiredAccounts;
     public static String AccountMenuActivate;
     public static String AccountMenuAdd;
@@ -147,6 +150,8 @@ public class Messages extends NLS
     public static String ColumnAbsolutePerformance;
     public static String ColumnAbsolutePerformance_Option;
     public static String ColumnAutoGenerate;
+    public static String ColumnDeltaPctOfTotal;
+    public static String ColumnDeltaPctOfTotal_MenuLabel;
     public static String ColumnDeltaPercent;
     public static String ColumnDeltaPercentIndicator;
     public static String ColumnDeltaPercentRelative;
@@ -302,6 +307,8 @@ public class Messages extends NLS
     public static String ColumnTermCurrency;
     public static String ColumnThereofForeignCurrencyGains;
     public static String ColumnTicker;
+    public static String ColumnToBePctOfTotal;
+    public static String ColumnToBePctOfTotal_MenuLabel;
     public static String ColumnTotal;
     public static String ColumnTransactionType;
     public static String ColumnTTWROR_Option;
@@ -671,8 +678,10 @@ public class Messages extends NLS
     public static String LabelReportingDialogMonths;
     public static String LabelReportingDialogQuarter;
     public static String LabelReportingDialogSince;
+    public static String LabelReportingDialogTradingDay;
     public static String LabelReportingDialogTradingDays;
     public static String LabelReportingDialogUntil;
+    public static String LabelReportingDialogDay;
     public static String LabelReportingDialogWeek;
     public static String LabelReportingDialogYear;
     public static String LabelReportingDialogYears;
