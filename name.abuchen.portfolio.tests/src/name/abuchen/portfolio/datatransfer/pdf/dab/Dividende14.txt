@@ -4,68 +4,54 @@ BELEGDRUCK=J
 ORIGINAL=1
 FAXVERSAND=N
 EMAILVERSAND=N
-DEPOTNUMMER=0000000000
-Gesamtfälligkeit DEPOTUNTERBEZEICHNUNG=
-VERSANDARTENSCHLUESSEL=DRUCK
-ADRESSZEILE1=xxxx
-ADRESSZEILE2=xxxxxxxxxxx
-ADRESSZEILE3=xxxxxxxxxxxxx
-ADRESSZEILE4=xxxxxxxxxxxx
-Depot-Nr. Abrechnungs-Nr. ADRESSZEILE5=
-0000000000 00000000 / 03.12.2021 ADRESSZEILE6=
-xxxx BELEGNUMMER=347
-xxxxxxxxxxx SEITENNUMMER=1
-xxxxxxxxxxxxx STEUERERSTATTUNG=N
-xxxxxxxxxxxx Depotinhaber
-xxxxxxxxxxx
-München, 03.12.2021
-Gutschriftsanzeige
-Gattungsbezeichnung Fälligkeit näch. Zinstermin ISIN
-Goldman Sachs Bank Europe SE TuBull O.End 26.11.2021 DE000GX3ZTT5
-Nasd100 16416,89
-Nominal Einlösung zu:
-STK 783,000 EUR 0,0010
-Verwahrart Girosammelverwahrung Kurswert EUR 0,78 
-Wert Konto-Nr. Betrag zu Ihren Gunsten
-03.12.2021 0000000000 EUR 0,78
-Hinweise zur steuerlichen Verrechnung: vorher aktuell
-Veräußerungsverlust Sonstige EUR 567,98
-Aktienverlusttopf EUR 0,00 0,00
-allgemeiner Verlusttopf EUR 0,00 0,00
-Quellensteuertopf EUR 0,00 6,52
-zu versteuern (negativ) EUR 541,90
-Steuerausgleich nach § 43a EStG:
-Kapitalertragsteuer EUR 135,48
-Solidaritätszuschlag EUR 7,45
-Wert Konto-Nr. Abrechnungs-Nr. Betrag zu Ihren Gunsten
-03.12.2021 0000000000 00000000 EUR 142,93
-im laufenden Jahr einbehaltene Kapitalertragsteuer EUR 0,00
-im laufenden Jahr einbehaltener Solidaritätszuschlag EUR 0,00
-Kapitalertragsteuer, Solidaritätszuschlag und ggf. Kirchensteuer nach gemeldetem Kirchensteuersatz verrechnet mit dem
-Finanzamt Frankfurt/M. V-Höchst, Steuernummer 047/220/15370.
-Es folgt Seite 2
-BNP Paribas S.A. Niederlassung Deutschland > Standort: München > Landsberger Straße 300 > 80687 München > Sitz: Nürnberg HRB Nürnberg 31129 > USt.-Ident-Nr.: DE 
-191528929 > Sitz der Hauptniederlassung der BNP Paribas S.A.: 16, boulevard des Italiens, 75009 Paris, Frankreich, Registergericht: R.C.S. Paris 662 042 449 > Président du 
-Conseil d‘Administration: Jean Lemierre, Directeur Général: Jean-Laurent Bonnafé
-3.18/ABREEREITILG/GDBTILAN/000347/031221/011442
-BELEGDRUCK=J
-ORIGINAL=1
-FAXVERSAND=N
-Depot-Nr. Abrechnungs-Nr. Seite-Nr. EMAILVERSAND=N
-0000000000 00000000 2 DEPOTNUMMER=0000000000
+ 
+DEPOTNUMMER=1234567890
 DEPOTUNTERBEZEICHNUNG=
-VERSANDARTENSCHLUESSEL=DRUCK
-ADRESSZEILE1=xxxx
-ADRESSZEILE2=xxxxxxxxxxx
-ADRESSZEILE3=xxxxxxxxxxxxx
-Automatische Ausübung der Optionsscheine am Laufzeitende ADRESSZEILE4=xxxxxxxxxxxx
+          
+Erträgnisgutschrift VERSANDARTENSCHLUESSEL=DRUCKADRESSZEILE1=Herr
+aus Wertpapieren ADRESSZEILE2=Vorname Nachname
+ADRESSZEILE3=Straße 123
+Dividende für ADRESSZEILE4=12345 Stadt
 ADRESSZEILE5=
-ADRESSZEILE6=
-BELEGNUMMER=347
-SEITENNUMMER=2
-STEUERERSTATTUNG=N
+Herr 0 1.01.2013 - 31.12.2013 ADRESSZEILE6=
+Vorname Nachname Depot-Nr. Abrechnungs-Nr. BELEGNUMMER=19680
+Straße 123
+gen 1234567890 12345678 / 14.12.2013
+SEITENNUMMER=1
+12345 Stadt STEUERERSTATTUNG=N
+Depotinhaber
+Vorname Nachname
+ 
+Dividendengutschrift
+ 
+NV-Bescheinigung gemäß § 44a Abs. 1 Nr. 2 und Abs. 2
+Nr. 2 EStG München, 14.12.2013
+ 
+ 
+Gattungsbezeichnung ISIN
+McDonald's Corp. Registered Shares DL-,01 US5801351017
+Nominal Ex-Tag Zahltag Dividenden-Betrag pro Stück
+STK 20,000 27.11.2013 16.12.2013 USD 0,810000
+ 
+Wert  Konto-Nr. Devisenkurs Betrag zu Ihren Gunsten  
+16.12.2013 1234567890 EUR/USD 1,3841 EUR 9,95
+ 
+ 
+Hinweise zur steuerlichen Verrechnung:
+ausländische Dividende EUR            11,704     
+US-Quellensteuer 15% USD             2,43     
+davon anrechenbare US-Quellensteuer  15% USD             2,430     
+zu versteuern  EUR              0,00     
+ 
+Zahlungstag 16.12.2013
+ 
+Jahressteuerbescheinigung folgt
+ 
+ 
+ 
+Verwahrart: Girosammelverwahrung
 Dieser Beleg wird maschinell erstellt und daher nicht unterschrieben.
-BNP Paribas S.A. Niederlassung Deutschland > Standort: München > Landsberger Straße 300 > 80687 München > Sitz: Nürnberg HRB Nürnberg 31129 > USt.-Ident-Nr.: DE 
-191528929 > Sitz der Hauptniederlassung der BNP Paribas S.A.: 16, boulevard des Italiens, 75009 Paris, Frankreich, Registergericht: R.C.S. Paris 662 042 449 > Président du 
-Conseil d‘Administration: Jean Lemierre, Directeur Général: Jean-Laurent Bonnafé
-3.18/ABREEREITILG/GDBTILAN/000347/031221/011442
+DAB Bank AG > Landsberger Straße 300 > 80687 München > BLZ 701 204 00 > BIC (SWIFT-Code): DABBDEMMXXX > Tel. 0 89 / 88 95 - 60 00 > Sitz: München > AG München, HRB 118190 
+USt.-Ident.-Nr.: DE 161864563 > Aufsichtsratsvorsitzender: Dr. Theodor Weimer > Vorstand: Ernst Huber (Sprecher des Vorstands), Dr. Niklas Dieterich, Dr. Josef Zellner
+ 
+3.31/ABREEREIERTR/GDBERTRG/019680/141213/040344
