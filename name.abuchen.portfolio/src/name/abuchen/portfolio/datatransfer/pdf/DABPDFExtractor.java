@@ -2,9 +2,6 @@ package name.abuchen.portfolio.datatransfer.pdf;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -759,8 +756,6 @@ public class DABPDFExtractor extends AbstractPDFExtractor
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
 
-                    // Formate the date from 10.07.19 to 10.07.2019
-                    v.put("date", DateTimeFormatter.ofPattern("dd.MM.yyyy").format(LocalDate.parse(v.get("date"), DateTimeFormatter.ofPattern("dd.MM.yy", Locale.GERMANY))));
                     t.setDateTime(asDate(v.get("date")));
 
                     t.setAmount(asAmount(v.get("amount")));
@@ -803,8 +798,6 @@ public class DABPDFExtractor extends AbstractPDFExtractor
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
 
-                    // Formate the date from 29.06.20 to 29.06.2020
-                    v.put("date", DateTimeFormatter.ofPattern("dd.MM.yyyy").format(LocalDate.parse(v.get("date"), DateTimeFormatter.ofPattern("dd.MM.yy", Locale.GERMANY))));
                     t.setDateTime(asDate(v.get("date")));
 
                     t.setAmount(asAmount(v.get("amount")));
@@ -829,36 +822,29 @@ public class DABPDFExtractor extends AbstractPDFExtractor
                 });
 
         transaction
+                // ausländische Quellensteuer 15,315% JPY 95
+                .section("withHoldingTax", "currency").optional()
+                .match("^ausländische Quellensteuer .* ([\\s]+)?(?<currency>[\\w]{3})([\\s]+)? (?<withHoldingTax>[\\.,\\d]+)(\\-)?$")
+                .assign((t, v) -> {
+                    if (!"X".equals(type.getCurrentContext().get("negative")))
+                        processWithHoldingTaxEntries(t, v, "withHoldingTax", type);
+                })
+
+                // abzgl. Quellensteuer 15,00 % von 281,25 USD 42,19 USD
+                .section("withHoldingTax", "currency").optional()
+                .match("^abzgl\\. Quellensteuer .* [\\w]{3} (?<withHoldingTax>[\\.,\\d]+) (?<currency>[\\w]{3})$")
+                .assign((t, v) -> processWithHoldingTaxEntries(t, v, "withHoldingTax", type))
+
                 // davon anrechenbare US-Quellensteuer 15% EUR 0,79
                 // davon anrechenbare Quellensteuer 15% ZAR 1.560,00
                 // davon anrechenbare Quellensteuer Fondseingangsseite EUR 1,62
                 // davon anrechenbare US-Quellensteuer  15% USD             2,430     
-                .section("tax", "currency").optional()
-                .match("^(.*)?davon anrechenbare (US\\-)?Quellensteuer .* ([\\s]+)?(?<currency>[\\w]{3})([\\s]+)? (?<tax>[\\.,\\d]+)(\\-|[\\s]+)?$")
+                .section("creditableWithHoldingTax", "currency").optional()
+                .match("^(.*)?davon anrechenbare (US\\-)?Quellensteuer .* ([\\s]+)?(?<currency>[\\w]{3})([\\s]+)? (?<creditableWithHoldingTax>[\\.,\\d]+)(\\-|[\\s]+)?$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
                     {
-                        processTaxEntries(t, v, type);
-                    }
-                })
-
-                // erstattungsfähige Quellensteuer 0,315% JPY 2
-                .section("tax", "currency").optional()
-                .match("^erstattungsf.hige Quellensteuer .* (?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)$")
-                .assign((t, v) -> {
-                    if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
-                        processTaxEntries(t, v, type);
-                    }
-                })
-
-                // anrechenbare Quellensteuer 15% EUR 0,73
-                .section("tax", "currency").optional()
-                .match("^anrechenbare Quellensteuer .* ([\\s]+)?(?<currency>[\\w]{3})([\\s]+)? (?<tax>[\\.,\\d]+)(\\-)?$")
-                .assign((t, v) -> {
-                    if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
-                        processTaxEntries(t, v, type);
+                        processWithHoldingTaxEntries(t, v, "creditableWithHoldingTax", type);
                     }
                 })
 
@@ -925,12 +911,6 @@ public class DABPDFExtractor extends AbstractPDFExtractor
                     }
                 })
 
-                .section("tax", "currency").optional()
-                .match("^abzgl\\. Quellensteuer .* [\\w]{3} (?<tax>[\\.,\\d]+) (?<currency>[\\w]{3})$")
-                .assign((t, v) -> {
-                    processTaxEntries(t, v, type);
-                })
-
                 // abzgl. Kapitalertragsteuer 25,00 % von 90,02 EUR 22,51 EUR
                 .section("tax", "currency").optional()
                 .match("^abzgl\\. Kapitalertrags(s)?teuer .* (?<tax>[\\.,\\d]+) (?<currency>[\\w]{3})$")
@@ -990,37 +970,5 @@ public class DABPDFExtractor extends AbstractPDFExtractor
                 .section("fee", "currency").optional()
                 .match("^.* Transaktionsentgelt (?<currency>[\\w]{3}) (?<fee>[\\.,\\d]+)\\-$")
                 .assign((t, v) -> processFeeEntries(t, v, type));
-    }
-
-    @SuppressWarnings("nls")
-    private void processTaxEntries(Object t, Map<String, String> v, DocumentType type)
-    {
-        if (t instanceof name.abuchen.portfolio.model.Transaction)
-        {
-            Money tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("tax")));
-            PDFExtractorUtils.checkAndSetTax(tax, (name.abuchen.portfolio.model.Transaction) t, type);
-        }
-        else
-        {
-            Money tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("tax")));
-            PDFExtractorUtils.checkAndSetTax(tax, ((name.abuchen.portfolio.model.BuySellEntry) t).getPortfolioTransaction(), type);
-        }
-    }
-    
-    @SuppressWarnings("nls")
-    private void processFeeEntries(Object t, Map<String, String> v, DocumentType type)
-    {
-        if (t instanceof name.abuchen.portfolio.model.Transaction)
-        {
-            Money fee = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("fee")));
-            PDFExtractorUtils.checkAndSetFee(fee, 
-                            (name.abuchen.portfolio.model.Transaction) t, type);
-        }
-        else
-        {
-            Money fee = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("fee")));
-            PDFExtractorUtils.checkAndSetFee(fee,
-                            ((name.abuchen.portfolio.model.BuySellEntry) t).getPortfolioTransaction(), type);
-        }
     }
 }

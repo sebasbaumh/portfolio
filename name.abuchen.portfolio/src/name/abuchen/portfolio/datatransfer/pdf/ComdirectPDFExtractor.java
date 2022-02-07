@@ -1,5 +1,9 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
+import static name.abuchen.portfolio.util.TextUtil.trim;
+import static name.abuchen.portfolio.util.TextUtil.stripBlanks;
+import static name.abuchen.portfolio.util.TextUtil.stripBlanksAndUnderscores;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -23,7 +27,6 @@ import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.model.Transaction.Unit.Type;
 import name.abuchen.portfolio.money.Money;
-import name.abuchen.portfolio.util.TextUtil;
 
 @SuppressWarnings("nls")
 public class ComdirectPDFExtractor extends AbstractPDFExtractor
@@ -435,7 +438,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                 // zahlbar ab 19.10.2017                 monatl. Dividende                            
                 .section("note").optional()
                 .match("^zahlbar ab [\\d]{2}\\.[\\d]{2}\\.[\\d]{4} ([\\s]+)(?<note>.*)$")
-                .assign((t, v) -> t.setNote(TextUtil.strip(v.get("note"))))
+                .assign((t, v) -> t.setNote(trim(v.get("note"))))
                 
                 .wrap(TransactionItem::new);
 
@@ -1379,22 +1382,6 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                 });
     }
 
-    private void processFeeEntries(Object t, Map<String, String> v, DocumentType type)
-    {
-        if (t instanceof name.abuchen.portfolio.model.Transaction)
-        {
-            Money fee = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("fee")));
-            PDFExtractorUtils.checkAndSetFee(fee, 
-                            (name.abuchen.portfolio.model.Transaction) t, type);
-        }
-        else
-        {
-            Money fee = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("fee")));
-            PDFExtractorUtils.checkAndSetFee(fee,
-                            ((name.abuchen.portfolio.model.BuySellEntry) t).getPortfolioTransaction(), type);
-        }
-    }
-
     /***
      * In some cases, two documents are created for a dividend transaction. 
      * Once the dividend payment and once the tax treatment.
@@ -1476,15 +1463,5 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
             }
         }
         return false;
-    }
-
-    private String stripBlanksAndUnderscores(String input)
-    {
-        return input.replaceAll("[\\s_]", ""); //$NON-NLS-1$ //$NON-NLS-2$
-    }
-
-    private String stripBlanks(String input)
-    {
-        return input.replaceAll("[\\s]", ""); //$NON-NLS-1$ //$NON-NLS-2$
     }
 }
