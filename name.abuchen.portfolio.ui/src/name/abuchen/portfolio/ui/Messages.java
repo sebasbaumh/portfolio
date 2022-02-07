@@ -563,6 +563,7 @@ public class Messages extends NLS
     public static String LabelConsumerPriceIndex;
     public static String LabelConvertBuySellIntoDeliveryTransactions;
     public static String LabelCopyToClipboard;
+    public static String LabelCountry;
     public static String LabelCurrencies;
     public static String LabelCurrencyConverter;
     public static String LabelCurrentDate;
@@ -590,6 +591,7 @@ public class Messages extends NLS
     public static String LabelExchangeRate;
     public static String LabelExchangeRates;
     public static String LabelExport;
+    public static String LabelFirstDayOfWeek;
     public static String LabelFontSize;
     public static String LabelFormatJSON;
     public static String LabelFullClassification;
@@ -1008,6 +1010,7 @@ public class Messages extends NLS
     public static String PrefLabelQuoteDigits;
     public static String PrefLabelSharesDigits;
     public static String PrefLabelUseIndirectQuotation;
+    public static String PrefLabelUseSWTChartLibrary;
     public static String PrefMsgConfigureUpdates;
     public static String PrefMsgLanguageConfig;
     public static String PrefMsgCalendar;
@@ -1029,6 +1032,11 @@ public class Messages extends NLS
     public static String PrefTitleDivvyDiary;
     public static String PrefTitleFinnhub;
     public static String PrefTitleQuandl;
+    public static String PresetsPrefPageDescription;
+    public static String PresetsPrefPageNow;
+    public static String PresetsPrefPageStartOfDay;
+    public static String PresetsPrefPageTime;
+    public static String PresetsPrefPageTitle;
     public static String SecurityFilter;
     public static String SecurityFilterSharesHeldEqualZero;
     public static String SecurityFilterSharesHeldNotZero;

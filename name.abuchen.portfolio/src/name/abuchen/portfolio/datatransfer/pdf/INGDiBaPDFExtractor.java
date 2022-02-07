@@ -1,5 +1,7 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
+import static name.abuchen.portfolio.util.TextUtil.trim;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Map;
@@ -16,13 +18,11 @@ import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
 import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
-import name.abuchen.portfolio.util.TextUtil;
 
 @SuppressWarnings("nls")
 public class INGDiBaPDFExtractor extends AbstractPDFExtractor
 {
     private static final String IS_JOINT_ACCOUNT = "isjointaccount"; //$NON-NLS-1$
-    private static final String EXCHANGE_RATE = "exchangeRate"; //$NON-NLS-1$
 
     BiConsumer<Map<String, String>, String[]> isJointAccount = (context, lines) -> {
         Pattern pJointAccount = Pattern.compile("KapSt anteilig 50,00 %.*"); //$NON-NLS-1$
@@ -179,7 +179,7 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                 .section("note1", "note2").optional()
                 .match("^Diese Order wurde mit folgendem (?<note1>Limit) .*: (?<note2>[\\.,\\d]+ [\\w]{3})( .*)?$")
                 .assign((t, v) -> {
-                    t.setNote(TextUtil.strip(v.get("note1")) + ": " + TextUtil.strip(v.get("note2")));   
+                    t.setNote(trim(v.get("note1")) + ": " + trim(v.get("note2")));   
                 })
 
                 .wrap(BuySellEntryItem::new);
@@ -285,7 +285,7 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                 .match("^Umg\\. z\\. Dev\\.\\-Kurs \\((?<exchangeRate>[\\.,\\d]+)\\) (?<currency>[\\w]{3}) [\\.,\\d]+$")
                 .assign((t, v) -> {
                     BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    type.getCurrentContext().put(EXCHANGE_RATE, exchangeRate.toPlainString());
+                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
 
                     if (!t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
                     {
@@ -363,7 +363,7 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                     t.setAmount(asAmount(v.get("tax")));
                     t.setCurrencyCode(asCurrencyCode(v.get("currency")));
 
-                    String sign = TextUtil.strip(v.get("sign"));
+                    String sign = trim(v.get("sign"));
                     if ("".equals(sign))
                     {
                         // change type for withdrawals
@@ -481,14 +481,14 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                 })
 
                 // QuSt 15,00 % (EUR 8,87) USD 9,31
-                .section("tax", "currency").optional()
-                .match("^QuSt [\\.,\\d]+([\\s]+)?% \\((?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)\\) [\\w]{3} [\\.,\\d]+$")
-                .assign((t, v) -> processTaxEntries(t, v, type))
+                .section("withHoldingTax", "currency").optional()
+                .match("^QuSt [\\.,\\d]+([\\s]+)?% \\((?<currency>[\\w]{3}) (?<withHoldingTax>[\\.,\\d]+)\\) [\\w]{3} [\\.,\\d]+$")
+                .assign((t, v) -> processWithHoldingTaxEntries(t, v, "withHoldingTax", type))
 
                 // QuSt 30,00 % EUR 16,50
-                .section("tax", "currency").optional()
-                .match("^QuSt [\\.,\\d]+([\\s]+)?% (?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)$")
-                .assign((t, v) -> processTaxEntries(t, v, type));
+                .section("withHoldingTax", "currency").optional()
+                .match("^QuSt [\\.,\\d]+([\\s]+)?% (?<currency>[\\w]{3}) (?<withHoldingTax>[\\.,\\d]+)$")
+                .assign((t, v) -> processWithHoldingTaxEntries(t, v, "withHoldingTax", type));
     }
 
     private <T extends Transaction<?>> void addFeesSectionsTransaction(T transaction, DocumentType type)
@@ -526,35 +526,5 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
 
                     processFeeEntries(t, v, type);
                 });
-    }
-
-    private void processTaxEntries(Object t, Map<String, String> v, DocumentType type)
-    {
-        if (t instanceof name.abuchen.portfolio.model.Transaction)
-        {
-            Money tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("tax")));
-            PDFExtractorUtils.checkAndSetTax(tax, (name.abuchen.portfolio.model.Transaction) t, type);
-        }
-        else
-        {
-            Money tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("tax")));
-            PDFExtractorUtils.checkAndSetTax(tax, ((name.abuchen.portfolio.model.BuySellEntry) t).getPortfolioTransaction(), type);
-        }
-    }
-
-    private void processFeeEntries(Object t, Map<String, String> v, DocumentType type)
-    {
-        if (t instanceof name.abuchen.portfolio.model.Transaction)
-        {
-            Money fee = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("fee")));
-            PDFExtractorUtils.checkAndSetFee(fee, 
-                            (name.abuchen.portfolio.model.Transaction) t, type);
-        }
-        else
-        {
-            Money fee = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("fee")));
-            PDFExtractorUtils.checkAndSetFee(fee,
-                            ((name.abuchen.portfolio.model.BuySellEntry) t).getPortfolioTransaction(), type);
-        }
     }
 }

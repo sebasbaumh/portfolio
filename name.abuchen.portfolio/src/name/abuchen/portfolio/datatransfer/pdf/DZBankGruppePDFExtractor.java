@@ -1,5 +1,8 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
+import static name.abuchen.portfolio.util.TextUtil.trim;
+import static name.abuchen.portfolio.util.TextUtil.stripBlanks;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Map;
@@ -16,14 +19,10 @@ import name.abuchen.portfolio.model.PortfolioTransaction;
 import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.CurrencyUnit;
 import name.abuchen.portfolio.money.Money;
-import name.abuchen.portfolio.util.TextUtil;
 
 @SuppressWarnings("nls")
 public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
 {
-    private static final String EXCHANGE_RATE = "exchangeRate"; //$NON-NLS-1$
-    private static final String FLAG_WITHHOLDING_TAX_FOUND = "exchangeRate"; //$NON-NLS-1$
-
     public DZBankGruppePDFExtractor(Client client)
     {
         super(client);
@@ -87,7 +86,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                 .match("^Kurswert [\\.,\\d]+(\\-)? (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (!v.get("name1").startsWith("Handels-/Ausführungsplatz"))
-                        v.put("name", TextUtil.strip(v.get("name")) + " " + TextUtil.strip(v.get("name1")));
+                        v.put("name", trim(v.get("name")) + " " + trim(v.get("name1")));
 
                     v.put("name", v.get("name"));
                     t.setShares(asShares(v.get("shares")));
@@ -119,7 +118,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                 // Stoplimit 291,00 EUR Limit 290,00 EUR
                 .section("note").optional()
                 .match("^(?<note>(Limit|Stoplimit) .*)$")
-                .assign((t, v) -> t.setNote(TextUtil.strip(v.get("note"))))
+                .assign((t, v) -> t.setNote(trim(v.get("note"))))
 
                 .wrap(BuySellEntryItem::new);
 
@@ -215,7 +214,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                 // Ex-Tag 26.02.2021 Art der Dividende Quartalsdividende
                 .section("note").optional()
                 .match("^.* Art der Dividende (?<note>.*)$")
-                .assign((t, v) -> t.setNote(TextUtil.strip(v.get("note"))))
+                .assign((t, v) -> t.setNote(trim(v.get("note"))))
 
                 .wrap(TransactionItem::new);
 
@@ -270,7 +269,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                      */
                     
                     StringBuilder securityListKey = new StringBuilder("security_");
-                    securityListKey.append(TextUtil.strip(m.group("name"))).append("_");
+                    securityListKey.append(trim(m.group("name"))).append("_");
                     securityListKey.append(baseCurrency).append("_");
                     securityListKey.append(Integer.toString(i)).append("_");
                     securityListKey.append(Integer.toString(endBlock));
@@ -325,7 +324,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                                             v.put("currency", asCurrencyCode(securityData.getCurrency()));
                                         }
                                         
-                                        t.setDate(asDate(v.get("date").replaceAll(" ", "")));
+                                        t.setDate(asDate(stripBlanks(v.get("date"))));
                                         t.setShares(asShares(v.get("shares")));
                                         t.setAmount(asAmount(v.get("amount")));
                                         t.setCurrencyCode(asCurrencyCode(context.get("baseCurrency")));
@@ -349,7 +348,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                                     v.put("currency", asCurrencyCode(securityData.getCurrency()));
                                 }
                                 
-                                t.setDate(asDate(v.get("date").replaceAll(" ", "")));
+                                t.setDate(asDate(stripBlanks(v.get("date"))));
                                 t.setShares(asShares(v.get("shares")));
                                 t.setAmount(asAmount(v.get("amount")));
                                 t.setCurrencyCode(asCurrencyCode(context.get("baseCurrency")));
@@ -370,7 +369,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                                             v.put("currency", asCurrencyCode(securityData.getCurrency()));
                                         }
 
-                                        t.setDate(asDate(v.get("date").replaceAll(" ", "")));
+                                        t.setDate(asDate(stripBlanks(v.get("date"))));
                                         t.setShares(asShares(v.get("shares")));
                                         t.setAmount(asAmount(v.get("amount")));
                                         t.setCurrencyCode(asCurrencyCode(context.get("baseCurrency")));
@@ -432,7 +431,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                         v.put("currency", asCurrencyCode(securityData.getCurrency()));
                     }
 
-                    t.setDateTime(asDate(v.get("date").replaceAll(" ", "")));
+                    t.setDateTime(asDate(stripBlanks(v.get("date"))));
                     t.setShares(asShares(v.get("shares")));
                     t.setAmount(asAmount(v.get("amount")));
                     t.setCurrencyCode(asCurrencyCode(context.get("baseCurrency")));
@@ -485,7 +484,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                         v.put("currency", asCurrencyCode(securityData.getCurrency()));
                     }
 
-                    t.setDateTime(asDate(v.get("date").replaceAll(" ", "")));
+                    t.setDateTime(asDate(stripBlanks(v.get("date"))));
                     t.setShares(asShares(v.get("shares")));
                     t.setAmount(asAmount(v.get("amount")));
                     t.setCurrencyCode(asCurrencyCode(context.get("baseCurrency")));
@@ -542,12 +541,12 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                                         v.put("currency", asCurrencyCode(securityData.getCurrency()));
                                     }
 
-                                    t.setDateTime(asDate(v.get("date").replaceAll(" ", "")));
+                                    t.setDateTime(asDate(stripBlanks(v.get("date"))));
                                     t.setShares(asShares(v.get("shares")));
                                     t.setAmount(asAmount(v.get("amount")));
                                     t.setCurrencyCode(asCurrencyCode(context.get("baseCurrency")));
                                     t.setSecurity(getOrCreateSecurity(v));
-                                    t.setNote(v.get("note1") + " " + TextUtil.strip(v.get("note2")));
+                                    t.setNote(v.get("note1") + " " + trim(v.get("note2")));
                                 })
                         ,
                         section -> section
@@ -568,12 +567,12 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                                         v.put("currency", asCurrencyCode(securityData.getCurrency()));
                                     }
 
-                                    t.setDateTime(asDate(v.get("date").replaceAll(" ", "")));
+                                    t.setDateTime(asDate(stripBlanks(v.get("date"))));
                                     t.setShares(asShares(v.get("shares")));
                                     t.setAmount(asAmount(v.get("amount")));
                                     t.setCurrencyCode(asCurrencyCode(context.get("baseCurrency")));
                                     t.setSecurity(getOrCreateSecurity(v));
-                                    t.setNote(v.get("note1") + " " + TextUtil.strip(v.get("note2")));
+                                    t.setNote(v.get("note1") + " " + trim(v.get("note2")));
                                 })
                     )
 
@@ -718,7 +717,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                 // Verrechnete Aktienverluste 112,10- EUR
                 .section("note").optional()
                 .match("^(?<note>Verrechnete Aktienverluste .*)$")
-                .assign((t, v) -> t.setNote(TextUtil.strip(v.get("note"))))
+                .assign((t, v) -> t.setNote(trim(v.get("note"))))
 
                 .wrap(t -> {
                     if (t.getCurrencyCode() != null && t.getAmount() != 0)
@@ -753,22 +752,14 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                 .assign((t, v) -> processTaxEntries(t, v, type))
 
                 // Einbehaltene Quellensteuer 19 % auf 85,00 PLN 3,59- EUR
-                .section("quellensteinbeh", "currency").optional()
-                .match("^Einbehaltene Quellensteuer [\\.,\\d]+([\\s]+)?% .* (?<quellensteinbeh>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
-                .assign((t, v) -> {
-                    type.getCurrentContext().put(FLAG_WITHHOLDING_TAX_FOUND, "true");
-                    addTax(type, t, v, "quellensteinbeh");
-                })
+                .section("withHoldingTax", "currency").optional()
+                .match("^Einbehaltene Quellensteuer [\\.,\\d]+([\\s]+)?% .* (?<withHoldingTax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
+                .assign((t, v) -> processWithHoldingTaxEntries(t, v, "withHoldingTax", type))
 
                 // Anrechenbare Quellensteuer 15 % auf 18,87 EUR 2,83 EUR
-                .section("quellenstanr", "currency").optional()
-                .match("^Anrechenbare Quellensteuer [\\.,\\d]+([\\s]+)?% .* (?<quellenstanr>[\\.,\\d]+) (?<currency>[\\w]{3})$")
-                .assign((t, v) -> addTax(type, t, v, "quellenstanr"))
-
-                // 4 % rückforderbare Quellensteuer 3,40 PLN
-                .section("quellenstrueck", "currency").optional()
-                .match("^.* r.ckforderbare Quellensteuer (?<quellenstrueck>[\\.,\\d]+) (?<currency>[\\w]{3})$")
-                .assign((t, v) -> addTax(type, t, v, "quellenstrueck"))
+                .section("creditableWithHoldingTax", "currency").optional()
+                .match("^Anrechenbare Quellensteuer [\\.,\\d]+([\\s]+)?% .* (?<creditableWithHoldingTax>[\\.,\\d]+) (?<currency>[\\w]{3})$")
+                .assign((t, v) -> processWithHoldingTaxEntries(t, v, "creditableWithHoldingTax", type))
 
                 // abgeführte Kapitalertragsteuer 0,00
                 .section("tax").optional()
@@ -839,86 +830,6 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
 
                     processFeeEntries(t, v, type);
                 });
-    }
-
-    private void addTax(DocumentType type, Object t, Map<String, String> v, String taxtype)
-    {
-        // Wenn es 'Einbehaltene Quellensteuer' gibt, dann die weiteren
-        // Quellensteuer-Arten nicht berücksichtigen.
-        // Die Berechnung der Gesamt-Quellensteuer anhand der anrechenbaren- und
-        // der rückforderbaren Steuer kann ansonsten zu Rundungsfehlern führen.
-        if (checkWithholdingTax(type, taxtype))
-        {
-            name.abuchen.portfolio.model.Transaction tx = getTransaction(t);
-
-            String currency = asCurrencyCode(v.get("currency"));
-            long amount = asAmount(v.get(taxtype));
-
-            if (!currency.equals(tx.getCurrencyCode()) && type.getCurrentContext().containsKey(EXCHANGE_RATE))
-            {
-                BigDecimal rate = BigDecimal.ONE.divide(asExchangeRate(type.getCurrentContext().get(EXCHANGE_RATE)), 10,
-                                RoundingMode.HALF_DOWN);
-
-                currency = tx.getCurrencyCode();
-                amount = rate.multiply(BigDecimal.valueOf(amount)).setScale(0, RoundingMode.HALF_DOWN).longValue();
-            }
-
-            tx.addUnit(new Unit(Unit.Type.TAX, Money.of(currency, amount)));
-        }
-    }
-
-    private boolean checkWithholdingTax(DocumentType documentType, String taxtype)
-    {
-        if (Boolean.valueOf(documentType.getCurrentContext().get(FLAG_WITHHOLDING_TAX_FOUND)))
-        {
-            if ("quellenstanr".equalsIgnoreCase(taxtype) || ("quellenstrueck".equalsIgnoreCase(taxtype)))
-            { 
-                return false; 
-            }
-        }
-        return true;
-    }
-
-    private name.abuchen.portfolio.model.Transaction getTransaction(Object t)
-    {
-        if (t instanceof name.abuchen.portfolio.model.Transaction)
-        {
-            return ((name.abuchen.portfolio.model.Transaction) t);
-        }
-        else
-        {
-            return ((name.abuchen.portfolio.model.BuySellEntry) t).getPortfolioTransaction();
-        }
-    }
-
-    private void processTaxEntries(Object t, Map<String, String> v, DocumentType type)
-    {
-        if (t instanceof name.abuchen.portfolio.model.Transaction)
-        {
-            Money tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("tax")));
-            PDFExtractorUtils.checkAndSetTax(tax, (name.abuchen.portfolio.model.Transaction) t, type);
-        }
-        else
-        {
-            Money tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("tax")));
-            PDFExtractorUtils.checkAndSetTax(tax, ((name.abuchen.portfolio.model.BuySellEntry) t).getPortfolioTransaction(), type);
-        }
-    }
-
-    private void processFeeEntries(Object t, Map<String, String> v, DocumentType type)
-    {
-        if (t instanceof name.abuchen.portfolio.model.Transaction)
-        {
-            Money fee = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("fee")));
-            PDFExtractorUtils.checkAndSetFee(fee,
-                            (name.abuchen.portfolio.model.Transaction) t, type);
-        }
-        else
-        {
-            Money fee = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("fee")));
-            PDFExtractorUtils.checkAndSetFee(fee,
-                            ((name.abuchen.portfolio.model.BuySellEntry) t).getPortfolioTransaction(), type);
-        }
     }
 
     private Security getSecurity(Map<String, String> context, Integer entry)
