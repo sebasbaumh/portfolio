@@ -52,7 +52,8 @@ class PDFExtractorUtils
                     DateTimeFormatter.ofPattern("d. MMMM yyyy HH:mm:ss", Locale.GERMANY), //$NON-NLS-1$
                     DateTimeFormatter.ofPattern("d.M.yyyy HH:mm:ss", Locale.GERMANY), //$NON-NLS-1$
                     DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss", Locale.GERMANY), //$NON-NLS-1$
-                    DateTimeFormatter.ofPattern("dd.MM.yyyy HH.mm.ss", Locale.GERMANY) }; //$NON-NLS-1$
+                    DateTimeFormatter.ofPattern("dd.MM.yyyy HH.mm.ss", Locale.GERMANY), //$NON-NLS-1$
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US) }; //$NON-NLS-1$
 
     private PDFExtractorUtils()
     {
@@ -94,12 +95,12 @@ class PDFExtractorUtils
         }
     }
 
-    public static void checkAndSetFee(Money tax, Object transaction, DocumentType type)
+    public static void checkAndSetFee(Money fee, Object transaction, DocumentType type)
     {
         if (transaction instanceof name.abuchen.portfolio.model.Transaction)
-            PDFExtractorUtils.checkAndSetFee(tax, (name.abuchen.portfolio.model.Transaction) transaction, type);
+            PDFExtractorUtils.checkAndSetFee(fee, (name.abuchen.portfolio.model.Transaction) transaction, type);
         else if (transaction instanceof BuySellEntry)
-            PDFExtractorUtils.checkAndSetFee(tax, ((BuySellEntry) transaction).getPortfolioTransaction(), type);
+            PDFExtractorUtils.checkAndSetFee(fee, ((BuySellEntry) transaction).getPortfolioTransaction(), type);
         else
             throw new UnsupportedOperationException();
     }
