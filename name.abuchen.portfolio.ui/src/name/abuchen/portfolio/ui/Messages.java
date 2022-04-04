@@ -75,6 +75,7 @@ public class Messages extends NLS
     public static String ChartSeriesPickerColor;
     public static String ChartSeriesPickerDialogMsg;
     public static String ChartSeriesPickerLineStyle;
+    public static String ChartSeriesPickerLineWidth;
     public static String ChartSeriesPickerRemove;
     public static String ChartSeriesPickerShowArea;
     public static String ChartSeriesPickerTitle;
@@ -118,6 +119,7 @@ public class Messages extends NLS
     public static String ColumnCapitalGainsMovingAveragePercent_Description;
     public static String ColumnCapitalGainsMovingAveragePercent_MenuLabel;
     public static String ColumnCapitalGainsMovingAveragePercent_Option;
+    public static String ColumnCategoryKey;
     public static String ColumnChangeOnPrevious;
     public static String ColumnChangeOnPreviousAmount;
     public static String ColumnChangeOnPrevious_MenuLabel;
@@ -381,6 +383,7 @@ public class Messages extends NLS
     public static String DivvyDiaryMissingAPIKey;
     public static String DivvyDiaryMsgUploading;
     public static String DivvyDiaryUploadSuccessfulMsg;
+    public static String EODHistoricalDataMissingAPIKey;
     public static String EditWizardAttributesTitle;
     public static String EditWizardLatestQuoteFeedTitle;
     public static String EditWizardMasterDataLinkNewCategory;
@@ -397,6 +400,7 @@ public class Messages extends NLS
     public static String EditWizardQuoteFeedMsgErrorOrNoData;
     public static String EditWizardQuoteFeedMsgLoading;
     public static String EditWizardQuoteFeedTitle;
+    public static String ErrorKeyAlreadyUsed;
     public static String ExportWizardAccountTransactions;
     public static String ExportWizardAllTransactionsAktienfreundeNet;
     public static String ExportWizardDescription;
@@ -451,12 +455,14 @@ public class Messages extends NLS
     public static String InvestmentPlanMenuGenerateTransactions;
     public static String InvestmentPlanOptionDelivery;
     public static String InvestmentPlanOptionDeposit;
+    public static String InvestmentPlanOptionRemoval;
     public static String InvestmentPlanTitleEditPlan;
     public static String InvestmentPlanTitleNewPlan;
     public static String InvestmentPlanTxCreated;
     public static String InvestmentPlanTxForMultiplePlansCreated;
     public static String InvestmentPlanTypeBuyDelivery;
     public static String InvestmentPlanTypeDeposit;
+    public static String InvestmentPlanTypeRemoval;
     public static String JobLabelAutoSave;
     public static String JobLabelSyncSecuritiesOnline;
     public static String JobLabelUpdateCPI;
@@ -989,6 +995,8 @@ public class Messages extends NLS
     public static String PortfolioMenuDeactivate;
     public static String PortfolioMenuDelete;
     public static String PortfolioMenuDeleteConfirm;
+    public static String PortfolioReportMissingAPIKey;
+    public static String PortfolioReportMissingAPIURL;
     public static String PrefAlphaVantageAPIKey;
     public static String PrefAlphaVantageCallFrequencyLimit;
     public static String PrefCheckOnStartup;
@@ -998,12 +1006,14 @@ public class Messages extends NLS
     public static String PrefDescriptionDivvyDiary;
     public static String PrefDescriptionEODHistoricalData;
     public static String PrefDescriptionFinnhub;
+    public static String PrefDescriptionPortfolioReport;
     public static String PrefDescriptionProxy;
     public static String PrefDescriptionQuandl;
     public static String PrefDivvyDiaryAPIKey;
     public static String PrefEODHistoricalDataAPIKey;
     public static String PrefFinnhubAPIKey;
     public static String PrefLabelEnableExperimentalFeatures;
+    public static String PrefLabelKeepYourAPIKeyPrivate;
     public static String PrefLabelNote;
     public static String PrefLabelProxyHost;
     public static String PrefLabelProxyPort;
@@ -1016,6 +1026,8 @@ public class Messages extends NLS
     public static String PrefMsgCalendar;
     public static String PrefNoteIndirectQuotation;
     public static String PrefNoteStoreSettingsNextToFile;
+    public static String PrefPortfolioReportAPIKey;
+    public static String PrefPortfolioReportAPIURL;
     public static String PrefQuandlAPIKey;
     public static String PrefStoreSettingsNextToFile;
     public static String PrefUpdateQuotesAfterFileOpen;
@@ -1030,7 +1042,9 @@ public class Messages extends NLS
     public static String PrefTitleProxy;
     public static String PrefTitleCalendar;
     public static String PrefTitleDivvyDiary;
+    public static String PrefTitleEODHistoricalData;
     public static String PrefTitleFinnhub;
+    public static String PrefTitlePortfolioReport;
     public static String PrefTitleQuandl;
     public static String PresetsPrefPageDescription;
     public static String PresetsPrefPageNow;
@@ -1090,6 +1104,7 @@ public class Messages extends NLS
     public static String SecurityMenuLabelNumberOfDecimalPlaces;
     public static String SecurityMenuTransfer;
     public static String SecurityMenuUpdateQuotes;
+    public static String SecurityMenuUpdateQuotesMultipleSecurities;
     public static String SecurityTabChart;
     public static String SecurityTabChart10Y;
     public static String SecurityTabChart10YToolTip;

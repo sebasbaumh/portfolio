@@ -38,11 +38,9 @@
             <parameters xmi:id="_mxBVcPOhEeOnWptkJg3Yig" elementId="" name="name.abuchen.portfolio.ui.param.file-type" value="xml+aes256"/>
           </children>
           <children xsi:type="menu:HandledMenuItem" xmi:id="_REyEIPHXEeuopduiCvRhUQ" elementId="name.abuchen.portfolio.ui.menu.file.saveAs.xml" label="Binary (Experimental)" tooltip="" command="_48Q94POhEeOtWc3KvKMOyw">
-            <visibleWhen xsi:type="ui:ImperativeExpression" xmi:id="_XGWlAPHXEeuopduiCvRhUQ" contributionURI="bundleclass://name.abuchen.portfolio.ui/name.abuchen.portfolio.ui.preferences.ExperimentalFeaturesEnabledExpression"/>
             <parameters xmi:id="_REyEIfHXEeuopduiCvRhUQ" elementId="" name="name.abuchen.portfolio.ui.param.file-type" value="binary"/>
           </children>
           <children xsi:type="menu:HandledMenuItem" xmi:id="_KeMT4P0KEeuEto77o9qFWg" elementId="name.abuchen.portfolio.ui.menu.file.saveAs.xml" label="Binary password-protected (Experimental)" tooltip="" command="_48Q94POhEeOtWc3KvKMOyw">
-            <visibleWhen xsi:type="ui:ImperativeExpression" xmi:id="_KeMT4f0KEeuEto77o9qFWg" contributionURI="bundleclass://name.abuchen.portfolio.ui/name.abuchen.portfolio.ui.preferences.ExperimentalFeaturesEnabledExpression"/>
             <parameters xmi:id="_KeMT4v0KEeuEto77o9qFWg" elementId="" name="name.abuchen.portfolio.ui.param.file-type" value="binary+aes256"/>
           </children>
         </children>
@@ -99,11 +97,11 @@
         </children>
         <children xsi:type="menu:MenuSeparator" xmi:id="_OvJsIL3OEeqoTtTaIzseTQ" elementId="name.abuchen.portfolio.bootstrap.menuseparator.6"/>
         <children xsi:type="menu:HandledMenuItem" xmi:id="_PV6KIL3OEeqoTtTaIzseTQ" elementId="name.abuchen.portfolio.ui.menu.online.uploadToDivvyDiary" label="%menu.online.divvydiary.label" iconURI="platform:/plugin/name.abuchen.portfolio.ui/icons/divvydiary.com-logo.png" command="_ZWCyUL3OEeqoTtTaIzseTQ"/>
-        <children xsi:type="menu:HandledMenuItem" xmi:id="_CB6bwHmPEeuiO8_BzX84yg" elementId="name.abuchen.portfolio.ui.menu.online.syncPortfolioReport" label="Sync with portfolio-report.net" command="_m720cHmOEeuiO8_BzX84yg">
-          <visibleWhen xsi:type="ui:ImperativeExpression" xmi:id="_J5pDQKBuEeuHadwYWq-bDQ" contributionURI="bundleclass://name.abuchen.portfolio.ui/name.abuchen.portfolio.ui.preferences.ExperimentalFeaturesEnabledExpression"/>
-        </children>
-        <children xsi:type="menu:HandledMenuItem" xmi:id="_t1tSoDrlEeydp_NU-UFwGA" elementId="name.abuchen.portfolio.ui.menu.online.syncEODHistoricalData" label="Sync with EOD Historical Data" command="_hlqdUDrlEeydp_NU-UFwGA">
+        <children xsi:type="menu:HandledMenuItem" xmi:id="_t1tSoDrlEeydp_NU-UFwGA" elementId="name.abuchen.portfolio.ui.menu.online.syncEODHistoricalData" label="%menu.online.eod-historical-data.label" iconURI="platform:/plugin/name.abuchen.portfolio.ui/icons/eodhistoricaldata-logo.png" command="_hlqdUDrlEeydp_NU-UFwGA">
           <visibleWhen xsi:type="ui:ImperativeExpression" xmi:id="_t1tSoTrlEeydp_NU-UFwGA" contributionURI="bundleclass://name.abuchen.portfolio.ui/name.abuchen.portfolio.ui.preferences.ExperimentalFeaturesEnabledExpression"/>
+        </children>
+        <children xsi:type="menu:HandledMenuItem" xmi:id="_CB6bwHmPEeuiO8_BzX84yg" elementId="name.abuchen.portfolio.ui.menu.online.syncPortfolioReport" label="%menu.online.portfolio-report.label" iconURI="platform:/plugin/name.abuchen.portfolio.ui/icons/portfolio-report.net-logo.png" command="_m720cHmOEeuiO8_BzX84yg">
+          <visibleWhen xsi:type="ui:ImperativeExpression" xmi:id="_J5pDQKBuEeuHadwYWq-bDQ" contributionURI="bundleclass://name.abuchen.portfolio.ui/name.abuchen.portfolio.ui.preferences.ExperimentalFeaturesEnabledExpression"/>
         </children>
       </children>
       <children xsi:type="menu:Menu" xmi:id="_6KeHEBiPEeOR1rNFCzC82A" elementId="name.abuchen.portfolio.ui.menu.help" label="%menu.help.label">
