@@ -61,6 +61,7 @@ public class PDFImportAssistant
         extractors.add(new MLPBankingAGPDFExtractor(client));
         extractors.add(new NIBCBankPDFExtractor(client));
         extractors.add(new LGTBankPDFExtractor(client));
+        extractors.add(new LimeTradingCorpPDFExtractor(client));
         extractors.add(new OnvistaPDFExtractor(client));
         extractors.add(new PostbankPDFExtractor(client));
         extractors.add(new PostfinancePDFExtractor(client));
@@ -76,6 +77,7 @@ public class PDFImportAssistant
         extractors.add(new SwissquotePDFExtractor(client));
         extractors.add(new TargobankPDFExtractor(client));
         extractors.add(new TradeRepublicPDFExtractor(client));
+        extractors.add(new UBSAGBankingAGPDFExtractor(client));
         extractors.add(new UnicreditPDFExtractor(client));
         extractors.add(new VBankAGPDFExtractor(client));
         extractors.add(new WirBankPDFExtractor(client));
