@@ -49,7 +49,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
             return entry;
         });
 
-        Block firstRelevantLine = new Block("^(F.lligkeit\\/Verfall|Wertpapier Abrechnung|WERTPAPIERABRECHNUNG)(.*)?$", "^Ausmachender Betrag.*$");
+        Block firstRelevantLine = new Block("^(F.lligkeit\\/Verfall|Wertpapier Abrechnung|WERTPAPIERABRECHNUNG).*$", "^Ausmachender Betrag.*$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
@@ -59,9 +59,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                 .match("^(Transaktionsart: |Wertpapier Abrechnung )?(?<type>(Kauf|Verkauf|F.lligkeit\\/Verfall))$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Verkauf") || v.get("type").equals("Fälligkeit/Verfall"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 // Produktbezeichnung - Vanguard FTSE All-World U.ETF Re
@@ -110,7 +108,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                 // Stück 53 ISHSII-DEV.MKTS PROP.YLD U.ETF IE00B1FZS350 (A0LEW8)
                 // Anzahl/Nominale 9,00
                 .section("shares")
-                .match("^(St.ck|Anzahl)(\\/Nominale(:)?)? (?<shares>[\\.,\\d]+)(.*)?$")
+                .match("^(St.ck|Anzahl)(\\/Nominale(:)?)? (?<shares>[\\.,\\d]+).*$")
                 .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
 
                 // Orderausführung Datum/Zeit: 31 Jul 2020 21:00:15
@@ -186,12 +184,11 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
 
         Block block = new Block("^(Dividende [^pro]).*$");
         type.addBlock(block);
-        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.DIVIDENDS);
-                return entry;
-            });
+        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>().subject(() -> {
+            AccountTransaction entry = new AccountTransaction();
+            entry.setType(AccountTransaction.Type.DIVIDENDS);
+            return entry;
+        });
 
         pdfTransaction
                 // Produktbezeichnung - Kellogg Co.:
@@ -221,7 +218,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                 .match("^Ausmachender Betrag (?<currency>[\\w]{3}) (?<amount>[\\.,\\d]+)$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // Dividende - Vierteljährlich
@@ -258,9 +255,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                 .match("^.* (?<type>(Kauf|Verkauf|Geb.hrentilgung)) .*$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Verkauf") || v.get("type").equals("Gebührentilgung"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 .oneOf(
@@ -442,12 +437,10 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
 
                 .wrap(t -> {
                     if (t.getPortfolioTransaction().getCurrencyCode() != null && t.getPortfolioTransaction().getAmount() != 0)
-                    {
                         if (t.getPortfolioTransaction().getNote() == null || !t.getPortfolioTransaction().getNote().equals(Messages.MsgErrorOrderCancellationUnsupported))
                             return new BuySellEntryItem(t);
                         else
                             return new NonImportableItem(Messages.MsgErrorOrderCancellationUnsupported);
-                    }
                     return null;
                 }));
 
@@ -526,7 +519,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                     + "|Kontof.hrungs\\-u\\.Depotgeb.hren"
                                                     + "|Depot\\- u\\. Verwaltgeb.hr"
                                                     + "|Kontof.hrungsgeb.hr))"
-                                                    + "(.*)?$")
+                                                    + ".*$")
                                     .assign((t, v) -> {
                                         t.setDateTime(asDate(v.get("date")));
 

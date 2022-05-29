@@ -1328,7 +1328,7 @@ public class DkbPDFExtractorTest
                         is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(0.00))));
 
         Unit grossValueUnit = transaction.getUnit(Unit.Type.GROSS_VALUE).orElseThrow(IllegalArgumentException::new);
-        assertThat(grossValueUnit.getForex(), is(Money.of(CurrencyUnit.USD, Values.Amount.factorize(8.90))));
+        assertThat(grossValueUnit.getForex(), is(Money.of(CurrencyUnit.USD, Values.Amount.factorize(8.53 * 1.1426))));
     }
 
     @Test
@@ -1420,7 +1420,7 @@ public class DkbPDFExtractorTest
                         is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(0.00))));
 
         Unit grossValueUnit = transaction.getUnit(Unit.Type.GROSS_VALUE).orElseThrow(IllegalArgumentException::new);
-        assertThat(grossValueUnit.getForex(), is(Money.of(CurrencyUnit.USD, Values.Amount.factorize(2.46))));
+        assertThat(grossValueUnit.getForex(), is(Money.of(CurrencyUnit.USD, Values.Amount.factorize(2.48 * 1.1780))));
     }
 
     @Test
@@ -3810,6 +3810,53 @@ public class DkbPDFExtractorTest
             assertThat(transaction.getAmount(), is(Values.Amount.factorize(4.27)));
             assertThat(transaction.getSource(), is("KreditKontoauszug03.txt"));
             assertThat(transaction.getNote(), is("GITHUB, HTTPSGITHUB.C"));
+        }
+    }
+
+    @Test
+    public void testKreditKontoauszug04()
+    {
+        DkbPDFExtractor extractor = new DkbPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<Exception>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "KreditKontoauszug04.txt"),
+                        errors);
+
+        assertThat(errors, empty());
+        assertThat(results.size(), is(2));
+
+        // check transaction
+        // get transactions
+        Iterator<Extractor.Item> iter = results.stream().filter(TransactionItem.class::isInstance).iterator();
+        assertThat(results.stream().filter(TransactionItem.class::isInstance).count(), is(2L));
+
+        if (iter.hasNext())
+        {
+            Item item = iter.next();
+
+            // assert transaction
+            AccountTransaction transaction = (AccountTransaction) item.getSubject();
+            assertThat(transaction.getType(), is(AccountTransaction.Type.REMOVAL));
+            assertThat(transaction.getCurrencyCode(), is(CurrencyUnit.EUR));
+            assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2022-05-18T00:00")));
+            assertThat(transaction.getAmount(), is(Values.Amount.factorize(4.80)));
+            assertThat(transaction.getSource(), is("KreditKontoauszug04.txt"));
+            assertThat(transaction.getNote(), is("GITHUB, HTTPSGITHUB.C"));
+        }
+
+        if (iter.hasNext())
+        {
+            Item item = iter.next();
+
+            // assert transaction
+            AccountTransaction transaction = (AccountTransaction) item.getSubject();
+            assertThat(transaction.getType(), is(AccountTransaction.Type.FEES));
+            assertThat(transaction.getCurrencyCode(), is(CurrencyUnit.EUR));
+            assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2022-05-20T00:00")));
+            assertThat(transaction.getAmount(), is(Values.Amount.factorize(2.49)));
+            assertThat(transaction.getSource(), is("KreditKontoauszug04.txt"));
+            assertThat(transaction.getNote(), is("Kartenpreis"));
         }
     }
 }

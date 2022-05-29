@@ -1,10 +1,10 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
 import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetFee;
+import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
@@ -13,7 +13,6 @@ import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
-import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
 
@@ -60,16 +59,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^(Wertpapier Abrechnung )?(?<type>(Ausgabe Investmentfonds|Kauf|Verkauf))( .*)?$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Verkauf"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
-
-                    /***
-                     * If we have multiple entries in the document,
-                     * with taxes and tax refunds,
-                     * then the "negative" flag must be removed.
-                     */
-                    type.getCurrentContext().remove("negative");
                 })
 
                 // Gattungsbezeichnung ISIN
@@ -84,22 +74,22 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 // Nominale Wertpapierbezeichnung ISIN (WKN)
                 // Stück 7,1535 BGF - WORLD TECHNOLOGY FUND LU0171310443 (A0BMAN)
                 // Kurswert 509,71- EUR
-                .section("shares", "name", "isin", "wkn", "name1", "currency").optional()
+                .section("name", "isin", "wkn", "name1", "currency").optional()
                 .find("Nominale Wertpapierbezeichnung ISIN \\(WKN\\)")
-                .match("^St.ck (?<shares>[\\.,\\d]+) (?<name>.*) (?<isin>[\\w]{12}) \\((?<wkn>.*)\\)$")
+                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[\\w]{12}) \\((?<wkn>.*)\\)$")
                 .match("^(?<name1>.*)$")
                 .match("^Kurswert [\\.,\\d]+(\\-)? (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (!v.get("name1").startsWith("Handels-/Ausführungsplatz"))
                         v.put("name", trim(v.get("name")) + " " + trim(v.get("name1")));
 
-                    t.setShares(asShares(v.get("shares")));
                     t.setSecurity(getOrCreateSecurity(v));
                 })
 
                 // STK 16,000 EUR 120,4000
+                // Stück 7,1535 BGF - WORLD TECHNOLOGY FUND LU0171310443 (A0BMAN)
                 .section("shares").optional()
-                .match("^STK (?<shares>[\\.,\\d]+) .*$")
+                .match("^(STK|St.ck) (?<shares>[\\.,\\d]+) .*$")
                 .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
 
                 .oneOf(
@@ -114,7 +104,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                                 section -> section
                                         .attributes("date", "time")
                                         .match("^Handelstag (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) .*$")
-                                        .match("^Handelszeit (?<time>[\\d]{2}:[\\d]{2})(.*)?$")
+                                        .match("^Handelszeit (?<time>[\\d]{2}:[\\d]{2}).*$")
                                         .assign((t, v) -> t.setDate(asDate(v.get("date"), v.get("time"))))
                                 ,
                                 // Schlusstag/-Zeit 14.10.2021 09:00:12 Auftraggeber XXXXXX XXXXXXX
@@ -131,7 +121,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                                         .match("^Ausmachender Betrag (?<amount>[\\.,\\d]+)(\\-)? (?<currency>[\\w]{3})$")
                                         .assign((t, v) -> {
                                             t.setAmount(asAmount(v.get("amount")));
-                                            t.setCurrencyCode(v.get("currency"));
+                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                         })
                                 ,
                                 // Wert Konto-Nr. Betrag zu Ihren Lasten
@@ -142,7 +132,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} [\\/\\d]+ (?<currency>[\\w]{3}) (?<amount>[\\.,\\d]+)$")
                                         .assign((t, v) -> {
                                             t.setAmount(asAmount(v.get("amount")));
-                                            t.setCurrencyCode(v.get("currency"));
+                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                         })
                         )
 
@@ -151,7 +141,13 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("(?<note>Limit .*)$")
                 .assign((t, v) -> t.setNote(trim(v.get("note"))))
 
-                .wrap(BuySellEntryItem::new);
+                .wrap(t -> {
+                    // If we have multiple entries in the document,
+                    // then the "negative" flag must be removed.
+                    type.getCurrentContext().remove("negative");
+
+                    return new BuySellEntryItem(t);
+                });
 
         addTaxesSectionsTransaction(pdfTransaction, type);
         addFeesSectionsTransaction(pdfTransaction, type);
@@ -170,14 +166,6 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
         pdfTransaction.subject(() -> {
             AccountTransaction entry = new AccountTransaction();
             entry.setType(AccountTransaction.Type.DIVIDENDS);
-
-            /***
-             * If we have multiple entries in the document,
-             * with taxes and tax refunds,
-             * then the "negative" flag must be removed.
-             */
-            type.getCurrentContext().remove("negative");
-
             return entry;
         });
 
@@ -269,53 +257,33 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
 
                 // Devisenkurs EUR / PLN 4,5044
                 // Ausschüttung 31,32 USD 27,48+ EUR
-                .section("exchangeRate", "fxAmount", "fxCurrency", "amount", "currency").optional()
-                .match("^Devisenkurs [\\w]{3} \\/ [\\w]{3} ([\\s]+)?(?<exchangeRate>[\\.,\\d]+)$")
-                .match("^(Dividendengutschrift|Aussch.ttung) (?<fxAmount>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<amount>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})$")
+                .section("baseCurrency", "termCurrency", "exchangeRate", "fxGross", "fxCurrency", "gross", "currency").optional()
+                .match("^Devisenkurs (?<baseCurrency>[\\w]{3}) \\/ (?<termCurrency>[\\w]{3}) ([\\s]+)?(?<exchangeRate>[\\.,\\d]+)$")
+                .match("^(Dividendengutschrift|Aussch.ttung) (?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<gross>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    if (t.getCurrencyCode().contentEquals(asCurrencyCode(v.get("fxCurrency"))))
-                    {
-                        exchangeRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
-                    }
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    type.getCurrentContext().putType(asExchangeRate(v));
 
-                    if (!t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
-                    {
-                        BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                    Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                        // check, if forex currency is transaction
-                        // currency or not and swap amount, if necessary
-                        Unit grossValue;
-                        if (!asCurrencyCode(v.get("fxCurrency")).equals(t.getCurrencyCode()))
-                        {
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money amount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        else
-                        {
-                            Money amount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        t.addUnit(grossValue);
-                    }
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
-                // Wert Konto-Nr. Devisenkurs Betrag zu Ihren Gunsten
                 // 15.12.2014 12/3456/789 EUR/USD 1,24495 EUR 52,36
-                .section("exchangeRate").optional()
-                .find("Wert Konto\\-Nr\\. Devisenkurs Betrag zu Ihren Gunsten")
-                .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} .* [\\w]{3}\\/[\\w]{3} (?<exchangeRate>[\\.,\\d]+) [\\w]{3} [\\.,\\d]+$")
+                // ausländische Dividende EUR 70,32
+                .section("baseCurrency", "fxCurrency", "exchangeRate", "currency", "gross").optional()
+                .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} .* (?<baseCurrency>[\\w]{3})\\/(?<fxCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d]+) [\\w]{3} [\\.,\\d]+$")
+                .match("^ausl.ndische Dividende (?<currency>[\\w]{3}) (?<gross>[\\.,\\d]+)$")
                 .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    v.put("termCurrency", asCurrencyCode(v.get("fxCurrency")));
+
+                    PDFExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
+
+                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                    Money fxGross = rate.convert(asCurrencyCode(v.get("fxCurrency")), gross);
+
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 // Ex-Tag 22.12.2021 Art der Dividende Quartalsdividende
@@ -323,7 +291,13 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^.* Art der Dividende (?<note>.*)$")
                 .assign((t, v) -> t.setNote(trim(v.get("note"))))
 
-                .wrap(t -> new TransactionItem(t));
+                .wrap(t -> {
+                    // If we have multiple entries in the document, then
+                    // the "negative" flag must be removed.
+                    type.getCurrentContext().remove("negative");
+
+                    return new TransactionItem(t);
+                });
 
         addTaxesSectionsTransaction(pdfTransaction, type);
         addFeesSectionsTransaction(pdfTransaction, type);
@@ -333,7 +307,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
 
     private void addTaxReturnBlock(DocumentType type)
     {
-        Block block = new Block("^(Kauf(.*)?|Verkauf(.*)?|Wertpapier Abrechnung Ausgabe Investmentfonds)$");
+        Block block = new Block("^(Kauf.*|Verkauf.*|Wertpapier Abrechnung Ausgabe Investmentfonds)$");
         type.addBlock(block);
         block.set(new Transaction<AccountTransaction>()
 
@@ -376,10 +350,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
 
     private <T extends Transaction<?>> void addTaxesSectionsTransaction(T transaction, DocumentType type)
     {
-        /***
-         * if we have a tax refunds,
-         * we set a flag and don't book tax below
-         */
+        // If we have a tax refunds, we set a flag and don't book tax below.
         transaction
                 .section("n").optional()
                 .match("zu versteuern \\(negativ\\) (?<n>.*)")
@@ -391,9 +362,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^einbehaltene Kapitalertragsteuer (?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Kapitalertragsteuer 24,51 % auf 11,00 EUR 2,70- EUR
@@ -401,9 +370,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^Kapitalertragsteuer [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Kapitalertragsteuer EUR 70,16
@@ -411,9 +378,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^Kapitalertragsteuer (?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // einbehaltener Solidaritätszuschlag EUR 0,38
@@ -421,9 +386,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^einbehaltener Solidarit.tszuschlag (?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Solidaritätszuschlag EUR 3,86
@@ -431,9 +394,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^Solidarit.tszuschlag (?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Solidaritätszuschlag 5,5 % auf 2,70 EUR 0,14- EUR
@@ -441,9 +402,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^Solidarit.tszuschlag [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // einbehaltener Kirchensteuer EUR 1,00
@@ -451,9 +410,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^einbehaltener Kirchensteuer (?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Kirchensteuer EUR 1,00
@@ -461,9 +418,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^Kirchensteuer (?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Kirchensteuer 8 % auf 2,70 EUR 0,21- EUR
@@ -471,9 +426,7 @@ public class SBrokerPDFExtractor extends AbstractPDFExtractor
                 .match("^Kirchensteuer [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (!"X".equals(type.getCurrentContext().get("negative")))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Einbehaltene Quellensteuer 15 % auf 31,32 USD 4,12- EUR

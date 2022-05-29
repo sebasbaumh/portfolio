@@ -1,10 +1,10 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
 import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetFee;
+import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
 import static name.abuchen.portfolio.util.TextUtil.stripBlanks;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,7 +16,6 @@ import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
-import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.CurrencyUnit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
@@ -50,25 +49,23 @@ public class CommerzbankPDFExtractor extends AbstractPDFExtractor
         this.addDocumentTyp(type);
 
         Transaction<BuySellEntry> pdfTransaction = new Transaction<>();
-                pdfTransaction.subject(() -> {
-                    BuySellEntry entry = new BuySellEntry();
-                    entry.setType(PortfolioTransaction.Type.BUY);
-                    return entry;
+        pdfTransaction.subject(() -> {
+            BuySellEntry entry = new BuySellEntry();
+            entry.setType(PortfolioTransaction.Type.BUY);
+            return entry;
         });
 
         Block firstRelevantLine = new Block("^W e r t p a p i e r (k a u f|v e r k a u f)$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
-                
+
         pdfTransaction
                 // Is type --> "Verkauf" change from BUY to SELL
                 .section("type").optional()
                 .match("(?<type>W e r t p a p i e r v e r k a u f)")
                 .assign((t, v) -> {
                     if (v.get("type").equals("W e r t p a p i e r v e r k a u f"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 // W e r t p a p i e r - B e z e i c h n u n g W e r t p a p i e r k e n n n u m m e r
@@ -132,12 +129,11 @@ public class CommerzbankPDFExtractor extends AbstractPDFExtractor
         DocumentType type = new DocumentType("Steuerliche Behandlung: (Wertpapier(kauf|verkauf)|Verkauf|.*Dividende)");
         this.addDocumentTyp(type);
 
-        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.TAX_REFUND);
-                return entry;
-            });
+        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>().subject(() -> {
+            AccountTransaction entry = new AccountTransaction();
+            entry.setType(AccountTransaction.Type.TAX_REFUND);
+            return entry;
+        });
 
         Block firstRelevantLine = new Block("^Steuerliche Behandlung: (Wertpapier(kauf|verkauf)|Verkauf|.*Dividende) .*$");
         type.addBlock(firstRelevantLine);
@@ -149,9 +145,7 @@ public class CommerzbankPDFExtractor extends AbstractPDFExtractor
                 .match("^(abgef.hrte Steuern|erstattete Steuern) [\\w]{3}(?<type>[\\-\\s]+)?[\\.,\\d\\s]+$")
                 .assign((t, v) -> {
                     if (stripBlanks(v.get("type")).equals("-"))
-                    {
                         t.setType(AccountTransaction.Type.TAXES);
-                    }
                 })
 
                 // Stk. -10,195 VERMOEGENSMA.BALANCE A EO , WKN / ISIN: A0M16S / LU0321021155
@@ -195,19 +189,20 @@ public class CommerzbankPDFExtractor extends AbstractPDFExtractor
         Block block = new Block("^(D i v i d e n d e n g u t s c h r i f t|E r t r a g s g u t s c h r i f t)$");
         type.addBlock(block);
 
-        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.DIVIDENDS);
-                return entry;
-            });
+        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>().subject(() -> {
+            AccountTransaction entry = new AccountTransaction();
+            entry.setType(AccountTransaction.Type.DIVIDENDS);
+            return entry;
+        });
 
         pdfTransaction
                 // p e r 2 7 . 0 3 . 2 0 2 0 Samsung E l e c t r o n i c s Co. L t d . 881823
                 // STK 1 2 , 0 0 0 R.Shs(NV)Pf(GDR144A)/25 SW 100 US7960502018
-                .section("name", "wkn", "nameContinued", "isin")
+                // USD 7 ,219127 D i v i d e n d e p r o S t ü c k f ü r G e s c h ä f t s j a h r 0 1 . 0 1 . 2 0 b i s 3 1 . 1 2 . 2 0
+                .section("name", "wkn", "nameContinued", "isin", "currency")
                 .match("^p([\\s]+)?e([\\s]+)?r [\\d\\s]+.[\\d\\s]+.[\\d\\s]+ (?<name>.*) (?<wkn>([\\w]{6}|\\w\\s\\w\\s\\w\\s\\w\\s\\w\\s\\w))$")
                 .match("^STK [\\.,\\d\\s]+ (?<nameContinued>.*) (?<isin>[\\w]{12})$")
+                .match("^(?<currency>[\\w]{3}) [\\.,\\d\\s]+ (D i v i d e n d e|A u s s c h . t t u n g) .*$")
                 .assign((t, v) -> {
                     v.put("wkn", stripBlanks(v.get("wkn")));
                     v.put("isin", stripBlanks(v.get("isin")));
@@ -236,43 +231,19 @@ public class CommerzbankPDFExtractor extends AbstractPDFExtractor
                 // 2 2 , 0 0 0 % Q u e l l e n s t e u e r USD 1 9 , 0 6 -
                 // Ausmachender B e t r a g USD 6 7 , 3 3
                 // zum D e v i s e n k u r s : EUR/USD 1 ,098400 EUR 6 1 , 3 0
-                .section("exchangeRate", "fxAmount", "fxCurrency", "amount", "currency").optional()
-                .match("^B r u t t o b e t r a g : (?<fxCurrency>[\\w]{3}) (?<fxAmount>[\\.,\\d\\s]+)$")
-                .match("^.* [\\w]{3}\\/[\\w]{3} (?<exchangeRate>[\\.,\\d\\s]+) (?<currency>[\\w]{3}) (?<amount>[\\.,\\d\\s]+)$")                     
+                .section("fxCurrency", "fxGross", "exchangeRate", "baseCurrency", "termCurrency", "currency").optional()
+                .match("^B r u t t o b e t r a g : (?<fxCurrency>[\\w]{3}) (?<fxGross>[\\.,\\d\\s]+)$")
+                .match("^.* (?<baseCurrency>[\\w]{3})\\/(?<termCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d\\s]+) (?<currency>[\\w]{3}) [\\.,\\d\\s]+$")                     
                 .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(stripBlanks(v.get("exchangeRate")));
-                    if (t.getCurrencyCode().contentEquals(asCurrencyCode(v.get("fxCurrency"))))
-                    {
-                        exchangeRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
-                    }
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    v.put("exchangeRate", stripBlanks(v.get("exchangeRate")));
 
-                    if (!t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
-                    {
-                        BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    PDFExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
+                    
+                    Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(stripBlanks(v.get("fxGross"))));
+                    Money gross = rate.convert(asCurrencyCode(v.get("currency")), fxGross);
 
-                        // check, if forex currency is transaction
-                        // currency or not and swap amount, if necessary
-                        Unit grossValue;
-                        if (!asCurrencyCode(v.get("fxCurrency")).equals(t.getCurrencyCode()))
-                        {
-                            Money fxAmount = Money.of(asCurrencyCode(stripBlanks(v.get("fxCurrency"))),
-                                            asAmount(v.get("fxAmount")));
-                            Money amount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(stripBlanks(v.get("amount"))));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        else
-                        {
-                            Money amount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(stripBlanks(v.get("fxAmount"))));
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(stripBlanks(v.get("amount"))));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        t.addUnit(grossValue);
-                    }
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 // USD 7 ,219127 D i v i d e n d e p r o S t ü c k f ü r G e s c h ä f t s j a h r 0 1 . 0 1 . 2 0 b i s 3 1 . 1 2 . 2 0
@@ -283,6 +254,8 @@ public class CommerzbankPDFExtractor extends AbstractPDFExtractor
                 .match("^[\\w]{3} [\\.,\\d\\s]+ [\\D]+ (?<note2>[\\d\\s]+\\.[\\d\\s]+\\.[\\d\\s]+) [\\D]+ (?<note3>[\\d\\s]+\\.[\\d\\s]+\\.[\\d\\s]+)$")
                 .match("^(.* [\\d\\s]+\\.[\\d\\s]+\\.[\\d\\s]+|Abrechnung) (?<note1>[\\D]+)$")
                 .assign((t, v) -> t.setNote(stripBlanks(v.get("note1")) + " " + stripBlanks(v.get("note2")) + " - " + stripBlanks(v.get("note3"))))
+
+                .conclude(PDFExtractorUtils.fixGrossValueA())
 
                 .wrap(TransactionItem::new);
 
@@ -304,16 +277,12 @@ public class CommerzbankPDFExtractor extends AbstractPDFExtractor
                 if (m.matches())
                 {
                     if (m.group("currency").equals("Euro"))
-                    {
                         context.put("currency", CurrencyUnit.EUR);
-                    }
                 }
 
                 m = pYear.matcher(line);
                 if (m.matches())
-                {
                     context.put("year", stripBlanks(m.group("year")));
-                }
             }
         });
         this.addDocumentTyp(type);

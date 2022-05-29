@@ -1,7 +1,6 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
 
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
@@ -10,7 +9,6 @@ import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
-import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 
 @SuppressWarnings("nls")
@@ -56,9 +54,7 @@ public class WeberbankPDFExtractor extends AbstractPDFExtractor
                 .match("^Wertpapier Abrechnung (?<type>(Kauf|Verkauf)) .*$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Verkauf"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 // Stück 4.440 NEL ASA NO0010081235 (A0B733)
@@ -91,7 +87,7 @@ public class WeberbankPDFExtractor extends AbstractPDFExtractor
                 .match("^Ausmachender Betrag (?<amount>[\\.,\\d]+)(\\-)? (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // Limit bestens
@@ -140,57 +136,28 @@ public class WeberbankPDFExtractor extends AbstractPDFExtractor
                 // Zahlbarkeitstag 13.08.2020 Dividende pro Stück 0,82 USD
                 .section("date")
                 .match("^Zahlbarkeitstag (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) .*$")
-                .assign((t, v) -> {
-                    t.setDateTime(asDate(v.get("date")));
-                })
+                .assign((t, v) -> t.setDateTime(asDate(v.get("date"))))
 
                 // Ausmachender Betrag 55,14+ EUR
                 .section("currency", "amount")
                 .match("^Ausmachender Betrag (?<amount>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // Devisenkurs EUR / USD 1,1848
                 // Dividendengutschrift 87,74 USD 74,05+ EUR
-                .section("exchangeRate", "fxAmount", "fxCurrency", "amount", "currency").optional()
-                .match("^Devisenkurs .* (?<exchangeRate>[\\.,\\d]+)$")
-                .match("^Dividendengutschrift (?<fxAmount>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<amount>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})$")
+                .section("baseCurrency", "termCurrency", "exchangeRate", "fxGross", "fxCurrency", "gross", "currency").optional()
+                .match("^Devisenkurs (?<baseCurrency>[\\w]{3}) \\/ (?<termCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d]+)$")
+                .match("^Dividendengutschrift (?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<gross>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    if (t.getCurrencyCode().contentEquals(asCurrencyCode(v.get("fxCurrency"))))
-                    {
-                        exchangeRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
-                    }
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    type.getCurrentContext().putType(asExchangeRate(v));
 
-                    if (!t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
-                    {
-                        BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                    Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                        // check, if forex currency is transaction
-                        // currency or not and swap amount, if necessary
-                        Unit grossValue;
-                        if (!asCurrencyCode(v.get("fxCurrency")).equals(t.getCurrencyCode()))
-                        {
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money amount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        else
-                        {
-                            Money amount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        t.addUnit(grossValue);
-                    }
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 // Ex-Tag 07.08.2020 Art der Dividende Quartalsdividende
@@ -215,7 +182,7 @@ public class WeberbankPDFExtractor extends AbstractPDFExtractor
 
                 // Solidaritätszuschlag 5,5 % auf 7,40 EUR 0,40- EUR
                 .section("tax", "currency").optional()
-                .match("^Solidaritätszuschlag [\\.,\\d]+ % .* (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
+                .match("^Solidarit.tszuschlag [\\.,\\d]+ % .* (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
                 .assign((t, v) -> processTaxEntries(t, v, type))
 
                 // Einbehaltene Quellensteuer 15 % auf 87,74 USD 11,11- EUR

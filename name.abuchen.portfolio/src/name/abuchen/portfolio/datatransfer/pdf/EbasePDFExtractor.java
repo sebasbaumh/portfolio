@@ -1,7 +1,6 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
 
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
@@ -10,7 +9,6 @@ import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
-import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 
 @SuppressWarnings("nls")
@@ -54,11 +52,9 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
             BuySellEntry entry = new BuySellEntry();
             entry.setType(PortfolioTransaction.Type.BUY);
 
-            /***
-             * We have multiple entries in the document
-             * and cannot split it with "endWith",
-             * so the "skipTransaction" flag must be removed.
-             */
+            // We have multiple entries in the document
+            // and cannot split it with "endWith",
+            // so the "skipTransaction" flag must be removed.
             type.getCurrentContext().remove("skipTransaction");
 
             return entry;
@@ -102,20 +98,15 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                     }
                 })
 
-                /***
-                 * Here we set a flag for all entries 
-                 * which should be skipped.
-                 * 
-                 * If this is not done, it can happen that taxes and fees 
-                 * are included from the following entries
-                 */
+                // Here we set a flag for all entries 
+                // which should be skipped.
+                // If this is not done, it can happen that taxes and fees 
+                // are included from the following entries
                 .section("type").optional()
                 .match("^(?<type>Fondsertrag) .*$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Fondsertrag"))
-                    {
                         type.getCurrentContext().put("skipTransaction", Boolean.TRUE.toString());
-                    }
                 })
 
                 // Kauf 300,00 EUR mit Kursdatum 20.11.2019 in Depotposition 1234567890.01
@@ -182,7 +173,7 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^Wiederanlage Ertragsaussch.ttung .* [\\d]{2}\\.[\\d]{2}\\.[\\d]{4} [\\.,\\d]+ [\\.,\\d]+ (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // Abwicklung über IBAN Institut Zahlungsbetrag
@@ -192,7 +183,7 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^.* (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // Zahlungsbetrag 0,37 EUR
@@ -201,13 +192,12 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^Zahlungsbetrag( aus Überweisung)? (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
-                /***
-                 * If we have a "Verkauf wegen Vorabpauschale"
-                 * we set this amount.
-                 */
+                // If we have a "Verkauf wegen Vorabpauschale"
+                // we set this amount.
+
                 // Verkauf wegen Vorabpauschale 0,13 EUR mit Kursdatum 27.01.2020 aus Depotposition XXXXXXXX.02
                 // abzgl. Steuereinbehalt 0,13 EUR
                 .section("amount", "currency").optional()
@@ -215,15 +205,14 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^abzgl\\. Steuereinbehalt (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
-                /***
-                 * If we have a "Entgelt Verkauf"
-                 * in which fee are immediately withheld,
-                 * without a separate transaction, 
-                 * we first post the sale and then the fee payment.
-                 */
+                // If we have a "Entgelt Verkauf"
+                // in which fee are immediately withheld,
+                // without a separate transaction,
+                // we first post the sale and then the fee payment.
+
                 // Entgelt Verkauf mit Kursdatum 20.12.2017 aus Depotposition 11111111111.01
                 // Depotführungsentgelt inkl. 19% USt 12,00 EUR
                 // VL-Vertragsentgelt inkl. 16 % USt 9,75 EUR
@@ -232,15 +221,14 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^(Depotf.hrungsentgelt|VL\\-Vertragsentgelt) inkl\\. .* (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
-                /***
-                 * If we have a "Entgeltbelastung Verkauf"
-                 * in which fee are immediately withheld,
-                 * without a separate transaction,
-                 * we first post the sale and then the fee payment.
-                 */
+                // If we have a "Entgeltbelastung Verkauf"
+                // in which fee are immediately withheld,
+                // without a separate transaction,
+                // we first post the sale and then the fee payment.
+
                 // Entgeltbelastung Verkauf 3,00 EUR mit Kursdatum 06.04.2021 aus Depotposition 99999999999.01
                 // Summe 3,00 EUR
                 // Depotführungsentgelt inkl. 19 %
@@ -250,34 +238,48 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^(Depotf.hrungsentgelt|VL\\-Vertragsentgelt) inkl\\. .*$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // IE00BJZ2DC62 12,729132 26,002300 USD 1,105500 299,40 EUR
                 // LU0552385295 -0,000268 136,090000 USD 1,216800 0,03 EUR
-                .section("fxCurrency", "exchangeRate", "amount", "currency").optional()
-                .match("^[\\w]{12} (\\-)?[\\.,\\d]+ [\\.,\\d]+ (?<fxCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d]+) (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
+                .section("fxCurrency", "exchangeRate", "gross", "currency").optional()
+                .match("^[\\w]{12} (\\-)?[\\.,\\d]+ [\\.,\\d]+ (?<fxCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d]+) (?<gross>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    // read the forex currency, exchange rate, account
-                    // currency and gross amount in account currency
-                    String forex = asCurrencyCode(v.get("fxCurrency"));
-                    if (t.getPortfolioTransaction().getSecurity().getCurrencyCode().equals(forex))
-                    {
-                        BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                        BigDecimal reverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    v.put("baseCurrency", asCurrencyCode(v.get("currency")));
+                    v.put("termCurrency", asCurrencyCode(v.get("fxCurrency")));
 
-                        // gross given in account currency
-                        long amount = asAmount(v.get("amount"));
-                        long fxAmount = exchangeRate.multiply(BigDecimal.valueOf(amount))
-                                        .setScale(0, RoundingMode.HALF_DOWN).longValue();
+                    PDFExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
 
-                        Unit grossValue = new Unit(Unit.Type.GROSS_VALUE,
-                                        Money.of(asCurrencyCode(v.get("currency")), amount),
-                                        Money.of(forex, fxAmount), reverseRate);
+                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                    Money fxGross = rate.convert(asCurrencyCode(v.get("fxCurrency")), gross);
 
-                        t.getPortfolioTransaction().addUnit(grossValue);
-                    }
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
+                })
+
+                // ISIN Anteilsbestand Betrag je Anteil Betrag
+                // GB00B0MY6T00 300,991871 0,012407000 GBP 3,73 GBP
+                // Kapitalertragsteuer Solidaritätszuschlag Kirchensteuer Devisenkurs abzgl. Steuern
+                // 0,73 EUR 0,04 EUR 0,00 EUR 0,899700 0,70 GBP
+                // Zahlungsbetrag 3,03 GBP
+                .section("gross", "currency", "exchangeRate", "fxCurrency").optional()
+                .find("ISIN Anteilsbestand Betrag je Anteil Betrag")
+                .match("^.* [\\.,\\d]+ [\\.,\\d]+ [\\w]{3} (?<gross>[\\.,\\d]+) (?<currency>[\\w]{3})$")
+                .find("Kapitalertragsteuer Solidarit.tszuschlag Kirchensteuer Devisenkurs abzgl\\. Steuern")
+                .match("^[\\.,\\d]+ (?<fxCurrency>[\\w]{3}) [\\.,\\d]+ [\\w]{3} [\\.,\\d]+ [\\w]{3} (?<exchangeRate>[\\.,\\d]+) [\\.,\\d]+ [\\w]{3}$")
+                .match("^Zahlungsbetrag [\\.,\\d]+ [\\w]{3}$")
+                .assign((t, v) -> {
+                    v.put("baseCurrency", asCurrencyCode(v.get("currency")));
+                    v.put("termCurrency", asCurrencyCode(v.get("fxCurrency")));
+
+                    PDFExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
+
+                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                    Money fxGross = rate.convert(asCurrencyCode(v.get("fxCurrency")), gross);
+
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 // vermögenswirksame Leistungen
@@ -327,12 +329,11 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
 
         Block block = new Block("^Fondsertrag .*$", "^(Zahlungsbetrag nach|Zahlungsbetrag(?! in)|Die Auszahlung|Summe der belasteten) .*$");
         type.addBlock(block);
-        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.DIVIDENDS);
-                return entry;
-            });
+        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>().subject(() -> {
+            AccountTransaction entry = new AccountTransaction();
+            entry.setType(AccountTransaction.Type.DIVIDENDS);
+            return entry;
+        });
 
         pdfTransaction
                 // Fondsertrag (Ausschüttung) mit Bestandsdatum 11.12.2019 in Depotposition 1234567890.31
@@ -370,7 +371,7 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^Die Auszahlung erfolgt über die oben genannte Bankverbindung.$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // Zahlungsbetrag 1,79 USD
@@ -378,7 +379,7 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^Zahlungsbetrag (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // Zahlungsbetrag nach Währungskonvertierung mit Devisenkurs 1,104600 0,29 EUR
@@ -386,60 +387,34 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^Zahlungsbetrag nach W.hrungskonvertierung .* [\\.,\\d]+ (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
-                // Zahlungsbetrag in Fremdwährung 0,32 USD
+                // ISIN Anteilsbestand Betrag je Anteil Betrag
+                // DE000A0D8Q49 1,000000 0,394130 USD 0,39 USD
                 // Zahlungsbetrag nach Währungskonvertierung mit Devisenkurs 1,104600 0,29 EUR
-                .section("fxAmount", "fxCurrency", "exchangeRate", "amount", "currency").optional()
-                .match("^Zahlungsbetrag in Fremdw.hrung (?<fxAmount>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$")
-                .match("^Zahlungsbetrag nach W.hrungskonvertierung .* (?<exchangeRate>[\\.,\\d]+) (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
+                .section("fxGross", "fxCurrency", "exchangeRate", "currency").optional()
+                .find("ISIN Anteilsbestand Betrag je Anteil Betrag")
+                .match("^.* [\\.,\\d]+ [\\.,\\d]+ [\\w]{3} (?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$")
+                .match("^Zahlungsbetrag nach W.hrungskonvertierung .* (?<exchangeRate>[\\.,\\d]+) [\\.,\\d]+ (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    if (t.getCurrencyCode().contentEquals(asCurrencyCode(v.get("fxCurrency"))))
-                    {
-                        exchangeRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
-                    }
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    v.put("baseCurrency", asCurrencyCode(v.get("currency")));
+                    v.put("termCurrency", asCurrencyCode(v.get("fxCurrency")));
 
-                    if (!t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
-                    {
-                        BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    PDFExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
 
-                        // check, if forex currency is transaction
-                        // currency or not and swap amount, if necessary
-                        Unit grossValue;
-                        if (!asCurrencyCode(v.get("fxCurrency")).equals(t.getCurrencyCode()))
-                        {
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money amount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        else
-                        {
-                            Money amount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        t.addUnit(grossValue);
-                    }
+                    Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
+                    Money gross = rate.convert(asCurrencyCode(v.get("currency")), fxGross);
+
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 // 0,34 EUR 0,01 EUR 0,00 EUR 1,117800 0,39 USD
-                .section("localCurrency", "exchangeRate").optional()
-                .match("^[\\.,\\d]+ (?<localCurrency>[\\w]{3}) [\\.,\\d]+ [\\w]{3} [\\.,\\d]+ [\\w]{3} (?<exchangeRate>[\\.,\\d]+) [\\.,\\d]+ [\\w]{3}$")
+                .section("baseCurrency", "termCurrency", "exchangeRate").optional()
+                .match("^[\\.,\\d]+ (?<baseCurrency>[\\w]{3}) [\\.,\\d]+ [\\w]{3} [\\.,\\d]+ [\\w]{3} (?<exchangeRate>[\\.,\\d]+) [\\.,\\d]+ (?<termCurrency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    if (!t.getCurrencyCode().contentEquals(asCurrencyCode(v.get("localCurrency"))))
-                    {
-                        exchangeRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
-                    }
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    type.getCurrentContext().putType(asExchangeRate(v));
                 })
 
                 .wrap(TransactionItem::new);
@@ -466,33 +441,33 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
-        /**
-         * The advance tax payment is always paid in local currency.
-         * If the security is in foreign currency,
-         * the exchange rate is missing in the document for posting.
-         * 
-         * Vorabpauschale zum Stichtag 31.12.2020 aus Depotposition xxx.21
-         * Mor.St.Inv.-Global Opportunity Actions Nominatives A USD o.N.
-         * Ref. Nr. 000/22012021, Buchungsdatum 22.01.2021
-         * ISIN Betrag je Anteil
-         * LU0552385295 0,038342500 EUR <-- MISSING Exchange Rate
-         * Kapitalertragsteuer Solidaritätszuschlag Kirchensteuer
-         * 0,03 EUR 0,00 EUR 0,00 EUR
-         * Belastung der angefallenen Steuern in Höhe von 0,03 EUR erfolgt durch Verkauf aus Depotposition xxx.21 mit Ref. Nr.
-         * 000/22012021
-         * 
-         * --------------------------------------------------------
-         * 
-         * Verkauf wegen Vorabpauschale 0,03 EUR mit Kursdatum 25.01.2021 aus Depotposition xxx.21
-         * Mor.St.Inv.-Global Opportunity Actions Nominatives A USD o.N.
-         * Ref. Nr. 000/22012021, Buchungsdatum 26.01.2021
-         * Belastung der angefallenen Steuern aus Depotposition xxx.21 mit Ref. Nr. 000/22012021 (Vorabpauschale)
-         * ISIN Anteile Abrechnungskurs Devisenkurs Betrag
-         * LU0552385295 -0,000268 136,090000 USD 1,216800 0,03 EUR <-- Exchange Rate
-         * abzgl. Steuereinbehalt 0,03 EUR
-         * Zahlungsbetrag 0,00 EUR
-         * Vorabpauschale zum Stichtag 31.12.2020 aus Depotposition xxx.25
-         */
+        // @formatter:off
+        // The advance tax payment is always paid in local currency.
+        // If the security is in foreign currency,
+        // the exchange rate is missing in the document for posting.
+        // 
+        // Vorabpauschale zum Stichtag 31.12.2020 aus Depotposition xxx.21
+        // Mor.St.Inv.-Global Opportunity Actions Nominatives A USD o.N.
+        // Ref. Nr. 000/22012021, Buchungsdatum 22.01.2021
+        // ISIN Betrag je Anteil
+        // LU0552385295 0,038342500 EUR <-- MISSING Exchange Rate
+        // Kapitalertragsteuer Solidaritätszuschlag Kirchensteuer
+        // 0,03 EUR 0,00 EUR 0,00 EUR
+        // Belastung der angefallenen Steuern in Höhe von 0,03 EUR erfolgt durch Verkauf aus Depotposition xxx.21 mit Ref. Nr.
+        // 000/22012021
+        // 
+        // --------------------------------------------------------
+        // 
+        // Verkauf wegen Vorabpauschale 0,03 EUR mit Kursdatum 25.01.2021 aus Depotposition xxx.21
+        // Mor.St.Inv.-Global Opportunity Actions Nominatives A USD o.N.
+        // Ref. Nr. 000/22012021, Buchungsdatum 26.01.2021
+        // Belastung der angefallenen Steuern aus Depotposition xxx.21 mit Ref. Nr. 000/22012021 (Vorabpauschale)
+        // ISIN Anteile Abrechnungskurs Devisenkurs Betrag
+        // LU0552385295 -0,000268 136,090000 USD 1,216800 0,03 EUR <-- Exchange Rate
+        // abzgl. Steuereinbehalt 0,03 EUR
+        // Zahlungsbetrag 0,00 EUR
+        // Vorabpauschale zum Stichtag 31.12.2020 aus Depotposition xxx.25
+        // @formatter:on
 
         pdfTransaction
                 // Vorabpauschale zum Stichtag 31.12.2019 aus Depotposition XXXXXXXXXX.05
@@ -518,7 +493,7 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^Belastung der angefallenen Steuern in H.he von (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3}) .*$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 .wrap(t -> new TransactionItem(t));
@@ -596,35 +571,22 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^(?<note>Depotf.hrungsentgelt|VL\\-Vertragsentgelt) inkl\\. .*$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                     t.setNote(v.get("note"));
                 })
 
                 // IE00B4L5Y983 -0,167976 71,243400 USD 1,227400 9,75 EUR
                 // IE00BJZ2DC62 12,729132 26,002300 USD 1,105500 299,40 EUR
-                .section("fxCurrency", "exchangeRate", "amount", "currency").optional()
-                .match("^[\\w]{12} (\\-)?[\\.,\\d]+ [\\.,\\d]+ (?<fxCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d]+) (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
+                .section("termCurrency", "baseCurrency", "exchangeRate", "gross").optional()
+                .match("^[\\w]{12} (\\-)?[\\.,\\d]+ [\\.,\\d]+ (?<termCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d]+) (?<gross>[\\.,\\d]+) (?<baseCurrency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    // read the forex currency, exchange rate, account
-                    // currency and gross amount in account currency
-                    String fxCurrency = asCurrencyCode(v.get("fxCurrency"));
-                    if (t.getSecurity().getCurrencyCode().equals(fxCurrency))
-                    {
-                        BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                        BigDecimal reverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    PDFExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
 
-                        // gross given in account currency
-                        long amount = asAmount(v.get("amount"));
-                        long fxAmount = exchangeRate.multiply(BigDecimal.valueOf(amount))
-                                        .setScale(0, RoundingMode.HALF_DOWN).longValue();
+                    Money gross = Money.of(asCurrencyCode(v.get("baseCurrency")), asAmount(v.get("gross")));
+                    Money fxGross = rate.convert(asCurrencyCode(v.get("termCurrency")), gross);
 
-                        Unit grossValue = new Unit(Unit.Type.GROSS_VALUE,
-                                        Money.of(asCurrencyCode(v.get("currency")), amount),
-                                        Money.of(fxCurrency, fxAmount), reverseRate);
-
-                        t.addUnit(grossValue);
-                    }
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 .wrap(t -> new TransactionItem(t));
@@ -683,7 +645,7 @@ public class EbasePDFExtractor extends AbstractPDFExtractor
                 .match("^Gegenwert der Anteile: (?<amount>[\\,.\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 .wrap(TransactionItem::new);

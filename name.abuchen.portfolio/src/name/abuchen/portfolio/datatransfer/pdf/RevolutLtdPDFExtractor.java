@@ -16,6 +16,11 @@ import name.abuchen.portfolio.money.Values;
 @SuppressWarnings("nls")
 public class RevolutLtdPDFExtractor extends AbstractPDFExtractor
 {
+    /***
+     * Information:
+     * The currency of Revolut Trading Ltd. is always USD.
+     */
+
     public RevolutLtdPDFExtractor(Client client)
     {
         super(client);
@@ -34,11 +39,6 @@ public class RevolutLtdPDFExtractor extends AbstractPDFExtractor
 
     private void addBuySellTransaction()
     {
-        /***
-         * Information:
-         * The currency of Revolut Trading Ltd. is always USD.
-         */
-
         DocumentType type = new DocumentType("Order details");
         this.addDocumentTyp(type);
 
@@ -59,9 +59,7 @@ public class RevolutLtdPDFExtractor extends AbstractPDFExtractor
                 .match("^.* (?<type>Sell) .*$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Sell"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 // Symbol Company Type Quantity Price Execution time Execution venue
@@ -90,25 +88,24 @@ public class RevolutLtdPDFExtractor extends AbstractPDFExtractor
         addFeesSectionsTransaction(pdfTransaction, type);
     }
 
+    /***
+     * Information:
+     * We cannot import in the bank statement the purchases, 
+     * sales, dividends, etc. because the amounts of price and 
+     * number of shares are not correctly reported.
+     */
     private void addAccountStatementTransaction()
     {
-        /***
-         * Information:
-         * We cannot import in the bank statement the purchases, 
-         * sales, dividends, etc. because the amounts of price and 
-         * number of shares are not correctly reported.
-         */
-
         DocumentType type = new DocumentType("Account Statement");
         this.addDocumentTyp(type);
 
-        /***
-         * Formatting:
-         * Trade Date | Settle Date | Currency | Activity Type | Symbol - Description | Quantity | Price Amount
-         * -------------------------------------
-         * 07/08/2020 07/08/2020 USD CDEP Cash Disbursement - Wallet (USD) 460.85
-         * 07/15/2020 07/15/2020 USD CDEP Cash Disbursement - Wallet (USD) 204.15
-         */
+        // @formatter:off
+        // Formatting:
+        // Trade Date | Settle Date | Currency | Activity Type | Symbol - Description | Quantity | Price Amount
+        // -------------------------------------
+        // 07/08/2020 07/08/2020 USD CDEP Cash Disbursement - Wallet (USD) 460.85
+        // 07/15/2020 07/15/2020 USD CDEP Cash Disbursement - Wallet (USD) 204.15
+        // @formatter:on
         Block blockDeposit = new Block("^[\\d]{2}\\/[\\d]{2}\\/[\\d]{4} [\\d]{2}\\/[\\d]{2}\\/[\\d]{4} [\\w]{3} .* Cash Disbursement \\- Wallet \\([\\w]{3}\\) [\\.,\\d]+$");
         type.addBlock(blockDeposit);
         blockDeposit.set(new Transaction<AccountTransaction>()
@@ -124,7 +121,7 @@ public class RevolutLtdPDFExtractor extends AbstractPDFExtractor
                         .assign((t, v) -> {
                             t.setDateTime(asDate(v.get("date"), Locale.UK));
                             t.setAmount(asAmount(v.get("amount")));
-                            t.setCurrencyCode(v.get("currency"));
+                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                         })
 
                         .wrap(t -> {
