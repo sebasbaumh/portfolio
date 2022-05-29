@@ -163,6 +163,9 @@ public class Messages extends NLS
     public static String RebalanceAmbiguousTooltip;
     public static String RebalanceInexactTooltip;
     public static String ColumnDeltaValue;
+    public static String ColumnDistanceFromMovingAverage;
+    public static String ColumnDistanceFromMovingAverage_Description;
+    public static String ColumnDistanceFromMovingAverage_Option;
     public static String ColumnDesiredAllocation;
     public static String ColumnDesiredAllocation_Description;
     public static String ColumnDetails;
@@ -504,6 +507,9 @@ public class Messages extends NLS
     public static String LabelAssetChart;
     public static String LabelAvailableAttributes;
     public static String LabelAverageHoldingPeriod;
+    public static String LabelBackupModeAbsoluteDirectory;
+    public static String LabelBackupModeNextToFile;
+    public static String LabelBackupModeRelativeDirectory;
     public static String LabelBeforeTaxAndFees;
     public static String LabelBenchmarks;
     public static String LabelBiggerSize;
@@ -767,6 +773,8 @@ public class Messages extends NLS
     public static String LabelToolTipDividendDetailsGross;
     public static String LabelToolTipInvestmentDetails;
     public static String LabelToolTipTransactionSummary;
+    public static String LabelTotalsAtTheBottom;
+    public static String LabelTotalsAtTheTop;
     public static String LabelTotalSum;
     public static String LabelTotalValuePercent;
     public static String LabelTrades;
@@ -846,6 +854,7 @@ public class Messages extends NLS
     public static String MenuExportChartData;
     public static String MenuExportData;
     public static String MenuExportDiagram;
+    public static String MenuHideColumn;
     public static String MenuHideInformationPane;
     public static String MenuHideSidebar;
     public static String MenuLabelSetAsStartPage;
@@ -856,6 +865,7 @@ public class Messages extends NLS
     public static String MenuOpenSecurityOnSite;
     public static String MenuPickOtherDate;
     public static String MenuRemoveAll;
+    public static String MenuRenameColumn;
     public static String MenuRenameDashboard;
     public static String MenuRenameLabel;
     public static String MenuReportingPeriodDelete;
@@ -863,6 +873,7 @@ public class Messages extends NLS
     public static String MenuReportingPeriodInsert;
     public static String MenuReportingPeriodManage;
     public static String MenuResetChartSeries;
+    public static String MenuResetColumnName;
     public static String MenuResetColumns;
     public static String MenuSaveChart;
     public static String MenuSaveColumns;
@@ -1003,6 +1014,8 @@ public class Messages extends NLS
     public static String PrefCheckOnStartup;
     public static String PrefCreateBackupBeforeSaving;
     public static String PrefAutoSaveFrequency;
+    public static String PrefBackupDirectory;
+    public static String PrefBackupLocation;
     public static String PrefDescriptionAlphaVantage;
     public static String PrefDescriptionDivvyDiary;
     public static String PrefDescriptionEODHistoricalData;
@@ -1013,6 +1026,7 @@ public class Messages extends NLS
     public static String PrefDivvyDiaryAPIKey;
     public static String PrefEODHistoricalDataAPIKey;
     public static String PrefFinnhubAPIKey;
+    public static String PrefLabelAutoSaveFrequency;
     public static String PrefLabelEnableExperimentalFeatures;
     public static String PrefLabelKeepYourAPIKeyPrivate;
     public static String PrefLabelNote;
@@ -1024,12 +1038,14 @@ public class Messages extends NLS
     public static String PrefLabelUseSWTChartLibrary;
     public static String PrefMsgConfigureUpdates;
     public static String PrefMsgLanguageConfig;
+    public static String PrefMsgBackup;
     public static String PrefMsgCalendar;
     public static String PrefNoteIndirectQuotation;
     public static String PrefNoteStoreSettingsNextToFile;
     public static String PrefPortfolioReportAPIKey;
     public static String PrefPortfolioReportAPIURL;
     public static String PrefQuandlAPIKey;
+    public static String PrefRelativeBackupDirectoryName;
     public static String PrefStoreSettingsNextToFile;
     public static String PrefUpdateQuotesAfterFileOpen;
     public static String PrefUpdateSite;
@@ -1041,6 +1057,7 @@ public class Messages extends NLS
     public static String PrefTitleLanguage;
     public static String PrefTitlePresentation;
     public static String PrefTitleProxy;
+    public static String PrefTitleBackup;
     public static String PrefTitleCalendar;
     public static String PrefTitleDivvyDiary;
     public static String PrefTitleEODHistoricalData;

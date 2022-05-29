@@ -63,7 +63,7 @@ public abstract class AbstractPDFExtractor implements Extractor
     {
         return bankIdentifier;
     }
-    
+
     /* package */ NumberFormat getNumberFormat()
     {
         return numberFormat;
@@ -113,8 +113,7 @@ public abstract class AbstractPDFExtractor implements Extractor
                 else if (subject.getNote() == null || trim(subject.getNote()).length() == 0)
                     item.getSubject().setNote(filename);
                 else
-                    item.getSubject().setNote(
-                                    trim(item.getSubject().getNote()).concat(" | ").concat(filename)); //$NON-NLS-1$
+                    item.getSubject().setNote(trim(item.getSubject().getNote()).concat(" | ").concat(filename)); //$NON-NLS-1$
             }
 
             return items;
@@ -211,6 +210,11 @@ public abstract class AbstractPDFExtractor implements Extractor
         }
     }
 
+    protected long asShares(String value, String language, String country)
+    {
+        return PDFExtractorUtils.asShares(value, language, country);
+    }
+
     protected String asCurrencyCode(String currency)
     {
         // ensure that the security is always created with a valid currency code
@@ -231,6 +235,13 @@ public abstract class AbstractPDFExtractor implements Extractor
         {
             throw new IllegalArgumentException(e);
         }
+    }
+
+    protected PDFExchangeRate asExchangeRate(Map<String, String> data)
+    {
+        return new PDFExchangeRate(asExchangeRate(data.get("exchangeRate")), //$NON-NLS-1$
+                        asCurrencyCode(data.get("baseCurrency")), //$NON-NLS-1$
+                        asCurrencyCode(data.get("termCurrency"))); //$NON-NLS-1$
     }
 
     protected BigDecimal asExchangeRate(String value)

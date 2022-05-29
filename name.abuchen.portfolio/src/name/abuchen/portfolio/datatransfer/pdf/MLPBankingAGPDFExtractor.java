@@ -1,10 +1,11 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
+import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
@@ -13,7 +14,6 @@ import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
-import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 
 @SuppressWarnings("nls")
@@ -28,6 +28,7 @@ public class MLPBankingAGPDFExtractor extends AbstractPDFExtractor
 
         addBuySellTransaction();
         addDividendeTransaction();
+        addDepotStatementTransaction();
     }
 
     @Override
@@ -61,9 +62,7 @@ public class MLPBankingAGPDFExtractor extends AbstractPDFExtractor
                 .match("^Wertpapier Abrechnung (?<type>(Kauf|Verkauf))$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Verkauf"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 // Stück 4,929 SAUREN GLOBAL BALANCED LU0106280836 (930920)
@@ -109,38 +108,21 @@ public class MLPBankingAGPDFExtractor extends AbstractPDFExtractor
                     t.setAmount(asAmount(v.get("amount")));
                 })
 
+                // Ausführungskurs 167,82 USD
                 // Devisenkurs (EUR/USD) 1,141 vom 18.02.2022
                 // Kurswert 24.013,85 EUR
-                .section("fxCurrency", "exchangeRate", "amount", "currency").optional()
-                .match("^Devisenkurs \\([\\w]{3}\\/(?<fxCurrency>[\\w]{3})\\) (?<exchangeRate>[\\.,\\d]+) .*$")
-                .match("^Kurswert (?<amount>[\\.,\\d]+)(\\-)? (?<currency>[\\w]{3})$")
+                .section("fxCurrency", "baseCurrency", "termCurrency", "exchangeRate", "gross", "currency").optional()
+                .match("^Ausf.hrungskurs [\\.,\\d]+ (?<fxCurrency>[\\w]{3})")
+                .match("^Devisenkurs \\((?<baseCurrency>[\\w]{3})\\/(?<termCurrency>[\\w]{3})\\) (?<exchangeRate>[\\.,\\d]+) .*$")
+                .match("^Kurswert (?<gross>[\\.,\\d]+)(\\-)? (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    if (t.getPortfolioTransaction().getCurrencyCode().contentEquals(asCurrencyCode(v.get("fxCurrency"))))
-                    {
-                        exchangeRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
-                    }
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    PDFExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
 
-                    // read the forex currency, exchange rate and gross
-                    // amount in forex currency
-                    String forex = asCurrencyCode(v.get("fxCurrency"));
-                    if (t.getPortfolioTransaction().getSecurity().getCurrencyCode().equals(forex))
-                    {
-                        BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                    Money fxGross = rate.convert(asCurrencyCode(v.get("fxCurrency")), gross);
 
-                        // gross given in account currency
-                        long amount = asAmount(v.get("amount"));
-                        long fxAmount = exchangeRate.multiply(BigDecimal.valueOf(amount))
-                                        .setScale(0, RoundingMode.HALF_DOWN).longValue();
-
-                        Unit grossValue = new Unit(Unit.Type.GROSS_VALUE,
-                                        Money.of(asCurrencyCode(v.get("currency")), amount),
-                                        Money.of(forex, fxAmount), inverseRate);
-
-                        t.getPortfolioTransaction().addUnit(grossValue);
-                    }
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 // Veräußerungsverlust 3,00- EUR
@@ -169,11 +151,9 @@ public class MLPBankingAGPDFExtractor extends AbstractPDFExtractor
         });
 
         pdfTransaction
-                /***
-                 * If we have a positive amount and a gross reinvestment,
-                 * there is a tax refund.
-                 * If the amount is negative, then it is taxes.
-                 */
+                // If we have a positive amount and a gross
+                // reinvestment, there is a tax refund.
+                // If the amount is negative, then it is taxes.
                 .section("type", "sign").optional()
                 .match("^.* (?<type>(Aussch.ttung|Dividende|Ertrag|Thesaurierung brutto)) pro (St\\.|St.ck) [\\.,\\d]+ [\\w]{3}$")
                 .match("^Ausmachender Betrag [\\.,\\d]+(?<sign>(\\+|\\-))? (?<currency>[\\w]{3})$")
@@ -221,45 +201,17 @@ public class MLPBankingAGPDFExtractor extends AbstractPDFExtractor
                 })
 
                 // Devisenkurs EUR / USD 1,2095
-                // Devisenkursdatum 02.01.2018
                 // Ausschüttung 113,16 USD 93,56+ EUR
-                .section("exchangeRate", "fxAmount", "fxCurrency", "amount", "currency").optional()
-                .match("^Devisenkurs .* (?<exchangeRate>[\\.,\\d]+)$")
-                .match("^(Aussch.ttung|Dividendengutschrift) (?<fxAmount>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<amount>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})$")
+                .section("baseCurrency", "termCurrency", "exchangeRate", "fxGross", "fxCurrency", "gross", "currency").optional()
+                .match("^Devisenkurs (?<baseCurrency>[\\w]{3}) \\/ (?<termCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d]+)$")
+                .match("^(Aussch.ttung|Dividendengutschrift) (?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<gross>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    if (t.getCurrencyCode().contentEquals(asCurrencyCode(v.get("fxCurrency"))))
-                    {
-                        exchangeRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
-                    }
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    type.getCurrentContext().putType(asExchangeRate(v));
 
-                    if (!t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
-                    {
-                        BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                    Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                        // check, if forex currency is transaction
-                        // currency or not and swap amount, if necessary
-                        Unit grossValue;
-                        if (!asCurrencyCode(v.get("fxCurrency")).equals(t.getCurrencyCode()))
-                        {
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money amount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        else
-                        {
-                            Money amount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        t.addUnit(grossValue);
-                    }
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 .wrap(TransactionItem::new);
@@ -268,6 +220,109 @@ public class MLPBankingAGPDFExtractor extends AbstractPDFExtractor
         addFeesSectionsTransaction(pdfTransaction, type);
 
         block.set(pdfTransaction);
+    }
+
+    private void addDepotStatementTransaction()
+    {
+        DocumentType type = new DocumentType("Verm.gensdepot Konto", (context, lines) -> {
+            Pattern pCurrency = Pattern.compile("^(?<currency>[\\w]{3})\\-Konto Kontonummer .*$");
+            Pattern pYear = Pattern.compile("^.* Kontoauszug Nr\\. ([\\s]+)?[\\d]+\\/(?<year>[\\d]{4})$");
+
+            for (String line : lines)
+            {
+                Matcher m = pCurrency.matcher(line);
+                if (m.matches())
+                    context.put("currency", m.group("currency"));
+
+                m = pYear.matcher(line);
+                if (m.matches())
+                    context.put("year", m.group("year"));
+            }
+        });
+        this.addDocumentTyp(type);
+
+        Block depositRemovalblock = new Block("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. LASTSCHRIFTEINR\\. .* [S|H]$");
+        type.addBlock(depositRemovalblock);
+        depositRemovalblock.set(new Transaction<AccountTransaction>()
+
+                .subject(() -> {
+                    AccountTransaction t = new AccountTransaction();
+                    t.setType(AccountTransaction.Type.DEPOSIT);
+                    return t;
+                })
+
+                .section("day", "month", "note", "amount", "sign")
+                .match("^[\\d]{2}\\.[\\d]{2}\\. (?<day>[\\d]{2})\\.(?<month>[\\d]{2})\\. (?<note>LASTSCHRIFTEINR\\.) .* (?<amount>[\\.,\\d]+) (?<sign>[S|H])$")
+                .assign((t, v) -> {
+                    Map<String, String> context = type.getCurrentContext();
+
+                    // Is sign --> "S" change from DEPOSIT to REMOVAL
+                    if (v.get("sign").equals("S"))
+                        t.setType(AccountTransaction.Type.REMOVAL);
+                    
+                    // create a long date from the year in the context
+                    t.setDateTime(asDate(v.get("day") + "." + v.get("month") + "." + context.get("year")));
+
+                    t.setAmount(asAmount(v.get("amount")));
+                    t.setCurrencyCode(asCurrencyCode(context.get("currency")));
+
+                    // Formatting some notes
+                    if (v.get("note").equals("LASTSCHRIFTEINR."))
+                        v.put("note", "Lastschrifteinr.");
+
+                    t.setNote(v.get("note"));
+                })
+
+                .wrap(t -> {
+                    if (t.getAmount() != 0)
+                        return new TransactionItem(t);
+                    return null;
+                }));
+
+        Block feeblock = new Block("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. ENTGELT .* [S|H]$");
+        type.addBlock(feeblock);
+        feeblock.set(new Transaction<AccountTransaction>()
+
+                .subject(() -> {
+                    AccountTransaction t = new AccountTransaction();
+                    t.setType(AccountTransaction.Type.FEES_REFUND);
+                    return t;
+                })
+
+                .section("day", "month", "note1", "amount", "sign", "note2", "note3")
+                .match("^[\\d]{2}\\.[\\d]{2}\\. (?<day>[\\d]{2})\\.(?<month>[\\d]{2})\\. (?<note1>ENTGELT) .* (?<amount>[\\.,\\d]+) (?<sign>[S|H])$")
+                .match("^.* (?<note2>(DEPOTPREIS|VERWALTUNGSENTGELT)) [\\d]+ (?<note3>[\\w]{2}\\/[\\d]{4}) .*$")
+                .assign((t, v) -> {
+                    Map<String, String> context = type.getCurrentContext();
+
+                    // Is sign --> "S" change from FEES_REFUND to FEES
+                    if (v.get("sign").equals("S"))
+                        t.setType(AccountTransaction.Type.FEES);
+                    
+                    // create a long date from the year in the context
+                    t.setDateTime(asDate(v.get("day") + "." + v.get("month") + "." + context.get("year")));
+
+                    t.setAmount(asAmount(v.get("amount")));
+                    t.setCurrencyCode(asCurrencyCode(context.get("currency")));
+
+                    // Formatting some notes
+                    if (v.get("note1").equals("ENTGELT"))
+                        v.put("note1", "Entgeld");
+
+                    if (v.get("note2").equals("DEPOTPREIS"))
+                        v.put("note2", "Depotpreis");
+
+                    if (v.get("note2").equals("VERWALTUNGSENTGELT"))
+                        v.put("note2", "Verwaltungsentgeld");
+
+                    t.setNote(v.get("note1") + " " + v.get("note2") + " " + v.get("note3"));
+                })
+
+                .wrap(t -> {
+                    if (t.getAmount() != 0)
+                        return new TransactionItem(t);
+                    return null;
+                }));
     }
 
     private void addTaxReturnBlock(Map<String, String> context, DocumentType type)

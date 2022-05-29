@@ -14,6 +14,8 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.AlgorithmParameters;
@@ -33,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -68,6 +71,7 @@ import name.abuchen.portfolio.PortfolioLog;
 import name.abuchen.portfolio.model.AttributeType.ImageConverter;
 import name.abuchen.portfolio.model.Classification.Assignment;
 import name.abuchen.portfolio.model.PortfolioTransaction.Type;
+import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.CurrencyUnit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
@@ -570,7 +574,7 @@ public class ClientFactory
         if (flags.contains(SaveFlag.ENCRYPTED) && client.getSecret() == null)
             throw new IOException(Messages.MsgPasswordMissing);
 
-        writeFile(client, file, null, flags);
+        writeFile(client, file, null, flags, true);
     }
 
     public static void saveAs(final Client client, final File file, char[] password, Set<SaveFlag> flags)
@@ -582,11 +586,23 @@ public class ClientFactory
         if (flags.contains(SaveFlag.ENCRYPTED) && password == null)
             throw new IOException(Messages.MsgPasswordMissing);
 
-        writeFile(client, file, password, flags);
+        writeFile(client, file, password, flags, true);
     }
 
-    private static void writeFile(final Client client, final File file, char[] password, Set<SaveFlag> flags)
+    public static void exportAs(final Client client, final File file, char[] password, Set<SaveFlag> flags)
                     throws IOException
+    {
+        if (flags.isEmpty())
+            flags.add(SaveFlag.XML);
+
+        if (flags.contains(SaveFlag.ENCRYPTED) && password == null)
+            throw new IOException(Messages.MsgPasswordMissing);
+
+        writeFile(client, file, password, flags, false);
+    }
+
+    private static void writeFile(final Client client, final File file, char[] password, Set<SaveFlag> flags,
+                    boolean updateFlags) throws IOException
     {
         PortfolioLog.info(String.format("Saving %s with %s", file.getName(), flags.toString())); //$NON-NLS-1$
 
@@ -596,8 +612,12 @@ public class ClientFactory
         {
             ClientPersister persister = buildPersister(flags, password);
             persister.save(client, output);
-            client.getSaveFlags().clear();
-            client.getSaveFlags().addAll(flags);
+
+            if (updateFlags)
+            {
+                client.getSaveFlags().clear();
+                client.getSaveFlags().addAll(flags);
+            }
         }
     }
 
@@ -763,10 +783,12 @@ public class ClientFactory
                 fixDimensionsList(client);
             case 52:
                 // added properties to attribute types
-            case 53:
+            case 53: // NOSONAR
                 fixSourceAttributeOfTransactions(client);
-            case 54:
+            case 54: // NOSONAR
                 addKeyToTaxonomyClassifications(client);
+            case 55:
+                fixGrossValueUnits(client);
 
                 client.setVersion(Client.CURRENT_VERSION);
                 break;
@@ -1390,6 +1412,55 @@ public class ClientFactory
                 copyClassificationKeys(fromChild, toChildren.get(key));
             }
         }
+    }
+
+    private static void fixGrossValueUnits(Client client)
+    {
+        for (Portfolio portfolio : client.getPortfolios())
+            for (PortfolioTransaction tx : portfolio.getTransactions())
+                fixGrossValueUnit(tx);
+
+        for (Account account : client.getAccounts())
+            for (AccountTransaction tx : account.getTransactions())
+                fixGrossValueUnit(tx);
+    }
+
+    private static void fixGrossValueUnit(Transaction tx)
+    {
+        Optional<Unit> unit = tx.getUnit(Unit.Type.GROSS_VALUE);
+
+        if (unit.isEmpty())
+            return;
+
+        Unit grossValueUnit = unit.get();
+        Money calculatedGrossValue = tx.getGrossValue();
+
+        if (grossValueUnit.getAmount().equals(calculatedGrossValue))
+            return;
+
+        // check if it a rounding difference that is acceptable
+        try
+        {
+            Unit u = new Unit(Unit.Type.GROSS_VALUE, calculatedGrossValue, grossValueUnit.getForex(),
+                            grossValueUnit.getExchangeRate());
+
+            tx.removeUnit(grossValueUnit);
+            tx.addUnit(u);
+            return;
+        }
+        catch (IllegalArgumentException ignore)
+        {
+            // recalculate the unit to fix the gross value
+        }
+
+        Money updatedGrossValue = Money.of(grossValueUnit.getForex().getCurrencyCode(),
+                        BigDecimal.valueOf(calculatedGrossValue.getAmount())
+                                        .divide(grossValueUnit.getExchangeRate(), Values.MC)
+                                        .setScale(0, RoundingMode.HALF_EVEN).longValue());
+
+        tx.removeUnit(grossValueUnit);
+        tx.addUnit(new Unit(Unit.Type.GROSS_VALUE, calculatedGrossValue, updatedGrossValue,
+                        grossValueUnit.getExchangeRate()));
     }
 
     @SuppressWarnings("nls")

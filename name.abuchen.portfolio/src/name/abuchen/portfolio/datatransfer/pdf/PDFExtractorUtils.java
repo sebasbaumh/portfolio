@@ -13,15 +13,19 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 import name.abuchen.portfolio.Messages;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
+import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
+import name.abuchen.portfolio.model.Transaction;
 import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
 
-class PDFExtractorUtils
+public class PDFExtractorUtils
 {
     private static final DateTimeFormatter[] DATE_FORMATTER_GERMANY = { //
                     DateTimeFormatter.ofPattern("d.M.yyyy", Locale.GERMANY), //$NON-NLS-1$
@@ -59,6 +63,32 @@ class PDFExtractorUtils
     {
     }
 
+    public static void checkAndSetGrossUnit(Money gross, Money fxGross, Object transaction, DocumentType type)
+    {
+        if (transaction instanceof name.abuchen.portfolio.model.Transaction)
+            PDFExtractorUtils.checkAndSetGrossUnit(gross, fxGross,
+                            (name.abuchen.portfolio.model.Transaction) transaction, type);
+        else if (transaction instanceof BuySellEntry)
+            PDFExtractorUtils.checkAndSetGrossUnit(gross, fxGross,
+                            ((BuySellEntry) transaction).getPortfolioTransaction(), type);
+        else
+            throw new UnsupportedOperationException();
+    }
+
+    public static void checkAndSetGrossUnit(Money gross, Money fxGross, name.abuchen.portfolio.model.Transaction t,
+                    DocumentType type)
+    {
+        if (t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
+            return;
+
+        Optional<PDFExchangeRate> rate = type.getCurrentContext().getType(PDFExchangeRate.class);
+
+        if (rate.isPresent())
+        {
+            t.addUnit(new Unit(Unit.Type.GROSS_VALUE, gross, fxGross, rate.get().getRate(gross.getCurrencyCode())));
+        }
+    }
+
     public static void checkAndSetTax(Money tax, Object transaction, DocumentType type)
     {
         if (transaction instanceof name.abuchen.portfolio.model.Transaction)
@@ -69,29 +99,25 @@ class PDFExtractorUtils
             throw new UnsupportedOperationException();
     }
 
-    @SuppressWarnings("nls")
     public static void checkAndSetTax(Money tax, name.abuchen.portfolio.model.Transaction t, DocumentType type)
     {
         if (tax.getCurrencyCode().equals(t.getCurrencyCode()))
         {
             t.addUnit(new Unit(Unit.Type.TAX, tax));
+            return;
         }
-        else if (type.getCurrentContext().containsKey("exchangeRate"))
+
+        Optional<PDFExchangeRate> rate = type.getCurrentContext().getType(PDFExchangeRate.class);
+
+        if (rate.isPresent())
         {
-            BigDecimal exchangeRate = new BigDecimal(type.getCurrentContext().get("exchangeRate"));
-            BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
+            Money fxTax = rate.get().convert(t.getCurrencyCode(), tax);
 
-            Money txTax = Money.of(t.getCurrencyCode(), BigDecimal.valueOf(tax.getAmount()).multiply(inverseRate)
-                            .setScale(0, RoundingMode.HALF_UP).longValue());
-
-            /**
-             * Store tax value in both currencies, if security's currency is
-             * different to transaction currency
-             */
             if (t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
-                t.addUnit(new Unit(Unit.Type.TAX, txTax));
+                t.addUnit(new Unit(Unit.Type.TAX, fxTax));
             else
-                t.addUnit(new Unit(Unit.Type.TAX, txTax, tax, inverseRate));
+                t.addUnit(new Unit(Unit.Type.TAX, fxTax, tax, rate.get().getRate(t.getCurrencyCode())));
+
         }
     }
 
@@ -105,29 +131,24 @@ class PDFExtractorUtils
             throw new UnsupportedOperationException();
     }
 
-    @SuppressWarnings("nls")
     public static void checkAndSetFee(Money fee, name.abuchen.portfolio.model.Transaction t, DocumentType type)
     {
         if (fee.getCurrencyCode().equals(t.getCurrencyCode()))
         {
             t.addUnit(new Unit(Unit.Type.FEE, fee));
+            return;
         }
-        else if (type.getCurrentContext().containsKey("exchangeRate"))
+
+        Optional<PDFExchangeRate> rate = type.getCurrentContext().getType(PDFExchangeRate.class);
+
+        if (rate.isPresent())
         {
-            BigDecimal exchangeRate = new BigDecimal(type.getCurrentContext().get("exchangeRate"));
-            BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
+            Money fxFee = rate.get().convert(t.getCurrencyCode(), fee);
 
-            Money fxFee = Money.of(t.getCurrencyCode(), BigDecimal.valueOf(fee.getAmount()).multiply(inverseRate)
-                            .setScale(0, RoundingMode.HALF_UP).longValue());
-
-            /**
-             * Store tax value in both currencies, if security's currency is
-             * different to transaction currency
-             */
             if (t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
                 t.addUnit(new Unit(Unit.Type.FEE, fxFee));
             else
-                t.addUnit(new Unit(Unit.Type.FEE, fxFee, fee, inverseRate));
+                t.addUnit(new Unit(Unit.Type.FEE, fxFee, fee, rate.get().getRate(t.getCurrencyCode())));
         }
     }
 
@@ -192,6 +213,11 @@ class PDFExtractorUtils
         }
     }
 
+    public static long asShares(String value, String language, String country)
+    {
+        return convertToNumberLong(value, Values.Share, language, country);
+    }
+
     public static LocalDateTime asDate(String value, Locale... hints)
     {
         Locale[] locales = hints.length > 0 ? hints : new Locale[] { Locale.GERMANY, Locale.US, Locale.UK };
@@ -248,5 +274,72 @@ class PDFExtractorUtils
         }
 
         throw new DateTimeParseException(Messages.MsgErrorNotAValidDate, value, 0);
+    }
+
+    public static Consumer<Transaction> fixGrossValue()
+    {
+        return t -> {
+            // check if the relevant transaction properties have been parsed
+            if (t.getCurrencyCode() == null || t.getSecurity() == null || t.getSecurity().getCurrencyCode() == null)
+                return;
+
+            // if transaction currency equals to the currency of
+            // the security, then there is no forex information required
+            if (t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
+                return;
+
+            // check if the reported gross value fits to the
+            // expected gross value
+            Optional<Unit> actualGross = t.getUnit(Unit.Type.GROSS_VALUE);
+
+            if (actualGross.isPresent())
+            {
+                Unit grossUnit = actualGross.get();
+                Money expectedGross = t.getGrossValue();
+
+                if (!expectedGross.equals(grossUnit.getAmount()))
+                {
+                    // check if it a rounding difference that is acceptable
+                    try
+                    {
+                        Unit u = new Unit(Unit.Type.GROSS_VALUE, expectedGross, grossUnit.getForex(),
+                                        grossUnit.getExchangeRate());
+
+                        t.removeUnit(grossUnit);
+                        t.addUnit(u);
+                        return;
+                    }
+                    catch (IllegalArgumentException ignore)
+                    {
+                        // recalculate the unit to fix the gross value
+                    }
+
+                    Money caculatedGrossValue = Money.of(grossUnit.getForex().getCurrencyCode(),
+                                    BigDecimal.valueOf(expectedGross.getAmount())
+                                                    .divide(grossUnit.getExchangeRate(), Values.MC)
+                                                    .setScale(0, RoundingMode.HALF_EVEN).longValue());
+
+                    t.removeUnit(grossUnit);
+                    t.addUnit(new Unit(Unit.Type.GROSS_VALUE, expectedGross, caculatedGrossValue,
+                                    grossUnit.getExchangeRate()));
+                }
+            }
+            else
+            {
+                // create gross value once we know forex
+                // currency (if currency is stored with base and
+                // term currency in context)
+            }
+        };
+    }
+
+    public static Consumer<AccountTransaction> fixGrossValueA()
+    {
+        return t -> fixGrossValue().accept(t);
+    }
+
+    public static Consumer<BuySellEntry> fixGrossValueBuySell()
+    {
+        return t -> fixGrossValue().accept(t.getPortfolioTransaction());
     }
 }

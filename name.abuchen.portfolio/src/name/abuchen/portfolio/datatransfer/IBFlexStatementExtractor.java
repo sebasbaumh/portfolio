@@ -107,6 +107,7 @@ public class IBFlexStatementExtractor implements Extractor
         try
         {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             dbFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(f);
@@ -159,6 +160,10 @@ public class IBFlexStatementExtractor implements Extractor
 
     private class IBFlexStatementExtractorResult
     {
+        private static final String ASSETKEY_STOCK = "STK";
+        private static final String ASSETKEY_OPTION = "OPT";
+        private static final String ASSETKEY_FUTURE_OPTION = "FOP";
+        
         private Document document;
         private List<Exception> errors = new ArrayList<>();
         private List<Item> results = new ArrayList<>();
@@ -326,7 +331,7 @@ public class IBFlexStatementExtractor implements Extractor
         private Function<Element, Item> buildPortfolioTransaction = element -> {
             String assetCategory = element.getAttribute("assetCategory");
 
-            if (!Arrays.asList("STK", "OPT").contains(assetCategory))
+            if (!Arrays.asList(ASSETKEY_STOCK, ASSETKEY_OPTION, ASSETKEY_FUTURE_OPTION).contains(assetCategory))
                 return null;
 
             // Unused Information from Flexstatement Trades, to be used in the
@@ -654,7 +659,7 @@ public class IBFlexStatementExtractor implements Extractor
             String conID = element.getAttribute("conid");
             String description = element.getAttribute("description");
 
-            if ("OPT".equals(assetCategory))
+            if (Arrays.asList(ASSETKEY_OPTION, ASSETKEY_FUTURE_OPTION).contains(assetCategory))
             {
                 computedTickerSymbol = tickerSymbol.map(t -> t.replaceAll("\\s+", ""));
                 // e.g a put option for oracle: ORCL 171117C00050000
@@ -662,7 +667,7 @@ public class IBFlexStatementExtractor implements Extractor
                     quoteFeed = YahooFinanceQuoteFeed.ID;
             }
 
-            if ("STK".equals(assetCategory))
+            if (ASSETKEY_STOCK.equals(assetCategory))
             {
                 computedTickerSymbol = tickerSymbol;
                 if (!"USD".equals(currency))

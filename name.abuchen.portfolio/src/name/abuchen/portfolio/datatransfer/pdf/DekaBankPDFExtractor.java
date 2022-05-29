@@ -1,9 +1,8 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
+import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,7 +14,6 @@ import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
-import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.CurrencyUnit;
 import name.abuchen.portfolio.money.Money;
 
@@ -63,9 +61,7 @@ public class DekaBankPDFExtractor extends AbstractPDFExtractor
                 .match("^(?<type>(LASTSCHRIFTEINZUG|VERKAUF|KAUF AUS ERTRAG)) .*$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("VERKAUF"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 // Bezeichnung: Deka-UmweltInvest TF
@@ -178,40 +174,19 @@ public class DekaBankPDFExtractor extends AbstractPDFExtractor
 
                 // Abrechnungsbetrag EUR 6,22 USD 6,88 USD 102,155229 Anteilumsatz: 0,067
                 // USD 1,106630
-                .section("fxCurrency", "fxAmount", "exchangeRate").optional()
-                .match("^Abrechnungsbetrag [\\w]{3} [\\.,\\d]+ (?<fxCurrency>[\\w]{3}) (?<fxAmount>[\\.,\\d]+) .*$")
+                .section("currency", "gross", "fxCurrency", "fxGross", "termCurrency", "exchangeRate").optional()
+                .match("^Abrechnungsbetrag (?<currency>[\\w]{3}) (?<gross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<fxGross>[\\.,\\d]+) .*$")
                 .find("Devisenkurs .*$")
-                .match("^[\\w]{3} (?<exchangeRate>[\\.,\\d]+)$")
+                .match("^(?<termCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d]+)$")
                 .assign((t, v) -> {
-                    // read the forex currency, exchange rate and gross
-                    // amount in forex currency
-                    String forex = asCurrencyCode(v.get("fxCurrency"));
-                    if (t.getPortfolioTransaction().getSecurity().getCurrencyCode().equals(forex))
-                    {
-                        BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                        BigDecimal reverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    v.put("baseCurrency", asCurrencyCode(v.get("currency")));
 
-                        // gross given in forex currency
-                        long fxAmount = asAmount(v.get("fxAmount"));
-                        long amount = reverseRate.multiply(BigDecimal.valueOf(fxAmount))
-                                        .setScale(0, RoundingMode.HALF_DOWN).longValue();
+                    type.getCurrentContext().putType(asExchangeRate(v));
 
-                        Unit grossValue = new Unit(Unit.Type.GROSS_VALUE,
-                                        Money.of(t.getPortfolioTransaction().getCurrencyCode(), amount),
-                                        Money.of(forex, fxAmount), reverseRate);
+                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                    Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                        t.getPortfolioTransaction().addUnit(grossValue);
-                    }
-                })
-
-                // Valutatag: 08. Dezember 2009 Devisenkurs: 0,6654265
-                .section("exchangeRate").optional()
-                .find("Devisenkurs .*$")
-                .match("^[\\w]{3} (?<exchangeRate>[\\.,\\d]+)$")
-                .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 .wrap(BuySellEntryItem::new);
@@ -295,12 +270,11 @@ public class DekaBankPDFExtractor extends AbstractPDFExtractor
 
         Block block = new Block("^ERTRAGSAUSSCH.TTUNG$", "^Bestand neu: .*$");
         type.addBlock(block);
-        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.DIVIDENDS);
-                return entry;
-            });
+        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>().subject(() -> {
+            AccountTransaction entry = new AccountTransaction();
+            entry.setType(AccountTransaction.Type.DIVIDENDS);
+            return entry;
+        });
 
         pdfTransaction
                 // Ausschüttung (pro Anteil EUR 0,2292000): EUR 0,14
@@ -356,9 +330,7 @@ public class DekaBankPDFExtractor extends AbstractPDFExtractor
                 m = pIsin.matcher(lines[i]);
                 if (m.matches())
                 {
-                    /***
-                     * Search the security currency in the block
-                     */
+                    // Search the security currency in the block
                     for (int ii = i; ii < endBlock; ii++)
                     {
                         Matcher m1 = pSecurityCurrency.matcher(lines[ii]);
@@ -366,15 +338,15 @@ public class DekaBankPDFExtractor extends AbstractPDFExtractor
                             securityCurrency = m1.group("securityCurrency");
                     }
 
-                    /***
-                     * Stringbuilder:
-                     * security_(security name)_(currency)_(start@line)_(end@line) = isin
-                     * 
-                     * Example:
-                     * Deka-GlobalChampions TF
-                     * ISIN: DE000DK0ECV6 Unterdepot: 00
-                     * EUR Fremdwährung EUR Anteile tag nungstag
-                     */
+                    // @formatter:off
+                    // Stringbuilder:
+                    // security_(security name)_(currency)_(start@line)_(end@line) = isin
+                    // 
+                    // Example:
+                    // Deka-GlobalChampions TF
+                    // ISIN: DE000DK0ECV6 Unterdepot: 00
+                    // EUR Fremdwährung EUR Anteile tag nungstag
+                    // @formatter:on
                     StringBuilder securityListKey = new StringBuilder("security_");
                     securityListKey.append(trim(lines[i - 1])).append("_");
                     securityListKey.append(securityCurrency).append("_");
@@ -402,9 +374,7 @@ public class DekaBankPDFExtractor extends AbstractPDFExtractor
                 .match("^(?<type>(Lastschrifteinzug|Verkauf)) .*$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Verkauf"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 // Lastschrifteinzug 250,00 198,660000 +1,258 01.04.2021 01.04.2021
@@ -448,9 +418,7 @@ public class DekaBankPDFExtractor extends AbstractPDFExtractor
                 .match("^(?<type>(Einbuchung|Ausbuchung)) .*$")
                 .assign((t, v) -> {
                     if (v.get("type").equals("Ausbuchung"))
-                    {
                         t.setType(PortfolioTransaction.Type.DELIVERY_OUTBOUND);
-                    }
                 })
 
                 // Ausbuchung w/ Fusion -2,140 31.05.2021 28.05.2021
@@ -505,10 +473,8 @@ public class DekaBankPDFExtractor extends AbstractPDFExtractor
             if (parts[0].equalsIgnoreCase("security")) //$NON-NLS-1$
             {
                 if (entry >= Integer.parseInt(parts[3]) && entry <= Integer.parseInt(parts[4]))
-                {
                     // returns security name, isin, security currency
                     return new Security(parts[1], context.get(key), parts[2]);
-                }
             }
         }
         return null;

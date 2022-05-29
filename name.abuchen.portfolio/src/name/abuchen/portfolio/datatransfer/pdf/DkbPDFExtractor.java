@@ -1,22 +1,22 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
+import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
+import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentContext;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Transaction;
 import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
-import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
 
@@ -25,7 +25,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
 {
     private static final String IS_JOINT_ACCOUNT = "isJointAccount"; //$NON-NLS-1$
 
-    BiConsumer<Map<String, String>, String[]> isJointAccount = (context, lines) -> {
+    BiConsumer<DocumentContext, String[]> isJointAccount = (context, lines) -> {
         Pattern pJointAccount = Pattern.compile("^Anteilige Berechnungsgrundlage für \\(50,00([\\s]+)?%\\).*$"); //$NON-NLS-1$
         Boolean bJointAccount = Boolean.FALSE;
         
@@ -121,9 +121,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                                     || v.get("type").equals("Verkauf Direkthandel")
                                     || v.get("type").equals("Verkauf aus Kapitalmaßnahme")
                                     || v.get("type").equals("Rücknahme Investmentfonds"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 // Is type --> "Gesamtkündigung" change from BUY to SELL
@@ -133,9 +131,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                     if (v.get("type").equals("Gesamtkündigung")
                                     || v.get("type").equals("Teilrückzahlung mit Nennwertänderung")
                                     || v.get("type").equals("Teilliquidation mit Nennwertreduzierung"))
-                    {
                         t.setType(PortfolioTransaction.Type.SELL);
-                    }
                 })
 
                 // Nominale Wertpapierbezeichnung ISIN (WKN)
@@ -146,7 +142,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .find("Nominale Wertpapierbezeichnung ISIN \\(WKN\\)")
                 .match("^(St.ck|[\\w]{3}) [\\.,\\d]+ (?<name>.*) (?<isin>[\\w]{12}) \\((?<wkn>.*)\\)$")
                 .match("^(?<nameContinued>.*)$")
-                .match("^(Kurswert|R.ckzahlungsbetrag) [\\.,\\d]+([\\+|\\-])? (?<currency>[\\w]{3})(.*)?$")
+                .match("^(Kurswert|R.ckzahlungsbetrag) [\\.,\\d]+([\\+|\\-])? (?<currency>[\\w]{3}).*$")
                 .assign((t, v) -> {
                     t.setSecurity(getOrCreateSecurity(v));
 
@@ -163,7 +159,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .find("Nominale Wertpapierbezeichnung ISIN \\(WKN\\)")
                 .match("^(?<notation>(St.ck|[\\w]{3})) (?<shares>[\\.,\\d]+) .*$")
                 .assign((t, v) -> {
-                    // Workaround for bonds
+                    // Percentage quotation, workaround for bonds
                     if (v.get("notation") != null && !v.get("notation").equalsIgnoreCase("Stück"))
                     {
                         BigDecimal shares = asBigDecimal(v.get("shares"));
@@ -210,13 +206,13 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .match("^Ausmachender Betrag (?<amount>[\\.,\\d]+)([\\-|\\+])? (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // Limit 1,75 EUR
                 // Rückzahlungskurs 100 % Rückzahlungsdatum 31.07.2014
                 .section("note").optional()
-                .match("^(?<note>(Limit|R.ckzahlungskurs) [\\.,\\d]+ ([\\w]{3}|%))(.*)?$")
+                .match("^(?<note>(Limit|R.ckzahlungskurs) [\\.,\\d]+ ([\\w]{3}|%)).*$")
                 .assign((t, v) -> t.setNote(v.get("note")))
 
                 .wrap(BuySellEntryItem::new);
@@ -247,12 +243,11 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                         + "Gutschrift|"
                         + "Ertr.gnisgutschrift aus Wertpapieren)$");
         type.addBlock(block);
-        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.DIVIDENDS);
-                return entry;
-            });
+        Transaction<AccountTransaction> pdfTransaction = new Transaction<AccountTransaction>().subject(() -> {
+            AccountTransaction entry = new AccountTransaction();
+            entry.setType(AccountTransaction.Type.DIVIDENDS);
+            return entry;
+        });
 
         pdfTransaction
                 // Nominale Wertpapierbezeichnung ISIN (WKN)
@@ -284,7 +279,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .find("Nominale Wertpapierbezeichnung ISIN \\(WKN\\)")
                 .match("^(?<notation>(St.ck|[\\w]{3})) (?<shares>[\\.,\\d]+) .*$")
                 .assign((t, v) -> {
-                    // Workaround for bonds
+                    // Percentage quotation, workaround for bonds
                     if (v.get("notation") != null && !v.get("notation").equalsIgnoreCase("Stück"))
                     {
                         BigDecimal shares = asBigDecimal(v.get("shares"));
@@ -306,48 +301,21 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .match("^Ausmachender Betrag (?<amount>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
                 // Devisenkurs EUR / CHF 1,1959
                 // Ausschüttung 51,00 CHF 42,65+ EUR
-                .section("exchangeRate", "fxAmount", "fxCurrency", "amount", "currency").optional()
-                .match("^Devisenkurs [\\w]{3} \\/ [\\w]{3} (?<exchangeRate>[\\.,\\d]+)(.*)?$")
-                .match("^(Aussch.ttung|Dividendengutschrift|Kurswert) (?<fxAmount>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<amount>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})")
+                .section("baseCurrency", "termCurrency", "exchangeRate", "fxGross", "fxCurrency", "gross", "currency").optional()
+                .match("^Devisenkurs (?<baseCurrency>[\\w]{3}) \\/ (?<termCurrency>[\\w]{3}) (?<exchangeRate>[\\.,\\d]+).*$")
+                .match("^(Aussch.ttung|Dividendengutschrift|Kurswert) (?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<gross>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})")
                 .assign((t, v) -> {
-                    BigDecimal exchangeRate = asExchangeRate(v.get("exchangeRate"));
-                    if (t.getCurrencyCode().contentEquals(asCurrencyCode(v.get("fxCurrency"))))
-                    {
-                        exchangeRate = BigDecimal.ONE.divide(exchangeRate, 10, RoundingMode.HALF_DOWN);
-                    }
-                    type.getCurrentContext().put("exchangeRate", exchangeRate.toPlainString());
+                    type.getCurrentContext().putType(asExchangeRate(v));
 
-                    if (!t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
-                    {
-                        BigDecimal inverseRate = BigDecimal.ONE.divide(exchangeRate, 10,
-                                        RoundingMode.HALF_DOWN);
+                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                    Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                        // check, if forex currency is transaction
-                        // currency or not and swap amount, if necessary
-                        Unit grossValue;
-                        if (!asCurrencyCode(v.get("fxCurrency")).equals(t.getCurrencyCode()))
-                        {
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money amount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        else
-                        {
-                            Money amount = Money.of(asCurrencyCode(v.get("fxCurrency")),
-                                            asAmount(v.get("fxAmount")));
-                            Money fxAmount = Money.of(asCurrencyCode(v.get("currency")),
-                                            asAmount(v.get("amount")));
-                            grossValue = new Unit(Unit.Type.GROSS_VALUE, amount, fxAmount, inverseRate);
-                        }
-                        t.addUnit(grossValue);
-                    }
+                    checkAndSetGrossUnit(gross, fxGross, t, type);
                 })
 
                 // Ex-Tag 09.02.2017 Art der Dividende Quartalsdividende
@@ -359,6 +327,8 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .section("note").optional()
                 .match("^(?<note>Kapitalr.ckzahlung)$")
                 .assign((t, v) -> t.setNote(v.get("note")))
+
+                .conclude(PDFExtractorUtils.fixGrossValueA())
 
                 .wrap(TransactionItem::new);
 
@@ -393,11 +363,10 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .assign((t, v) -> {
                     t.setSecurity(getOrCreateSecurity(v));
 
-                    // Workaround for bonds
+                    // Percentage quotation, workaround for bonds
                     BigDecimal shares = asBigDecimal(v.get("shares"));
                     t.setShares(Values.Share.factorize(shares.doubleValue() / 100));
 
-                    // Workaround for bonds
                     t.setAmount(0L);
                     t.setCurrencyCode(asCurrencyCode(t.getPortfolioTransaction().getSecurity().getCurrencyCode()));
                 })
@@ -451,7 +420,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .find("Nominale Wertpapierbezeichnung ISIN \\(WKN\\)")
                 .match("^(?<notation>St.ck|[\\w]{3}) (?<shares>[\\.,\\d]+) .*$")
                 .assign((t, v) -> {
-                    // Workaround for bonds
+                    // Percentage quotation, workaround for bonds
                     if (v.get("notation") != null && !v.get("notation").equalsIgnoreCase("Stück"))
                     {
                         BigDecimal shares = asBigDecimal(v.get("shares"));
@@ -473,10 +442,10 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .match("^Ausmachender Betrag (?<amount>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     t.setAmount(asAmount(v.get("amount")));
-                    t.setCurrencyCode(v.get("currency"));
+                    t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
-                .wrap(t -> new TransactionItem(t));
+                .wrap(TransactionItem::new);
     }
 
     private void addBuyTransactionFundsSavingsPlan()
@@ -497,9 +466,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
 
                 m = pCurrency.matcher(line);
                 if (m.matches())
-                {
                     context.put("currency", m.group("currency"));
-                }
             }
         });
         this.addDocumentTyp(type);
@@ -566,23 +533,18 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
             {
                 Matcher m = pCurrency.matcher(line);
                 if (m.matches())
-                {
                     context.put("currency", m.group("currency"));
-                }
 
                 m = pYear.matcher(line);
                 if (m.matches())
                 {
                     context.put("nr", m.group("nr"));
-                    // Read year
                     context.put("year", m.group("year"));
                 }
 
                 m = pAccountingBillDate.matcher(line);
                 if (m.matches())
-                {
                     context.put("accountingBillDate", m.group("date"));
-                }
             }
         });
         this.addDocumentTyp(type);
@@ -603,9 +565,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
                     if (v.get("type").equals("-"))
-                    {
                         t.setType(AccountTransaction.Type.INTEREST_CHARGE);
-                    }
 
                     t.setDateTime(asDate(context.get("accountingBillDate")));
                     t.setAmount(asAmount(v.get("amount")));
@@ -634,9 +594,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
                     if (v.get("type").equals("-"))
-                    {
                         t.setType(AccountTransaction.Type.INTEREST_CHARGE);
-                    }
 
                     t.setDateTime(asDate(context.get("accountingBillDate")));
                     t.setAmount(asAmount(v.get("amount")));
@@ -665,9 +623,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
                     if (v.get("type").equals("+"))
-                    {
                         t.setType(AccountTransaction.Type.TAX_REFUND);
-                    }
 
                     t.setDateTime(asDate(context.get("accountingBillDate")));
                     t.setAmount(asAmount(v.get("amount")));
@@ -837,7 +793,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .match("^[\\d]{2}\\.(?<month1>[\\d]{2})\\. (?<day>[\\d]{2})\\.(?<month2>[\\d]{2})\\. "
                                 + "(?<note1>Rechnung) "
                                 + "(?<amount>[\\.,\\d]+)$")
-                .match("^(.*)?(?<note2>(Bargeldeinzahlung|R.ckruf\\/Nachforschung)).*$")
+                .match("^.*(?<note2>(Bargeldeinzahlung|R.ckruf\\/Nachforschung)).*$")
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
                     // since year is not within the date correction
@@ -871,15 +827,11 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
             {
                 Matcher m = pCurrency.matcher(line);
                 if (m.matches())
-                {
                     context.put("currency", m.group("currency"));
-                }
 
                 m = pcentury.matcher(line);
                 if (m.matches())
-                {
                     context.put("year", m.group("year"));
-                }
             }
         });
         this.addDocumentTyp(type);
@@ -924,10 +876,8 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                                             t.setAmount(asAmount(v.get("amount")));
                                             t.setCurrencyCode(context.get("currency"));
 
-                                            /***
-                                             * Deletes characters that occur during 
-                                             * withdrawals from foreign banks
-                                             */
+                                            // Deletes characters that occur during 
+                                            // withdrawals from foreign banks
                                             v.put("note", trim(v.get("note")));
                                             if (v.get("note").startsWith("*"))
                                                 v.put("note", v.get("note").substring(1, v.get("note").length() - 1));
@@ -951,10 +901,8 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                                             t.setAmount(asAmount(v.get("amount")));
                                             t.setCurrencyCode(context.get("currency"));
 
-                                            /***
-                                             * Deletes characters that occur during 
-                                             * withdrawals from foreign banks
-                                             */
+                                            // Deletes characters that occur during 
+                                            // withdrawals from foreign banks
                                             v.put("note", trim(v.get("note")));
                                             if (v.get("note").startsWith("*"))
                                                 v.put("note", v.get("note").substring(1, v.get("note").length() - 1));
@@ -1022,7 +970,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
 
                 .wrap(TransactionItem::new));
 
-        Block removalBlock = new Block("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{2} [\\d]{2}\\.[\\d]{2}\\.[\\d]{2}(?! Abgeltungsteuer).* [\\.,\\d]+ \\-$");
+        Block removalBlock = new Block("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{2} [\\d]{2}\\.[\\d]{2}\\.[\\d]{2}(?! (Abgeltungsteuer|Kartenpreis)).* [\\.,\\d]+ \\-$");
         type.addBlock(removalBlock);
         removalBlock.set(new Transaction<AccountTransaction>()
 
@@ -1037,7 +985,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                                 section -> section
                                         .attributes("date", "note", "amount")
                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{2} (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{2})"
-                                                        + "(?<note>(?! Abgeltungsteuer).*) "
+                                                        + "(?<note>(?! (Abgeltungsteuer|Kartenpreis)).*) "
                                                         + "[\\w]{3} [\\.,\\d]+ [\\.,\\d]+ "
                                                         + "(?<amount>[\\.,\\d]+) \\-$")
                                         .assign((t, v) -> {
@@ -1049,10 +997,8 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                                             t.setAmount(asAmount(v.get("amount")));
                                             t.setCurrencyCode(context.get("currency"));
 
-                                            /***
-                                             * Deletes characters that occur during 
-                                             * withdrawals from foreign banks
-                                             */
+                                            // Deletes characters that occur during 
+                                            // withdrawals from foreign banks
                                             v.put("note", trim(v.get("note")));
                                             if (v.get("note").startsWith("*"))
                                                 v.put("note", v.get("note").substring(1, v.get("note").length() - 1));
@@ -1066,7 +1012,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                                 section -> section
                                         .attributes("date", "note", "amount")
                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{2} (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{2})"
-                                                        + "(?<note>(?! Abgeltungsteuer).*) "
+                                                        + "(?<note>(?! (Abgeltungsteuer|Kartenpreis)).*) "
                                                         + "(?<amount>[\\.,\\d]+) \\-$")
                                         .assign((t, v) -> {
                                             Map<String, String> context = type.getCurrentContext();
@@ -1077,10 +1023,8 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                                             t.setAmount(asAmount(v.get("amount")));
                                             t.setCurrencyCode(context.get("currency"));
 
-                                            /***
-                                             * Deletes characters that occur during 
-                                             * withdrawals from foreign banks
-                                             */
+                                            // Deletes characters that occur during 
+                                            // withdrawals from foreign banks
                                             v.put("note", trim(v.get("note")));
                                             if (v.get("note").startsWith("*"))
                                                 v.put("note", v.get("note").substring(1, v.get("note").length() - 1));
@@ -1091,6 +1035,32 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                                             t.setNote(trim(v.get("note")));
                                         })
                             )
+
+                .wrap(TransactionItem::new));
+
+        Block feeBlock = new Block("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{2} [\\d]{2}\\.[\\d]{2}\\.[\\d]{2} Kartenpreis [\\.,\\d]+ \\-$");
+        type.addBlock(feeBlock);
+        feeBlock.set(new Transaction<AccountTransaction>()
+
+                .subject(() -> {
+                    AccountTransaction entry = new AccountTransaction();
+                    entry.setType(AccountTransaction.Type.FEES);
+                    return entry;
+                })
+
+                .section("date", "note", "amount")
+                .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{2} (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{2}) "
+                                + "(?<note>Kartenpreis) (?<amount>[\\.,\\d]+) \\-$")
+                .assign((t, v) -> {
+                    Map<String, String> context = type.getCurrentContext();
+
+                    t.setDateTime(asDate(v.get("date").substring(0, 6) + context.get("year")
+                                    + v.get("date").substring(6, 8)));
+
+                    t.setAmount(asAmount(v.get("amount")));
+                    t.setCurrencyCode(context.get("currency"));
+                    t.setNote(v.get("note"));
+                })
 
                 .wrap(TransactionItem::new));
     }
@@ -1138,9 +1108,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .match("^Kapitalertragsteuer [\\.,\\d]+([\\s]+)?% .* [\\.,\\d]+ [\\w]{3} (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (!Boolean.parseBoolean(type.getCurrentContext().get(IS_JOINT_ACCOUNT)))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Kapitalerstragsteuer (Joint Account)
@@ -1171,9 +1139,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .match("^Solidarit.tszuschlag [\\.,\\d]+([\\s]+)?% .* [\\.,\\d]+ [\\w]{3} (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (!Boolean.parseBoolean(type.getCurrentContext().get(IS_JOINT_ACCOUNT)))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Solidaritätszuschlag (Joint Account)
@@ -1204,9 +1170,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 .match("^Kirchensteuer [\\.,\\d]+([\\s]+)?% .* [\\.,\\d]+ [\\w]{3} (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (!Boolean.parseBoolean(type.getCurrentContext().get(IS_JOINT_ACCOUNT)))
-                    {
                         processTaxEntries(t, v, type);
-                    }
                 })
 
                 // Kirchensteuer (Joint Account)
