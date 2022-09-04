@@ -194,6 +194,16 @@ public interface UIConstants
          * Preference key for the absolute backup
          */
         String BACKUP_FOLDER_ABSOLUTE = "BACKUP_FOLDER_ABSOLUTE"; //$NON-NLS-1$
+
+        /**
+         * Preference for directory from which to import PDF files
+         */
+        String PDF_IMPORT_PATH = "PDF_IMPORT_PATH"; //$NON-NLS-1$
+
+        /**
+         * Preference for directory from which to import CSV files
+         */
+        String CSV_IMPORT_PATH = "CSV_IMPORT_PATH"; //$NON-NLS-1$
     }
 
     interface CSS // NOSONAR
@@ -202,6 +212,7 @@ public interface UIConstants
         String HEADING1 = "heading1"; //$NON-NLS-1$
         String HEADING2 = "heading2"; //$NON-NLS-1$
         String KPI = "kpi"; //$NON-NLS-1$
+        String TITLE = "title"; //$NON-NLS-1$
         String DATAPOINT = "datapoint"; //$NON-NLS-1$
     }
 

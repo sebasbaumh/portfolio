@@ -174,6 +174,7 @@ public class ActivityWidget extends WidgetDelegate<List<TransactionPair<?>>>
     {
         super(widget, data);
 
+        addConfig(new ChartShowYAxisConfig(this, true));
         addConfig(new ReportingPeriodConfig(this));
         addConfig(new ClientFilterConfig(this));
         addConfig(new ChartTypeConfig(this));
@@ -186,11 +187,13 @@ public class ActivityWidget extends WidgetDelegate<List<TransactionPair<?>>>
     public Composite createControl(Composite parent, DashboardResources resources)
     {
         Composite container = new Composite(parent, SWT.NONE);
+        container.setData(UIConstants.CSS.CLASS_NAME, this.getContainerCssClassNames());
         GridLayoutFactory.fillDefaults().numColumns(1).margins(5, 5).applyTo(container);
         container.setBackground(parent.getBackground());
 
         title = new Label(container, SWT.NONE);
         title.setBackground(container.getBackground());
+        title.setData(UIConstants.CSS.CLASS_NAME, UIConstants.CSS.TITLE);
         title.setText(TextUtil.tooltip(getWidget().getLabel()));
         GridDataFactory.fillDefaults().grab(true, false).applyTo(title);
 
@@ -229,6 +232,7 @@ public class ActivityWidget extends WidgetDelegate<List<TransactionPair<?>>>
 
         IAxis yAxis = chart.getAxisSet().getYAxis(0);
         yAxis.getTitle().setVisible(false);
+        yAxis.getTick().setVisible(get(ChartShowYAxisConfig.class).getIsShowYAxis());
         yAxis.setPosition(Position.Secondary);
 
         chart.getPlotArea().addTraverseListener(event -> event.doit = true);
@@ -290,6 +294,7 @@ public class ActivityWidget extends WidgetDelegate<List<TransactionPair<?>>>
                             .setFormat(chartType == ChartType.COUNT || chartType == ChartType.COUNT_BY_YEAR
                                             ? new DecimalFormat("#") //$NON-NLS-1$
                                             : new ThousandsNumberFormat());
+            chart.getAxisSet().getYAxis(0).getTick().setVisible(get(ChartShowYAxisConfig.class).getIsShowYAxis());
 
             if (this.isAggregateByYear())
             {
