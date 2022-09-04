@@ -297,10 +297,11 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
         // 26-11-2021 09:01 25-11-2021 Einzahlung CHF 569.00 CHF 1'754.08
         // 28-10-2021 08:50 28-10-2021 Deposito flatex EUR 200,00 EUR 215,77
         // 01-09-2021 02:44 31-08-2021 Deposito EUR 0,01 EUR 0,01
+        // 25-07-2022 10:50 25-07-2022 flatex Storting EUR 123,45 EUR 123,47
         // @formatter:on
         Block blockDeposit = new Block("^.*([\\d]{2}:[\\d]{2}|[\\d]{4}) "
                         + "(SOFORT |iDEAL |flatex )?"
-                        + "(Einzahlung|Deposit|Deposito)"
+                        + "(Einzahlung|Deposit|Deposito|Storting)"
                         + "( flatex)? "
                         + ".*$");
         type.addBlock(blockDeposit);
@@ -315,7 +316,7 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
                         .section("date", "time", "note", "currency", "amount")
                         .match("^(?<date>[\\d]{2}\\-[\\d]{2}\\-[\\d]{4}) (?<time>[\\d]{2}:[\\d]{2}) "
                                         + "([\\d]{2}\\-[\\d]{2}\\-[\\d]{4} )?"
-                                        + "(?<note>(SOFORT |iDEAL |flatex )?(Einzahlung|Deposit|Deposito))( flatex)? "
+                                        + "(?<note>(SOFORT |iDEAL |flatex )?(Einzahlung|Deposit|Deposito|Storting))( flatex)? "
                                         + "(?<currency>[\\w]{3}) "
                                         + "(?<amount>[\\.,'\\d]+) "
                                         + "[\\w]{3} "
@@ -745,11 +746,13 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
         //  
         // 02-09-2021 21:29 31-08-2021 DEGIRO Aansluitingskosten 2021 (Borsa Italiana S.p.A. - EUR -2,50 EUR 12,91
         // MIL)
+        //
+        // 01-06-2022 19:55 31-05-2022 Giro Exchange Connection Fee 2022 EUR -1,01 EUR -6,39
         //  
         // 02-10-2021 10:46 30-09-2021 DEGIRO Costi di connessione 2021 (Xetra - XET) EUR -1,24 EUR 206,99
         // @formatter:on
         Block blockTrademodalities = new Block("^[\\d]{2}\\-[\\d]{2}\\-[\\d]{4} [\\d]{2}:[\\d]{2} ([\\d]{2}\\-[\\d]{2}\\-[\\d]{4} )?.*"
-                        + "(Einrichtung von|DEGIRO Aansluitingskosten|DEGIRO Costi di connessione) "
+                        + "(Einrichtung von|DEGIRO Aansluitingskosten|Giro Exchange Connection Fee|DEGIRO Costi di connessione) "
                         + ".*$");
         type.addBlock(blockTrademodalities);
         blockTrademodalities.set(new Transaction<AccountTransaction>()
@@ -789,7 +792,7 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
                                 .attributes("date", "time", "note", "currency", "type", "amount")
                                 .match("^(?<date>[\\d]{2}\\-[\\d]{2}\\-[\\d]{4}) (?<time>[\\d]{2}:[\\d]{2}) "
                                                 + "([\\d]{2}\\-[\\d]{2}\\-[\\d]{4} )?"
-                                                + "(?<note>(Einrichtung von Handelsmodalit.ten|DEGIRO Aansluitingskosten|DEGIRO Costi di connessione)( [\\d]{4})?) .* "
+                                                + "(?<note>(Einrichtung von Handelsmodalit.ten|DEGIRO Aansluitingskosten|Giro Exchange Connection Fee|DEGIRO Costi di connessione)( [\\d]{4})?) .* "
                                                 + "(?<currency>[\\w]{3})"
                                                 + "(?<type>\\s(\\-)?)"
                                                 + "(?<amount>[\\.,'\\d]+) "

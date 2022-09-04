@@ -41,6 +41,7 @@ public class PDFImportAssistant
         extractors.add(new CommSecPDFExtractor(client));
         extractors.add(new ConsorsbankPDFExtractor(client));
         extractors.add(new CreditSuisseAGPDFExtractor(client));
+        extractors.add(new CrowdestorPDFExtractor(client));
         extractors.add(new DABPDFExtractor(client));
         extractors.add(new DADATBankenhausPDFExtractor(client));
         extractors.add(new DegiroPDFExtractor(client));
@@ -50,6 +51,7 @@ public class PDFImportAssistant
         extractors.add(new DkbPDFExtractor(client));
         extractors.add(new DreiBankenEDVPDFExtractor(client));
         extractors.add(new DZBankGruppePDFExtractor(client));
+        extractors.add(new EasyBankAGPDFExtractor(client));
         extractors.add(new EbasePDFExtractor(client));
         extractors.add(new ErsteBankPDFExtractor(client));
         extractors.add(new FILFondbankPDFExtractor(client));
@@ -76,6 +78,7 @@ public class PDFImportAssistant
         extractors.add(new SimpelPDFExtractor(client));
         extractors.add(new SwissquotePDFExtractor(client));
         extractors.add(new TargobankPDFExtractor(client));
+        extractors.add(new TigerBrokersPteLtdPDFExtractor(client));
         extractors.add(new TradeRepublicPDFExtractor(client));
         extractors.add(new UBSAGBankingAGPDFExtractor(client));
         extractors.add(new UnicreditPDFExtractor(client));
