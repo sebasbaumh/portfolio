@@ -56,7 +56,6 @@ import name.abuchen.portfolio.online.impl.CoinGeckoQuoteFeed;
 import name.abuchen.portfolio.online.impl.ECBStatisticalDataWarehouseQuoteFeed;
 import name.abuchen.portfolio.online.impl.EODHistoricalDataQuoteFeed;
 import name.abuchen.portfolio.online.impl.EurostatHICPQuoteFeed;
-import name.abuchen.portfolio.online.impl.FinanztreffDeQuoteFeed;
 import name.abuchen.portfolio.online.impl.FinnhubQuoteFeed;
 import name.abuchen.portfolio.online.impl.GenericJSONQuoteFeed;
 import name.abuchen.portfolio.online.impl.HTMLTableQuoteFeed;
@@ -335,8 +334,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
 
         if (comboExchange != null && feed.getId() != null
                         && (feed.getId().startsWith(YAHOO) || feed.getId().equals(EurostatHICPQuoteFeed.ID)
-                                        || feed.getId().equals(ECBStatisticalDataWarehouseQuoteFeed.ID)
-                                        || feed.getId().equals(FinanztreffDeQuoteFeed.ID)))
+                                        || feed.getId().equals(ECBStatisticalDataWarehouseQuoteFeed.ID)))
         {
             Exchange exchange = (Exchange) ((IStructuredSelection) comboExchange.getSelection()).getFirstElement();
             if (exchange != null)
@@ -474,7 +472,6 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
         boolean dropDown = feed != null && feed.getId() != null
                         && (feed.getId().startsWith(YAHOO) || feed.getId().equals(EurostatHICPQuoteFeed.ID)
                                         || feed.getId().equals(ECBStatisticalDataWarehouseQuoteFeed.ID)
-                                        || feed.getId().equals(FinanztreffDeQuoteFeed.ID)
                                         || feed.getId().equals(PortfolioReportQuoteFeed.ID));
 
         boolean feedURL = feed != null && feed.getId() != null && (feed.getId().equals(HTMLTableQuoteFeed.ID)
@@ -727,8 +724,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
 
         if (model.getTickerSymbol() != null && feed != null && feed.getId() != null
                         && (feed.getId().startsWith(YAHOO) || feed.getId().equals(EurostatHICPQuoteFeed.ID)
-                                        || feed.getId().equals(ECBStatisticalDataWarehouseQuoteFeed.ID)
-                                        || feed.getId().equals(FinanztreffDeQuoteFeed.ID)))
+                                        || feed.getId().equals(ECBStatisticalDataWarehouseQuoteFeed.ID)))
         {
             Exchange exchange = new Exchange(model.getTickerSymbol(), model.getTickerSymbol());
             ArrayList<Exchange> input = new ArrayList<>();

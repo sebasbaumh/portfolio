@@ -7,7 +7,6 @@ name.abuchen.portfolio.online.impl.EODHistoricalDataQuoteFeed
 name.abuchen.portfolio.online.impl.FinnhubQuoteFeed
 name.abuchen.portfolio.online.impl.EurostatHICPQuoteFeed
 name.abuchen.portfolio.online.impl.ECBStatisticalDataWarehouseQuoteFeed
-name.abuchen.portfolio.online.impl.FinanztreffDeQuoteFeed
 name.abuchen.portfolio.online.impl.KrakenQuoteFeed
 name.abuchen.portfolio.online.impl.PortfolioReportQuoteFeed
 name.abuchen.portfolio.online.impl.QuandlQuoteFeed
