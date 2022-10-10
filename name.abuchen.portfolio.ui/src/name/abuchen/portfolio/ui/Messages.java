@@ -572,6 +572,7 @@ public class Messages extends NLS
     public static String FilterOnlyClosedTrades;
     public static String LabelCoinGeckoCoinId;
     public static String LabelCoinGeckoCoinIdHint;
+    public static String LabelCollapse;
     public static String LabelCollapseAll;
     public static String LabelColorSchema;
     public static String LabelColumns;
@@ -597,6 +598,7 @@ public class Messages extends NLS
     public static String LabelDoImport;
     public static String LabelDoNotImport;
     public static String LabelEarnings;
+    public static String LabelExpand;
     public static String LabelExpandAll;
     public static String LabelExpenses;
     public static String LabelError;
@@ -1039,6 +1041,7 @@ public class Messages extends NLS
     public static String PrefDivvyDiaryAPIKey;
     public static String PrefEODHistoricalDataAPIKey;
     public static String PrefFinnhubAPIKey;
+    public static String PrefLabelAlwaysDisplayCurrencyCode;
     public static String PrefLabelAutoSaveFrequency;
     public static String PrefLabelEnableExperimentalFeatures;
     public static String PrefLabelNote;
@@ -1183,6 +1186,7 @@ public class Messages extends NLS
     public static String TabAccountBalanceChart;
     public static String TabTransactions;
     public static String TitlePasswordDialog;
+    public static String TooltipAllTimeHigh;
     public static String TooltipAverageHoldingPeriod;
     public static String TooltipDateOfExchangeRate;
     public static String TooltipHintPressAlt;
