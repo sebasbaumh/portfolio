@@ -9,10 +9,12 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
+import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentContext;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Transaction;
 import name.abuchen.portfolio.model.AccountTransaction;
@@ -26,6 +28,27 @@ import name.abuchen.portfolio.money.Values;
 @SuppressWarnings("nls")
 public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
 {
+    private static final String isJointAccount = "isJointAccount"; //$NON-NLS-1$
+
+    BiConsumer<DocumentContext, String[]> jointAccount = (context, lines) -> {
+        Pattern pJointAccount = Pattern.compile("Anteilige Berechnungsgrundlage .* \\(50,00 %\\).*"); //$NON-NLS-1$
+        Boolean bJointAccount = false;
+
+        for (String line : lines)
+        {
+            Matcher m = pJointAccount.matcher(line);
+            if (m.matches())
+            {
+                context.put(isJointAccount, Boolean.TRUE.toString());
+                bJointAccount = true;
+                break;
+            }
+        }
+
+        if (!bJointAccount)
+            context.put(isJointAccount, Boolean.FALSE.toString());
+    };
+
     public DZBankGruppePDFExtractor(Client client)
     {
         super(client);
@@ -50,7 +73,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
 
     private void addBuySellTransaction()
     {
-        DocumentType type = new DocumentType("Wertpapier Abrechnung (Kauf|Verkauf)");
+        DocumentType type = new DocumentType("Wertpapier Abrechnung (Kauf|Verkauf)", jointAccount);
         this.addDocumentTyp(type);
 
         Transaction<BuySellEntry> pdfTransaction = new Transaction<>();
@@ -81,7 +104,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                 // Handels-/Ausführungsplatz XETRA (gemäß Weisung)
                 // Kurswert 5.047,65- EUR
                 .section("name", "isin", "wkn", "name1", "currency")
-                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[\\w]{12}) \\((?<wkn>.*)\\)$")
+                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) \\((?<wkn>[A-Z0-9]{6})\\)$")
                 .match("^(?<name1>.*)$")
                 .match("^Kurswert [\\.,\\d]+(\\-)? (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
@@ -136,7 +159,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
 
     private void addDividendeTransaction()
     {
-        DocumentType type = new DocumentType("(Dividendengutschrift|Aussch.ttung Investmentfonds|Ertragsgutschrift)");
+        DocumentType type = new DocumentType("(Dividendengutschrift|Aussch.ttung Investmentfonds|Ertragsgutschrift)", jointAccount);
         this.addDocumentTyp(type);
 
         Block block = new Block("^(Dividendengutschrift|Aussch.ttung Investmentfonds|Ertragsgutschrift .*)$");
@@ -152,7 +175,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                 // INHABER-AKTIEN C ZY 1
                 // Zahlbarkeitstag 08.06.2021 Dividende pro Stück 5,00 PLN
                 .section("name", "isin", "wkn", "name1", "currency")
-                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[\\w]{12}) \\((?<wkn>.*)\\)$")
+                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) \\((?<wkn>[A-Z0-9]{6})\\)$")
                 .match("^(?<name1>.*)$")
                 .match("^.* ((Dividende|Ertrag) ([\\s]+)?pro St.ck|Aussch.ttung pro St\\.) [\\.,\\d]+ (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
@@ -212,7 +235,7 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
         final DocumentType type = new DocumentType("Abrechnung Nr\\. [\\d]+", (context, lines) -> {
             Pattern pAccountingNumber = Pattern.compile("^(?<accountingNumber>Abrechnung Nr\\. [\\d]+)$");
             Pattern pBaseCurrency = Pattern.compile("^.* Preis\\/(?<baseCurrency>[\\w]{3}) .*$");
-            Pattern pNameIsin = Pattern.compile("^(Fonds: )?(?<name>((?!MusterFonds).)*) ISIN: (?<isin>[\\w]{12}) .*$");
+            Pattern pNameIsin = Pattern.compile("^(Fonds: )?(?<name>((?!MusterFonds).)*) ISIN: (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) .*$");
 
             // Set end of line of the securities transaction block
             int endOfLineOfSecurityTransactionBlock = lines.length;
@@ -841,22 +864,97 @@ public class DZBankGruppePDFExtractor extends AbstractPDFExtractor
                 .match("^Finanztransaktionssteuer (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
                 .assign((t, v) -> processTaxEntries(t, v, type))
 
+                // Kapitalertragsteuer (Account)
                 // Kapitalertragsteuer 25 % auf 7,55 EUR 1,89- EUR
                 // Kapitalertragsteuer 25,00% auf 143,95 EUR 35,99- EUR
                 .section("tax", "currency").optional()
                 .match("^Kapitalertragsteuer [\\.,\\d]+([\\s]+)?% .* (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
-                .assign((t, v) -> processTaxEntries(t, v, type))
+                .assign((t, v) -> {
+                    if (!Boolean.parseBoolean(type.getCurrentContext().get(isJointAccount)))
+                        processTaxEntries(t, v, type);
+                })
 
+                // Kapitalerstragsteuer (Joint Account)
+                // Kapitalertragsteuer 24,51 % auf 10,69 EUR 2,62- EUR
+                // Kapitalertragsteuer 24,51 % auf 10,69 EUR 2,62- EUR
+                .section("tax1", "currency1", "tax2", "currency2").optional()
+                .match("^Kapitalertragsteuer [\\.,\\d]+([\\s]+)?% .* (?<tax1>[\\.,\\d]+)\\- (?<currency1>[\\w]{3})$")
+                .match("^Kapitalertragsteuer [\\.,\\d]+([\\s]+)?% .* (?<tax2>[\\.,\\d]+)\\- (?<currency2>[\\w]{3})$")
+                .assign((t, v) -> {
+                    if (Boolean.parseBoolean(type.getCurrentContext().get(isJointAccount)))
+                    {
+                        // Account 1
+                        v.put("currency", v.get("currency1"));
+                        v.put("tax", v.get("tax1"));
+                        processTaxEntries(t, v, type);
+
+                        // Account 2
+                        v.put("currency", v.get("currency2"));
+                        v.put("tax", v.get("tax2"));
+                        processTaxEntries(t, v, type);
+                    }
+                })
+
+                // Solidaritätszuschlag (Account)
                 // Solidaritätszuschlag 5,5 % auf 1,89 EUR 0,11- EUR
                 // Solidaritätszuschlag 5,50% auf 35,99 EUR 1,98- EUR
                 .section("tax", "currency").optional()
                 .match("^Solidarit.tszuschlag [\\.,\\d]+([\\s]+)?% .* (?<tax>[\\.,\\d]+)\\- (?<currency>[\\w]{3})$")
-                .assign((t, v) -> processTaxEntries(t, v, type))
+                .assign((t, v) -> {
+                    if (!Boolean.parseBoolean(type.getCurrentContext().get(isJointAccount)))
+                        processTaxEntries(t, v, type);
+                })
 
+                // Solitaritätszuschlag (Joint Account)
+                // Solidaritätszuschlag 5,5 % auf 2,62 EUR 0,14- EUR
+                // Solidaritätszuschlag 5,5 % auf 2,62 EUR 0,14- EUR
+                .section("tax1", "currency1", "tax2", "currency2").optional()
+                .match("^Solidarit.tszuschlag [\\.,\\d]+([\\s]+)?% .* (?<tax1>[\\.,\\d]+)\\- (?<currency1>[\\w]{3})$")
+                .match("^Solidarit.tszuschlag [\\.,\\d]+([\\s]+)?% .* (?<tax2>[\\.,\\d]+)\\- (?<currency2>[\\w]{3})$")
+                .assign((t, v) -> {
+                    if (Boolean.parseBoolean(type.getCurrentContext().get(isJointAccount)))
+                    {
+                        // Account 1
+                        v.put("currency", v.get("currency1"));
+                        v.put("tax", v.get("tax1"));
+                        processTaxEntries(t, v, type);
+
+                        // Account 2
+                        v.put("currency", v.get("currency2"));
+                        v.put("tax", v.get("tax2"));
+                        processTaxEntries(t, v, type);
+                    }
+                })
+
+                // Kirchensteuer (Account)
                 // Kirchensteuer 7 % auf 2,89 EUR 2,11- EUR
                 .section("tax", "currency").optional()
                 .match("^Kirchensteuer [\\.,\\d]+([\\s]+)?% .* (?<tax>[\\d.]+,\\d+)\\- (?<currency>[\\w]{3})$")
-                .assign((t, v) -> processTaxEntries(t, v, type))
+                .assign((t, v) -> {
+                    if (!Boolean.parseBoolean(type.getCurrentContext().get(isJointAccount)))
+                        processTaxEntries(t, v, type);
+                })
+
+                // Kirchensteuer (Joint Account)
+                // Kirchensteuer 8 % auf 2,62 EUR 0,21- EUR
+                // Kirchensteuer 8 % auf 2,62 EUR 0,21- EUR
+                .section("tax1", "currency1", "tax2", "currency2").optional()
+                .match("^Kirchensteuer [\\.,\\d]+([\\s]+)?% .* (?<tax1>[\\d.]+,\\d+)\\- (?<currency1>[\\w]{3})$")
+                .match("^Kirchensteuer [\\.,\\d]+([\\s]+)?% .* (?<tax2>[\\d.]+,\\d+)\\- (?<currency2>[\\w]{3})$")
+                .assign((t, v) -> {
+                    if (Boolean.parseBoolean(type.getCurrentContext().get(isJointAccount)))
+                    {
+                        // Account 1
+                        v.put("currency", v.get("currency1"));
+                        v.put("tax", v.get("tax1"));
+                        processTaxEntries(t, v, type);
+
+                        // Account 2
+                        v.put("currency", v.get("currency2"));
+                        v.put("tax", v.get("tax2"));
+                        processTaxEntries(t, v, type);
+                    }
+                })
 
                 // Einbehaltene Quellensteuer 19 % auf 85,00 PLN 3,59- EUR
                 .section("withHoldingTax", "currency").optional()
