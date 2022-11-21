@@ -20,6 +20,7 @@ import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.editor.AbstractFinanceView;
 import name.abuchen.portfolio.ui.util.Colors;
 import name.abuchen.portfolio.ui.util.chart.PieChart;
+import name.abuchen.portfolio.ui.util.chart.PieChart.RenderLabelsCenteredInPie;
 import name.abuchen.portfolio.ui.views.IPieChart;
 import name.abuchen.portfolio.util.ColorConversion;
 
@@ -44,6 +45,7 @@ public class TaxonomyDonutSWT implements IPieChart
     public Control createControl(Composite parent)
     {
         chart = new PieChart(parent, chartType);
+        chart.addLabelPainter(new RenderLabelsCenteredInPie(chart));
 
         // set customized tooltip builder
         chart.getToolTip().setToolTipBuilder(new TaxonomyPieChartSWT.TaxonomyTooltipBuilder(this.nodeDataMap));
@@ -52,14 +54,12 @@ public class TaxonomyDonutSWT implements IPieChart
         chart.getLegend().setPosition(SWT.RIGHT);
 
         // Listen on mouse clicks to update information pane
-        ((Composite) chart.getPlotArea()).addListener(SWT.MouseUp, event -> {
-            Node node = chart.getNodeAt(event.x, event.y);
-            if (node == null)
-                return;
-            TaxonomyPieChartSWT.NodeData nodeData = nodeDataMap.get(node.getId());
-            if (nodeData != null)
-                financeView.setInformationPaneInput(nodeData.position);
-        });
+        ((Composite) chart.getPlotArea()).addListener(SWT.MouseUp,
+                        event -> chart.getNodeAt(event.x, event.y).ifPresent(node -> {
+                            TaxonomyPieChartSWT.NodeData nodeData = nodeDataMap.get(node.getId());
+                            if (nodeData != null)
+                                financeView.setInformationPaneInput(nodeData.position);
+                        }));
 
         updateChart();
         return chart;
@@ -79,7 +79,6 @@ public class TaxonomyDonutSWT implements IPieChart
         ICircularSeries<?> circularSeries = (ICircularSeries<?>) chart.getSeriesSet().createSeries(
                         ChartType.DONUT == chartType ? SeriesType.DOUGHNUT : SeriesType.PIE, node.getName());
 
-        circularSeries.setHighlightColor(Colors.GREEN);
         circularSeries.setBorderColor(Colors.WHITE);
 
         Money total = getModel().getChartRenderingRootNode().getActual();
