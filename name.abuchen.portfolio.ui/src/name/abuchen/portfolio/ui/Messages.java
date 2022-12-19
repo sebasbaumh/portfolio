@@ -604,6 +604,8 @@ public class Messages extends NLS
     public static String LabelExpandAll;
     public static String LabelExpenses;
     public static String LabelError;
+    public static String LabelErrorNoHoldings;
+    public static String LabelErrorNoTaxonomySelected;
     public static String LabelEurostatRegion;
     public static String LabelExcessReturnBaselineDataSeries;
     public static String LabelExcessReturnOperator;
@@ -1046,6 +1048,7 @@ public class Messages extends NLS
     public static String PrefFinnhubAPIKey;
     public static String PrefLabelAlwaysDisplayCurrencyCode;
     public static String PrefLabelAutoSaveFrequency;
+    public static String PrefLabelDisplayPA;
     public static String PrefLabelEnableExperimentalFeatures;
     public static String PrefLabelNote;
     public static String PrefLabelProxyHost;
