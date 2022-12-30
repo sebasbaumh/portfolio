@@ -10,7 +10,7 @@
         <listEntry value="tycho.disableP2Mirrors=true"/>
         <listEntry value="MAVEN_OPTS=-Xmx2g"/>
     </listAttribute>
-    <stringAttribute key="M2_RUNTIME" value="EMBEDDED"/>
+    <stringAttribute key="M2_RUNTIME" value="mvn-3.8.6"/>
     <booleanAttribute key="M2_SKIP_TESTS" value="false"/>
     <intAttribute key="M2_THREADS" value="8"/>
     <booleanAttribute key="M2_UPDATE_SNAPSHOTS" value="false"/>
