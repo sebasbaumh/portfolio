@@ -1,7 +1,7 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
-import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
-import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetTax;
+import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetGrossUnit;
+import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetTax;
 import static name.abuchen.portfolio.util.TextUtil.stripBlanks;
 import static name.abuchen.portfolio.util.TextUtil.stripBlanksAndUnderscores;
 import static name.abuchen.portfolio.util.TextUtil.trim;
@@ -15,6 +15,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import name.abuchen.portfolio.datatransfer.ExtrExchangeRate;
+import name.abuchen.portfolio.datatransfer.ExtractorUtils;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Transaction;
@@ -193,15 +195,13 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                 .match("^.* (Umrechn\\. zum Dev\\. kurs|Umrechnung zum Devisenkurs) (?<exchangeRate>[\\.,\\d]+).* : (?<baseCurrency>[\\w]{3}).*$")
                 .match("^.* [\\d]{2}\\.[\\d]{2}\\.[\\d]{4} ([\\s]+)?(?<currency>[\\w]{3}) ([\\s]+)?[\\.,\\d]+.*$")
                 .assign((t, v) -> {
-                    PDFExchangeRate rate = asExchangeRate(v);
-                    type.getCurrentContext().putType(asExchangeRate(v));
-                    
+                    ExtrExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
+
                     Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
                     Money gross = rate.convert(asCurrencyCode(v.get("currency")), fxGross);
 
-                    type.getCurrentContext().putType(asExchangeRate(v));
-
-                    checkAndSetGrossUnit(gross, fxGross, t, type);
+                    checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                 })
 
                 //  Summe        St.  720                USD  40,098597    USD           28.870,99 
@@ -213,15 +213,13 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                 .match("^.* (Umrechn\\. zum Dev\\. kurs|Umrechnung zum Devisenkurs) (?<exchangeRate>[\\.,\\d]+).* : (?<baseCurrency>[\\w]{3}).*$")
                 .match("^.* [\\d]{2}\\.[\\d]{2}\\.[\\d]{4} ([\\s]+)?(?<currency>[\\w]{3}) ([\\s]+)?[\\.,\\d]+.*$")
                 .assign((t, v) -> {
-                    PDFExchangeRate rate = asExchangeRate(v);
-                    type.getCurrentContext().putType(asExchangeRate(v));
-                    
+                    ExtrExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
+
                     Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
                     Money gross = rate.convert(asCurrencyCode(v.get("currency")), fxGross);
 
-                    type.getCurrentContext().putType(asExchangeRate(v));
-
-                    checkAndSetGrossUnit(gross, fxGross, t, type);
+                    checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                 })
 
                 // If the taxes are negative, this is a tax refund
@@ -243,7 +241,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                         t.setMonetaryAmount(t.getPortfolioTransaction().getMonetaryAmount().subtract(taxRefund));
                 })
                 
-                .conclude(PDFExtractorUtils.fixGrossValueBuySell())
+                .conclude(ExtractorUtils.fixGrossValueBuySell())
 
                 .wrap(t -> {
                     // If we have multiple entries in the document,
@@ -343,13 +341,13 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                 .match("^Bruttobetrag(:)? ([\\s]+)?(?<fxCurrency>[\\w]{3}) ([\\s]+)?(?<fxGross>[\\.,\\d]+).*$")
                 .match("^.*zum Devisenkurs(:)? (?<baseCurrency>[\\w]{3})(\\/)?(?<termCurrency>[\\w]{3}) ([\\s]+)?(?<exchangeRate>[\\.,\\d]+) ([\\s]+)?(?<currency>[\\w]{3}) ([\\s]+)?[\\.,\\d]+.*$")
                 .assign((t, v) -> {
-                    PDFExchangeRate rate = asExchangeRate(v);
-                    type.getCurrentContext().putType(asExchangeRate(v));
+                    ExtrExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
 
                     Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
                     Money gross = rate.convert(asCurrencyCode(v.get("currency")), fxGross);
 
-                    checkAndSetGrossUnit(gross, fxGross, t, type);
+                    checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                 })
 
                 // In this section we calculate the taxes. If the gross
@@ -364,14 +362,14 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                 .assign((t, v) -> {
                     Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
 
-                    Optional<PDFExchangeRate> exchangeRate = type.getCurrentContext().getType(PDFExchangeRate.class);
+                    Optional<ExtrExchangeRate> exchangeRate = type.getCurrentContext().getType(ExtrExchangeRate.class);
 
                     if (!t.getCurrencyCode().equals(gross.getCurrencyCode()) && exchangeRate.isPresent())
                         gross = exchangeRate.get().convert(t.getCurrencyCode(), gross);
 
                     Money tax = gross.subtract(t.getMonetaryAmount());
 
-                    checkAndSetTax(tax, t, type);
+                    checkAndSetTax(tax, t, type.getCurrentContext());
                 })
 
                 // zahlbar ab 19.03.2020                 Quartalsdividende                            
@@ -475,7 +473,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                     else
                         tax = taxAssessmentBasis.subtract(t.getMonetaryAmount());
 
-                    checkAndSetTax(tax, t, type);
+                    checkAndSetTax(tax, t, type.getCurrentContext());
                 })
 
                 //  Zu  Ih r e n G u n s t e n v o r S te u e r n :              E U R             302,5 5   
@@ -508,7 +506,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
 
                     if (!grossValueBeforeTaxes.getCurrencyCode().equals(taxAssessmentBasis.getCurrencyCode()))
                     {
-                        PDFExchangeRate exchangeRate = new PDFExchangeRate(
+                        ExtrExchangeRate exchangeRate = new ExtrExchangeRate(
                                         asExchangeRate(stripBlanks(v.get("exchangeRate"))),
                                         taxAssessmentBasis.getCurrencyCode(),
                                         grossValueBeforeTaxes.getCurrencyCode());
@@ -525,7 +523,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                     else
                         tax = taxAssessmentBasis.subtract(t.getMonetaryAmount());
 
-                    checkAndSetTax(tax, t, type);
+                    checkAndSetTax(tax, t, type.getCurrentContext());
                 })
 
                 .wrap(TransactionItem::new);
@@ -790,13 +788,13 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                 .assign((t, v) -> {
                     if (!t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
                     {
-                        PDFExchangeRate rate = asExchangeRate(v);
-                        type.getCurrentContext().putType(asExchangeRate(v));
+                        ExtrExchangeRate rate = asExchangeRate(v);
+                        type.getCurrentContext().putType(rate);
 
                         Money gross = Money.of(asCurrencyCode(stripBlanksAndUnderscores(v.get("currency"))), asAmount(stripBlanksAndUnderscores(v.get("gross"))));
                         Money fxGross = rate.convert(asCurrencyCode(v.get("termCurrency")), gross);
 
-                        checkAndSetGrossUnit(gross, fxGross, t, type);
+                        checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                     }
                 })
 
@@ -814,12 +812,13 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
 
                     if (!t.getCurrencyCode().equals(t.getSecurity().getCurrencyCode()))
                     {
-                        type.getCurrentContext().putType(asExchangeRate(v));
+                        ExtrExchangeRate rate = asExchangeRate(v);
+                        type.getCurrentContext().putType(rate);
 
                         Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
                         Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                        checkAndSetGrossUnit(gross, fxGross, t, type);
+                        checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                     }
                 })
 
@@ -1040,6 +1039,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                         + "(Geb.hren\\/Spesen"
                         + "|Geb.hr Barauszahlung"
                         + "|Entgelte"
+                        + "|Kontof.hrungse"
                         + "|Auslandsentgelt).* "
                         + "\\-[\\.,\\d]+$");
         type.addBlock(feesBlock);
@@ -1056,6 +1056,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                                         + "(?<note>Geb.hren\\/Spesen"
                                         + "|Geb.hr Barauszahlung"
                                         + "|Entgelte"
+                                        + "|Kontof.hrungse"
                                         + "|Auslandsentgelt).* "
                                         + "\\-(?<amount>[\\.,\\d]+)$")
                         .match("^(?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}).*$")

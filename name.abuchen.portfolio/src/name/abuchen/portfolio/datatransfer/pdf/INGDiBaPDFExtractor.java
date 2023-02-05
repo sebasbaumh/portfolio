@@ -1,7 +1,7 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
-import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetFee;
-import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
+import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetFee;
+import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetGrossUnit;
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
 import java.math.BigDecimal;
@@ -11,8 +11,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import name.abuchen.portfolio.Messages;
+import name.abuchen.portfolio.datatransfer.DocumentContext;
+import name.abuchen.portfolio.datatransfer.ExtrExchangeRate;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
-import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentContext;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Transaction;
 import name.abuchen.portfolio.model.AccountTransaction;
@@ -71,7 +72,8 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                         + "Bezug|"
                         + "Verkauf|"
                         + "Verk\\. Teil\\-\\/Bezugsr\\.)|"
-                        + "R.ckzahlung)", jointAccount);
+                        + "R.ckzahlung|"
+                        + "Einl.sung)", jointAccount);
         this.addDocumentTyp(type);
 
         Transaction<BuySellEntry> pdfTransaction = new Transaction<>();
@@ -87,18 +89,26 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                         + "Bezug|"
                         + "Verkauf|"
                         + "Verk. Teil\\-\\/Bezugsr\\.)|"
-                        + "R.ckzahlung).*$");
+                        + "R.ckzahlung|"
+                        + "Einl.sung)$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
         pdfTransaction
                 // Is type --> "Verkauf" change from BUY to SELL
                 .section("type").optional()
-                .match("^(Wertpapierabrechnung )?(?<type>(Kauf|Kauf aus Sparplan|Bezug|Verkauf|Verk. Teil\\-\\/Bezugsr\\.)|R.ckzahlung).*$")
+                .match("^(Wertpapierabrechnung )?(?<type>(Kauf|"
+                                + "Kauf aus Sparplan|"
+                                + "Bezug|"
+                                + "Verkauf|"
+                                + "Verk. Teil\\-\\/Bezugsr\\.)|"
+                                + "R.ckzahlung|"
+                                + "Einl.sung)$")
                 .assign((t, v) -> {                    
                     if (v.get("type").equals("Verkauf")
                             || v.get("type").equals("Verk. Teil-/Bezugsr.")
-                            || v.get("type").equals("Rückzahlung"))
+                            || v.get("type").equals("Rückzahlung")
+                            || v.get("type").equals("Einlösung"))
                     {
                         t.setType(PortfolioTransaction.Type.SELL);
                     }
@@ -180,12 +190,13 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                 .match("^.* Devisenkurs (?<baseCurrency>[\\w]{3}) (?<gross>[\\.,\\d]+) \\((?<termCurrency>[\\w]{3}) = (?<exchangeRate>[\\.,\\d]+)\\)$")
                 .match("^Endbetrag( zu Ihren (Lasten|Gunsten))? (?<currency>[\\w]{3}) [\\.,\\d]+$")
                 .assign((t, v) -> {
-                    type.getCurrentContext().putType(asExchangeRate(v));
+                    ExtrExchangeRate rate = asExchangeRate(v);
+                    type.getCurrentContext().putType(rate);
 
                     Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
                     Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                    checkAndSetGrossUnit(gross, fxGross, t, type);
+                    checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                 })
 
                 // Diese Order wurde mit folgendem Limit / -typ erteilt: 38,10 EUR
@@ -316,13 +327,13 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                     v.put("baseCurrency", asCurrencyCode(type.getCurrentContext().get("currency")));
                     v.put("termCurrency", asCurrencyCode(v.get("fxCurrency")));
 
-                    PDFExchangeRate rate = asExchangeRate(v);
+                    ExtrExchangeRate rate = asExchangeRate(v);
                     type.getCurrentContext().putType(rate);
 
                     Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
                     Money gross = rate.convert(asCurrencyCode(v.get("currency")), fxGross);
 
-                    checkAndSetGrossUnit(gross, fxGross, t, type);
+                    checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                 })
 
                 .wrap(t -> {
@@ -592,7 +603,12 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                 // QuSt 30,00 % EUR 16,50
                 .section("currency", "withHoldingTax").optional()
                 .match("^QuSt [\\.,\\d]+([\\s]+)?% (?<currency>[\\w]{3}) (?<withHoldingTax>[\\.,\\d]+)$")
-                .assign((t, v) -> processWithHoldingTaxEntries(t, v, "withHoldingTax", type));
+                .assign((t, v) -> processWithHoldingTaxEntries(t, v, "withHoldingTax", type))
+
+                // Franz. Transaktionssteuer 0,30% EUR 2,52
+                .section("currency", "tax").optional()
+                .match("^Franz\\. Transaktionssteuer [\\.,\\d]+% (?<currency>[\\w]{3}) (?<tax>[\\.,\\d]+)$")
+                .assign((t, v) -> processTaxEntries(t, v, type));
     }
 
     private <T extends Transaction<?>> void addFeesSectionsTransaction(T transaction, DocumentType type)
@@ -611,6 +627,11 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                 // Handelsentgelt EUR 3,00
                 .section("currency", "fee").optional()
                 .match("^Handelsentgelt (?<currency>[\\w]{3}) (?<fee>[\\.,\\d]+)")
+                .assign((t, v) -> processFeeEntries(t, v, type))
+
+                // Börsenentgelt EUR 0,39
+                .section("currency", "fee").optional()
+                .match("^B.rsenentgelt (?<currency>[\\w]{3}) (?<fee>[\\.,\\d]+)")
                 .assign((t, v) -> processFeeEntries(t, v, type))
 
                 // Kurswert EUR 52,63
@@ -639,7 +660,7 @@ public class INGDiBaPDFExtractor extends AbstractPDFExtractor
                         // fee = fee - discount
                         fee = fee.subtract(discount);
 
-                        checkAndSetFee(fee, t, type);
+                        checkAndSetFee(fee, t, type.getCurrentContext());
                     }
                 });
     }

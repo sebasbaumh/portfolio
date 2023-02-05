@@ -1,6 +1,6 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
-import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
+import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetGrossUnit;
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
 import java.util.Map;
@@ -9,8 +9,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import name.abuchen.portfolio.Messages;
+import name.abuchen.portfolio.datatransfer.DocumentContext;
+import name.abuchen.portfolio.datatransfer.ExtrExchangeRate;
+import name.abuchen.portfolio.datatransfer.ExtractorUtils;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
-import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentContext;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Transaction;
 import name.abuchen.portfolio.model.AccountTransaction;
@@ -230,12 +232,13 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                                         .match("^Kurswert (?<fxCurrency>[\\w]{3}) (?<fxGross>[\\.,\\d]+)$")
                                         .match("^([\\s]+)?(umger\\. zum Devisenkurs|UMGER\\. ZUM DEVISENKURS) ([\\s]+)?(?<termCurrency>[\\w]{3}) ([\\s]+)?(?<exchangeRate>[\\.,\\d]+) ([\\s]+)?(?<baseCurrency>[\\w]{3}) ([\\s]+)?(?<gross>[\\.,\\d]+)$")
                                         .assign((t, v) -> {
-                                            type.getCurrentContext().putType(asExchangeRate(v));
+                                            ExtrExchangeRate rate = asExchangeRate(v);
+                                            type.getCurrentContext().putType(rate);
 
                                             Money gross = Money.of(asCurrencyCode(v.get("baseCurrency")), asAmount(v.get("gross")));
                                             Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                                            checkAndSetGrossUnit(gross, fxGross, t, type);
+                                            checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                                         })
                                 ,
                                 // Kurswert 343,75 USD
@@ -247,12 +250,13 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                                         .match("^Kurswert in [\\w]{3} (?<gross>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                                         .match("^Devisenkurs (?<exchangeRate>[\\.,\\d]+) (?<baseCurrency>[\\w]{3}) \\/ (?<termCurrency>[\\w]{3})$")
                                         .assign((t, v) -> {
-                                            type.getCurrentContext().putType(asExchangeRate(v));
+                                            ExtrExchangeRate rate = asExchangeRate(v);
+                                            type.getCurrentContext().putType(rate);
 
                                             Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
                                             Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                                            checkAndSetGrossUnit(gross, fxGross, t, type);
+                                            checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                                         })
                                 ,
                                 // Kurswert 1.020.000,00 JPY
@@ -264,13 +268,13 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                                         .match("^Kurswert (?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$")
                                         .match("^Devisenkurs (?<exchangeRate>[\\.,\\d]+) (?<baseCurrency>[\\w]{3}) \\/ (?<termCurrency>[\\w]{3})$")
                                         .assign((t, v) -> {
-                                            PDFExchangeRate exchangeRate = asExchangeRate(v);
-                                            type.getCurrentContext().putType(exchangeRate);
+                                            ExtrExchangeRate rate = asExchangeRate(v);
+                                            type.getCurrentContext().putType(rate);
 
                                             Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
-                                            Money gross = exchangeRate.convert(t.getAccountTransaction().getCurrencyCode(), fxGross);
+                                            Money gross = rate.convert(t.getAccountTransaction().getCurrencyCode(), fxGross);
 
-                                            checkAndSetGrossUnit(gross, fxGross, t, type);
+                                            checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                                         })
                         )
 
@@ -395,20 +399,20 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                                 // BRUTTO                                        USD                180,00 
                                 // UMGER.ZUM DEV.-KURS                 1,104300  EUR                138,55 
                                 section -> section
-                                        .attributes("fxCurrency", "fxGross", "exchangeRate", "baseCurrency")
+                                        .attributes("fxCurrency", "fxGross", "exchangeRate", "currency")
                                         .match("^BRUTTO ([\\s]+)?(?<fxCurrency>[\\w]{3}) ([\\s]+)?(?<fxGross>[\\.,\\d]+).*$")
-                                        .match("^UMGER\\.ZUM DEV\\.\\-KURS ([\\s]+)?(?<exchangeRate>[\\.,\\d]+) ([\\s]+)?(?<baseCurrency>[\\w]{3}) ([\\s]+)?[\\.,\\d]+.*$")
+                                        .match("^UMGER\\.ZUM DEV\\.\\-KURS ([\\s]+)?(?<exchangeRate>[\\.,\\d]+) ([\\s]+)?(?<currency>[\\w]{3}) ([\\s]+)?[\\.,\\d]+.*$")
                                         .assign((t, v) -> {
                                             v.put("termCurrency", asCurrencyCode(v.get("fxCurrency")));
-                                            v.put("currency", asCurrencyCode(v.get("baseCurrency")));
+                                            v.put("baseCurrency", asCurrencyCode(v.get("currency")));
 
-                                            PDFExchangeRate rate = asExchangeRate(v);
-                                            type.getCurrentContext().putType(asExchangeRate(v));
-                                            
+                                            ExtrExchangeRate rate = asExchangeRate(v);
+                                            type.getCurrentContext().putType(rate);
+
                                             Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
                                             Money gross = rate.convert(asCurrencyCode(v.get("currency")), fxGross);
 
-                                            checkAndSetGrossUnit(gross, fxGross, t, type);
+                                            checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                                         })
                                 ,
                                 // Brutto in USD 15,00 USD
@@ -422,12 +426,13 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                                         .match("^Brutto in [\\w]{3} (?<gross>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                                         .match("Netto zugunsten IBAN .* [\\.,\\d]+ [\\w]{3}$")
                                         .assign((t, v) -> {
-                                            type.getCurrentContext().putType(asExchangeRate(v));
+                                            ExtrExchangeRate rate = asExchangeRate(v);
+                                            type.getCurrentContext().putType(rate);
 
                                             Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
                                             Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                                            checkAndSetGrossUnit(gross, fxGross, t, type);
+                                            checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                                         })
                                 ,
                                 // Brutto in USD 10,00 USD
@@ -443,16 +448,17 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                                         .match("Netto in (?<baseCurrency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$")
                                         .match("Netto in (?<termCurrency>[\\w]{3}) zugunsten IBAN .* [\\.,\\d]+ [\\w]{3}$")
                                         .assign((t, v) -> {
-                                            type.getCurrentContext().putType(asExchangeRate(v));
+                                            ExtrExchangeRate rate = asExchangeRate(v);
+                                            type.getCurrentContext().putType(rate);
 
                                             Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
                                             Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                                            checkAndSetGrossUnit(gross, fxGross, t, type);
+                                            checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                                         })
                         )
 
-                .conclude(PDFExtractorUtils.fixGrossValueA())
+                .conclude(ExtractorUtils.fixGrossValueA())
 
                 .wrap(t -> {
                     if (t.getCurrencyCode() != null && t.getAmount() != 0)

@@ -1,12 +1,13 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
-import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetTax;
+import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetTax;
 
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import name.abuchen.portfolio.datatransfer.ExtractorUtils;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Transaction;
@@ -149,7 +150,7 @@ public class LimeTradingCorpPDFExtractor extends AbstractPDFExtractor
                                                     t.setSecurity(getOrCreateSecurity(v));
 
                                                     Money tax = Money.of(asCurrencyCode(CurrencyUnit.USD), asAmount(v.get("tax")));
-                                                    checkAndSetTax(tax, t, type);
+                                                    checkAndSetTax(tax, t, type.getCurrentContext());
                                                 })
                                         ,
                                         section -> section
@@ -296,9 +297,9 @@ public class LimeTradingCorpPDFExtractor extends AbstractPDFExtractor
         // Formatting:
         // Date | Effective Description | CUSIP | Type of Activity | Quantity Market Price | Net Settlement Amount
         // -------------------------------------
-        // Dec 29 Incoming Wire Abccdd Doe Journal 71,000.00
+        // Mar 01 Wire In Ref #: Mm-00003314 Journal 9,000.00
         // @formatter:on
-        Block blockDeposit = new Block("^[\\w]{3} [\\d]{2} Incoming Wire .* [\\.,\\d]+$");
+        Block blockDeposit = new Block("^[\\w]{3} [\\d]{2} Wire .* [\\.,\\d]+$");
         type.addBlock(blockDeposit);
         blockDeposit.set(new Transaction<AccountTransaction>()
 
@@ -309,7 +310,7 @@ public class LimeTradingCorpPDFExtractor extends AbstractPDFExtractor
                         })
 
                         .section("month", "day", "amount")
-                        .match("^(?<month>[\\w]{3}) (?<day>[\\d]{2}) Incoming Wire .* (?<amount>[\\.,\\d]+)$")
+                        .match("^(?<month>[\\w]{3}) (?<day>[\\d]{2}) Wire .* (?<amount>[\\.,\\d]+)$")
                         .assign((t, v) -> {
                             Map<String, String> context = type.getCurrentContext();
                             v.put("date", v.get("day") + " " + v.get("month") + " " + context.get("year"));
@@ -364,18 +365,18 @@ public class LimeTradingCorpPDFExtractor extends AbstractPDFExtractor
     @Override
     protected long asAmount(String value)
     {
-        return PDFExtractorUtils.convertToNumberLong(value, Values.Amount, "en", "US");
+        return ExtractorUtils.convertToNumberLong(value, Values.Amount, "en", "US");
     }
 
     @Override
     protected long asShares(String value)
     {
-        return PDFExtractorUtils.convertToNumberLong(value, Values.Share, "en", "US");
+        return ExtractorUtils.convertToNumberLong(value, Values.Share, "en", "US");
     }
 
     @Override
     protected BigDecimal asExchangeRate(String value)
     {
-        return PDFExtractorUtils.convertToNumberBigDecimal(value, Values.Share, "en", "US");
+        return ExtractorUtils.convertToNumberBigDecimal(value, Values.Share, "en", "US");
     }
 }
