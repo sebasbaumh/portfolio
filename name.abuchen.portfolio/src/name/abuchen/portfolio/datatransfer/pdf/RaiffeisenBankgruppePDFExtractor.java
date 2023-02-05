@@ -1,12 +1,13 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
-import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetGrossUnit;
+import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetGrossUnit;
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import name.abuchen.portfolio.datatransfer.ExtrExchangeRate;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Transaction;
@@ -69,9 +70,9 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                 // Namens-Aktien o.N.
                 // Kurs: 53,47 EUR
                 .section("isin", "name", "name1", "currency").optional()
-                .match("^Titel: (?<isin>[\\w]{12}) (?<name>.*)$")
+                .match("^Titel: (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) (?<name>.*)$")
                 .match("^(?<name1>.*)$")
-                .match("^Kurs: ([\\.,\\d]+) (?<currency>[\\w]{3})$")
+                .match("^Kurs: [\\.,\\d]+ (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (!v.get("name1").startsWith("Kurs:") || !v.get("name1").startsWith("Fondsgesellschaft:"))
                         v.put("name", trim(v.get("name")) + " " + trim(v.get("name1")));
@@ -83,7 +84,7 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                 // REGISTERED SHARES DL -,0001        
                 // Ausführungskurs 143,68 EUR Auftragserteilung/ -ort Online-Banking
                 .section("name", "isin", "wkn", "name1", "currency").optional()
-                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[\\w]{12}) \\((?<wkn>.*)\\)$")
+                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) \\((?<wkn>[A-Z0-9]{6})\\)$")
                 .match("^(?<name1>.*)$")
                 .match("^Ausf.hrungskurs [\\.,\\d]+ (?<currency>[\\w]{3}) .*$")
                 .assign((t, v) -> {
@@ -104,7 +105,7 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                                 // Stück 100 QUALCOMM INC.                      US7475251036 (883121)
                                 section -> section
                                         .attributes("shares")
-                                        .match("^St.ck (?<shares>[\\.,\\d]+) .* [\\w]{12} \\(.*\\)$")
+                                        .match("^St.ck (?<shares>[\\.,\\d]+) .* [A-Z]{2}[A-Z0-9]{9}[0-9] \\([A-Z0-9]{6}\\)$")
                                         .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
                         )
 
@@ -133,13 +134,13 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                     v.put("baseCurrency", asCurrencyCode(v.get("currency")));
                     v.put("termCurrency", asCurrencyCode(v.get("fxCurrency")));
 
-                    PDFExchangeRate rate = asExchangeRate(v);
+                    ExtrExchangeRate rate = asExchangeRate(v);
                     type.getCurrentContext().putType(rate);
 
                     Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
                     Money gross = rate.convert(asCurrencyCode(v.get("currency")), fxGross);
 
-                    checkAndSetGrossUnit(gross, fxGross, t, type);
+                    checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                 })
 
                 // Limit bestens
@@ -171,11 +172,13 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                 // Namens-Aktien o.N.
                 // Dividende: 2 EUR
                 .section("isin", "name", "name1", "currency").optional()
-                .match("^Titel: (?<isin>[\\w]{12}) (?<name>.*)$")
+                .match("^Titel: (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) (?<name>.*)$")
                 .match("^(?<name1>.*)$")
-                .match("^Dividende: [\\.,\\d]+ (?<currency>[\\w]{3})$")
+                .match("^(Dividende|Ertrag): [\\.,\\d]+ (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    if (!v.get("name1").startsWith("Dividende:"))
+                    if (!v.get("name1").startsWith("Dividende:") 
+                                    || !v.get("name1").startsWith("Ertrag:") 
+                                    || !v.get("name1").startsWith("Fondsgesellschaft:"))
                         v.put("name", trim(v.get("name")) + " " + trim(v.get("name1")));
 
                     t.setSecurity(getOrCreateSecurity(v));
@@ -185,7 +188,7 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                 // REGISTERED SHARES DL -,0001
                 // Zahlbarkeitstag 16.12.2021 Dividende pro Stück 0,68 USD
                 .section("name", "isin", "wkn", "name1", "currency").optional()
-                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[\\w]{12}) \\((?<wkn>.*)\\)$")
+                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) \\((?<wkn>[A-Z0-9]{6})\\)$")
                 .match("^(?<name1>.*)$")
                 .match("^Zahlbarkeitstag [\\d]{2}\\.[\\d]{2}\\.[\\d]{4} Dividende pro St.ck [\\.,\\d]+ (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
@@ -232,19 +235,42 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                     t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                 })
 
-                // Devisenkurs EUR / USD  1,1360
-                // Dividendengutschrift 68,00 USD 59,86+ EUR
-                .section("baseCurrency", "termCurrency", "exchangeRate", "fxGross", "fxCurrency", "gross", "currency").optional()
-                .match("^Devisenkurs (?<baseCurrency>[\\w]{3}) \\/ (?<termCurrency>[\\w]{3}) ([\\s]+)?(?<exchangeRate>[\\.,\\d]+)$")
-                .match("^Dividendengutschrift (?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<gross>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})$")
-                .assign((t, v) -> {
-                    type.getCurrentContext().putType(asExchangeRate(v));
+                .optionalOneOf(
+                                // Devisenkurs EUR / USD  1,1360
+                                // Dividendengutschrift 68,00 USD 59,86+ EUR
+                                section -> section
+                                        .attributes("baseCurrency", "termCurrency", "exchangeRate", "fxGross", "fxCurrency", "gross", "currency")
+                                        .match("^Devisenkurs (?<baseCurrency>[\\w]{3}) \\/ (?<termCurrency>[\\w]{3}) ([\\s]+)?(?<exchangeRate>[\\.,\\d]+)$")
+                                        .match("^Dividendengutschrift (?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}) (?<gross>[\\.,\\d]+)\\+ (?<currency>[\\w]{3})$")
+                                        .assign((t, v) -> {
+                                            ExtrExchangeRate rate = asExchangeRate(v);
+                                            type.getCurrentContext().putType(rate);
 
-                    Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
-                    Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
+                                            Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
+                                            Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
 
-                    checkAndSetGrossUnit(gross, fxGross, t, type);
-                })
+                                            checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
+                                        })
+                                ,
+                                // Bruttoertrag: 119,37 USD 
+                                // Devisenkurs: 1,0856 (13.01.2023) 109,37 EUR 
+                                section -> section
+                                        .attributes("fxGross", "fxCurrency", "exchangeRate", "currency")
+                                        .match("^Bruttoertrag: (?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3}).*$")
+                                        .match("^Devisenkurs: (?<exchangeRate>[\\.,\\d]+) \\([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}\\) [\\.,\\d]+ (?<currency>[\\w]{3}).*$")
+                                        .assign((t, v) -> {
+                                            v.put("baseCurrency", asCurrencyCode(v.get("currency")));
+                                            v.put("termCurrency", asCurrencyCode(v.get("fxCurrency")));
+
+                                            ExtrExchangeRate rate = asExchangeRate(v);
+                                            type.getCurrentContext().putType(rate);
+
+                                            Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
+                                            Money gross = rate.convert(asCurrencyCode(v.get("currency")), fxGross);
+
+                                            checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
+                                        })
+                        )
 
                 // Ex-Tag 01.12.2021 Art der Dividende Quartalsdividende
                 .section("note").optional()
@@ -281,16 +307,16 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
         });
         this.addDocumentTyp(type);
 
-        Block depositremoval = new Block("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. .* [S|H]$");
-        type.addBlock(depositremoval);
-        Transaction<AccountTransaction> pdfTransactionDepositRemoval = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.REMOVAL);
-                return entry;
-            });
+        Block depositRemovalBlock = new Block("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. .* [S|H]$");
+        type.addBlock(depositRemovalBlock);
+        depositRemovalBlock.set(new Transaction<AccountTransaction>()
 
-        pdfTransactionDepositRemoval
+                .subject(() -> {
+                    AccountTransaction entry = new AccountTransaction();
+                    entry.setType(AccountTransaction.Type.REMOVAL);
+                    return entry;
+                })
+
                 // Is type --> "H" change from DEPOSIT to REMOVAL
                 .section("type").optional()
                 .match("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. .* [\\.,\\d]+ (?<type>[S|H])$")
@@ -299,6 +325,14 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                         t.setType(AccountTransaction.Type.DEPOSIT);
                 })
 
+                // 01.12. 01.12. BASISLASTSCHRIFT PN:931                                             42,13 S
+                // 01.12. 01.12. DAUERAUFTRAG PN:900                                                  50,00 S
+                // 02.12. 03.12. EURO-UEBERWEISUNG PN:801                                            500,00 S
+                // 29.12. 29.12. Einnahmen PN:931                                                          1.097,00 H
+                // 02.08. 02.08. Kartenzahlung girocard PN:931                                       10,00 S
+                // 30.08. 30.08. LOHN/GEHALT PN:931                                                          1.200,00 H
+                // 27.08. 27.08. Auszahlung girocard PN:931                                           20,00 S
+                // 08.06. 08.06. Überweisung SEPA                                                      4,00 S
                 .section("day", "month", "amount", "note").optional()
                 .match("^[\\d]{2}\\.[\\d]{2}\\. (?<day>[\\d]{2})\\.(?<month>[\\d]{2})\\. "
                                 + "(?i:"
@@ -330,7 +364,7 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
 
                     t.setCurrencyCode(context.get("currency"));
                     t.setAmount(asAmount(v.get("amount")));
-                    
+
                     // Formatting some notes
                     if ("LOHN/GEHALT".equals(v.get("note")))
                         v.put("note", "Lohn/Gehalt");
@@ -351,24 +385,21 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                 })
 
                 .wrap(t -> {
-                    if (t.getAmount() > 0)
+                    if (t.getCurrencyCode() != null && t.getAmount() != 0)
                         return new TransactionItem(t);
-                    else
-                        return null;
-                });
+                    return null;
+                }));
 
-        depositremoval.set(pdfTransactionDepositRemoval);
+        Block interestBlock = new Block("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. .* [S|H]$");
+        type.addBlock(interestBlock);
+        interestBlock.set(new Transaction<AccountTransaction>()
 
-        Block interest = new Block("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. .* [S|H]$");
-        type.addBlock(interest);
-        Transaction<AccountTransaction> pdfTransactionInterest = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.INTEREST);
-                return entry;
-            });
+                .subject(() -> {
+                    AccountTransaction entry = new AccountTransaction();
+                    entry.setType(AccountTransaction.Type.INTEREST);
+                    return entry;
+                })
 
-        pdfTransactionInterest
                 // Is type --> "S" change from INTEREST to INTEREST_CHARGE
                 .section("type").optional()
                 .match("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. .* [.,\\d]+ (?<type>[S|H])$")
@@ -397,30 +428,28 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                     {
                         t.setDateTime(asDate(v.get("day") + "." + v.get("month") + "." + context.get("year")));
                     }
+
                     t.setCurrencyCode(context.get("currency"));
                     t.setAmount(asAmount(v.get("amount1")) + asAmount(v.get("amount2")));
                     t.setNote(v.get("note"));
                 })
 
                 .wrap(t -> {
-                    if (t.getAmount() > 0)
+                    if (t.getCurrencyCode() != null && t.getAmount() != 0)
                         return new TransactionItem(t);
-                    else
-                        return null;
-                });
+                    return null;
+                }));
 
-        interest.set(pdfTransactionInterest);
+        Block feesBlock = new Block("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. .* [S|H]$");
+        type.addBlock(feesBlock);
+        feesBlock.set(new Transaction<AccountTransaction>()
 
-        Block fees = new Block("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. .* [S|H]$");
-        type.addBlock(fees);
-        Transaction<AccountTransaction> pdfTransactionFees = new Transaction<AccountTransaction>()
-            .subject(() -> {
-                AccountTransaction entry = new AccountTransaction();
-                entry.setType(AccountTransaction.Type.FEES);
-                return entry;
-            });
+                .subject(() -> {
+                    AccountTransaction entry = new AccountTransaction();
+                    entry.setType(AccountTransaction.Type.FEES);
+                    return entry;
+                })
 
-        pdfTransactionFees
                 // Is type --> "H" change from FEES to FEES_REFUND
                 .section("type").optional()
                 .match("^[\\d]{2}\\.[\\d]{2}\\. [\\d]{2}\\.[\\d]{2}\\. .* [\\.,\\d]+ (?<type>[S|H])$")
@@ -455,6 +484,7 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                     {
                         t.setDateTime(asDate(v.get("day") + "." + v.get("month") + "." + context.get("year")));
                     }
+
                     t.setCurrencyCode(context.get("currency"));
                     t.setAmount(asAmount(v.get("amount1")) + asAmount(v.get("amount2")) + asAmount(v.get("amount3")));
                     t.setNote(v.get("note"));
@@ -481,19 +511,17 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                     {
                         t.setDateTime(asDate(v.get("day") + "." + v.get("month") + "." + context.get("year")));
                     }
+
                     t.setCurrencyCode(context.get("currency"));
                     t.setAmount(asAmount(v.get("amount1")) + asAmount(v.get("amount2")));
                     t.setNote(v.get("note"));
                 })
 
                 .wrap(t -> {
-                    if (t.getAmount() > 0)
+                    if (t.getCurrencyCode() != null && t.getAmount() != 0)
                         return new TransactionItem(t);
-                    else
-                        return null;
-                });
-
-        fees.set(pdfTransactionFees);
+                    return null;
+                }));
     }
 
     private <T extends Transaction<?>> void addTaxesSectionsTransaction(T transaction, DocumentType type)
@@ -522,6 +550,21 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                 // Auslands-KESt: -22,50 EUR 
                 .section("tax", "currency").optional()
                 .match("^Auslands\\-KESt: \\-(?<tax>[\\.,\\d]+) (?<currency>[\\w]{3}).*$")
+                .assign((t, v) -> processTaxEntries(t, v, type))
+
+                // KESt ausländische Dividende: -0,64 USD 
+                .section("tax", "currency").optional()
+                .match("^KESt ausl.ndische Dividende: \\-(?<tax>[\\.,\\d]+) (?<currency>[\\w]{3}).*$")
+                .assign((t, v) -> processTaxEntries(t, v, type))
+
+                // KESt: -10,00 EUR 
+                .section("tax", "currency").optional()
+                .match("^KESt: \\-(?<tax>[\\.,\\d]+) (?<currency>[\\w]{3}).*$")
+                .assign((t, v) -> processTaxEntries(t, v, type))
+
+                // Umsatzsteuer: -0,29 EUR 
+                .section("tax", "currency").optional()
+                .match("^Umsatzsteuer: \\-(?<tax>[\\.,\\d]+) (?<currency>[\\w]{3}).*$")
                 .assign((t, v) -> processTaxEntries(t, v, type))
 
                 // Kursgewinn-KESt: -696,65 EUR 
@@ -576,6 +619,11 @@ public class RaiffeisenBankgruppePDFExtractor extends AbstractPDFExtractor
                 // Orderleitgebühr: -3,00 EUR 
                 .section("fee", "currency").optional()
                 .match("^Orderleitgeb.hr: \\-(?<fee>[\\.,\\d]+) (?<currency>[\\w]{3}).*$")
+                .assign((t, v) -> processFeeEntries(t, v, type))
+
+                // Inkassogebühr: -1,45 EUR 
+                .section("fee", "currency").optional()
+                .match("^Inkassogeb.hr: \\-(?<fee>[\\.,\\d]+) (?<currency>[\\w]{3}).*$")
                 .assign((t, v) -> processFeeEntries(t, v, type));
     }
 }

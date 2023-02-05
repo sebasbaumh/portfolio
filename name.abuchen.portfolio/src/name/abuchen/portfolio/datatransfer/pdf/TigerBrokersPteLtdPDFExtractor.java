@@ -1,6 +1,6 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
-import static name.abuchen.portfolio.datatransfer.pdf.PDFExtractorUtils.checkAndSetTax;
+import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetTax;
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
 import java.math.BigDecimal;
@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import name.abuchen.portfolio.datatransfer.ExtractorUtils;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Transaction;
@@ -43,7 +44,7 @@ public class TigerBrokersPteLtdPDFExtractor extends AbstractPDFExtractor
             Pattern pCurrency = Pattern.compile("^Currency: (?<currency>[\\w]{3})$");
             Pattern pSecurityCurrency = Pattern.compile("^Stock Currency: (?<securityCurrency>[\\w]{3})$");
             Pattern pSecurity = Pattern.compile("^(?<tickerSymbol>[\\w]{2,3}) (?<name>.*) [\\d]$");
-            Pattern pSecurityDividendTax = Pattern.compile("^[\\d]{4}\\-[\\d]{2}\\-[\\d]{2} (?<tickerSymbol>[\\w]{2,4}) Cash Dividend .* \\-(?<tax>[\\.,\\d]+)$");
+            Pattern pSecurityDividendTax = Pattern.compile("^[\\d]{4}\\-[\\d]{2}\\-[\\d]{2} (?<tickerSymbol>[\\w]{2,4}) Cash Dividend .* \\-(?<tax>[\\.,\\d]+).*$");
             Pattern pSecurityDividendShares = Pattern.compile("^(?<tickerSymbol>[\\w]{2,3}) [\\d]{4}\\-[\\d]{2}\\-[\\d]{2} [\\d]{4}\\-[\\d]{2}\\-[\\d]{2}.* (?<shares>[\\.,\\d]+) [\\.,\\d]+ [\\.,\\d]+ [\\.,\\d]+ [\\.,\\d]+ [\\.,\\d]+$");
             Pattern pSecurityBlockStart = Pattern.compile("^Stock$");
             Pattern pSecurityBlockEnd = Pattern.compile("^Base Currency Exchange Rate$");
@@ -228,12 +229,13 @@ public class TigerBrokersPteLtdPDFExtractor extends AbstractPDFExtractor
             return transaction;
         });
 
-        Block firstRelevantLineForDividendBlock = new Block("^[\\d]{4}\\-[\\d]{2}\\-[\\d]{2} [\\w]{2,4} Cash Dividend .* [\\.,\\d]+$");
+        Block firstRelevantLineForDividendBlock = new Block("^[\\d]{4}\\-[\\d]{2}\\-[\\d]{2} [\\w]{2,4} Cash Dividend .* [\\.,\\d]+.*$");
         type.addBlock(firstRelevantLineForDividendBlock);
         firstRelevantLineForDividendBlock.set(dividendBlock);
 
         dividendBlock
                 // 2022-03-24 VT Cash Dividend 0.2572 USD per Share (Ordinary Dividend) 17.75
+                // 2022-12-22 VT Cash Dividend 0.6381 USD per Share (Ordinary Dividend) 44.03 USD
                 .section("date", "tickerSymbol", "perShare", "note", "amount")
                 .match("^(?<date>[\\d]{4}\\-[\\d]{2}\\-[\\d]{2}) "
                                 + "(?<tickerSymbol>[\\w]{2,4}) "
@@ -241,7 +243,7 @@ public class TigerBrokersPteLtdPDFExtractor extends AbstractPDFExtractor
                                 + "(?<perShare>[\\.,\\d]+) "
                                 + "[\\w]{3} per Share "
                                 + "\\((?<note>.*)\\) "
-                                + "(?<amount>[\\.,\\d]+)$")
+                                + "(?<amount>[\\.,\\d]+).*$")
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
                     Money tax = null;
@@ -273,7 +275,7 @@ public class TigerBrokersPteLtdPDFExtractor extends AbstractPDFExtractor
                     {
                         tax = Money.of(asCurrencyCode(securityDividendeTax.getCurrency()), asAmount(securityDividendeTax.getTax()));
 
-                        checkAndSetTax(tax, t, type);
+                        checkAndSetTax(tax, t, type.getCurrentContext());
                     }
 
                     // Dividends are stated in gross.
@@ -475,18 +477,18 @@ public class TigerBrokersPteLtdPDFExtractor extends AbstractPDFExtractor
     @Override
     protected long asAmount(String value)
     {
-        return PDFExtractorUtils.convertToNumberLong(value, Values.Amount, "en", "US");
+        return ExtractorUtils.convertToNumberLong(value, Values.Amount, "en", "US");
     }
 
     @Override
     protected long asShares(String value)
     {
-        return PDFExtractorUtils.convertToNumberLong(value, Values.Share, "en", "US");
+        return ExtractorUtils.convertToNumberLong(value, Values.Share, "en", "US");
     }
 
     @Override
     protected BigDecimal asExchangeRate(String value)
     {
-        return PDFExtractorUtils.convertToNumberBigDecimal(value, Values.Share, "en", "US");
+        return ExtractorUtils.convertToNumberBigDecimal(value, Values.Share, "en", "US");
     }
 }
