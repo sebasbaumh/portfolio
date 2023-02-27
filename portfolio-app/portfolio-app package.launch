@@ -8,12 +8,12 @@
     <stringAttribute key="M2_PROFILES" value=""/>
     <listAttribute key="M2_PROPERTIES">
         <listEntry value="tycho.disableP2Mirrors=true"/>
-        <listEntry value="MAVEN_OPTS=-Xmx2g"/>
+        <listEntry value="MAVEN_OPTS=-Xmx4g"/>
     </listAttribute>
-    <stringAttribute key="M2_RUNTIME" value="mvn-3.8.6"/>
+    <stringAttribute key="M2_RUNTIME" value="EMBEDDED"/>
     <booleanAttribute key="M2_SKIP_TESTS" value="false"/>
     <intAttribute key="M2_THREADS" value="8"/>
-    <booleanAttribute key="M2_UPDATE_SNAPSHOTS" value="false"/>
+    <booleanAttribute key="M2_UPDATE_SNAPSHOTS" value="true"/>
     <stringAttribute key="M2_USER_SETTINGS" value=""/>
     <booleanAttribute key="M2_WORKSPACE_RESOLUTION" value="false"/>
     <booleanAttribute key="org.eclipse.debug.core.ATTR_FORCE_SYSTEM_CONSOLE_ENCODING" value="false"/>
