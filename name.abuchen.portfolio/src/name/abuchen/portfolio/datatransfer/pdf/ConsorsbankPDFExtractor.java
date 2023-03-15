@@ -345,10 +345,8 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                 // Storno wegen geänderten steuerrelevanten Daten. Neuabrechnung folgt.
                 .section("type").optional()
                 .match("^(?<type>Storno) .*$")
-                .assign((t, v) -> {
-                    if (v.get("type").equals("Storno"))
-                        t.setNote(Messages.MsgErrorOrderCancellationUnsupported);
-                })
+                .assign((t, v) -> v.getTransactionContext().put(FAILURE,
+                                Messages.MsgErrorOrderCancellationUnsupported))
 
                 // @formatter:off
                 // ST                    1.370,00000          WKN:  ETF110                 
@@ -516,13 +514,12 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
 
                 .conclude(ExtractorUtils.fixGrossValueA())
 
-                .wrap(t -> {
+                .wrap((t, ctx) -> {
                     if (t.getCurrencyCode() != null && t.getAmount() != 0)
                     {
-                        if (t.getNote() == null || !t.getNote().equals(Messages.MsgErrorOrderCancellationUnsupported))
-                            return new TransactionItem(t);
-                        else
-                            return new NonImportableItem(Messages.MsgErrorOrderCancellationUnsupported);
+                        TransactionItem item = new TransactionItem(t);
+                        item.setFailureMessage(ctx.getString(FAILURE));
+                        return item;
                     }
                     return null;
                 });
@@ -706,9 +703,10 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                 })
 
                 .wrap(t -> {
-                    if (t.getAmount() != 0)
-                        return new TransactionItem(t);
-                    return new NonImportableItem(Messages.MsgErrorTransactionTypeNotSupported);
+                    TransactionItem item = new TransactionItem(t);
+                    if (t.getAmount() == 0)
+                        item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
+                    return item;
                 }));
     }
 
@@ -775,7 +773,7 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                     return null;
                 }));
 
-        Block removalBlock = new Block("^(UEBERWEISUNG|EURO\\-UEBERW\\.)( .*)? [\\d]{2}\\.[\\d]{2}\\. [\\d]+ [\\d]{2}\\.[\\d]{2}\\. [\\.,\\d]+\\-$");
+        Block removalBlock = new Block("^(UEBERWEISUNG|EURO\\-UEBERW\\.|DAUERAUFTRAG)( .*)? [\\d]{2}\\.[\\d]{2}\\. [\\d]+ [\\d]{2}\\.[\\d]{2}\\. [\\.,\\d]+\\-$");
         type.addBlock(removalBlock);
         removalBlock.set(new Transaction<AccountTransaction>()
 
@@ -790,7 +788,7 @@ public class ConsorsbankPDFExtractor extends AbstractPDFExtractor
                 // EURO-UEBERW. 21.12. 8420 21.12. 6.000,00-
                 // @formatter:on
                 .section("note", "date", "amount")
-                .match("^(?<note>(UEBERWEISUNG|EURO\\-UEBERW\\.))( .*)? [\\d]{2}\\.[\\d]{2}\\. [\\d]+ (?<date>[\\d]{2}\\.[\\d]{2}\\.) (?<amount>[\\.,\\d]+)\\-$")
+                .match("^(?<note>(UEBERWEISUNG|EURO\\-UEBERW\\.|DAUERAUFTRAG))( .*)? [\\d]{2}\\.[\\d]{2}\\. [\\d]+ (?<date>[\\d]{2}\\.[\\d]{2}\\.) (?<amount>[\\.,\\d]+)\\-$")
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
 

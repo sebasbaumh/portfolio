@@ -406,10 +406,8 @@ public class OnvistaPDFExtractor extends AbstractPDFExtractor
                 // Storno unserer Dividendengutschrift Nr. 67390000 vom 15.05.2020.
                 .section("type").optional()
                 .match("^(?<type>Storno) unserer Dividendengutschrift .*$")
-                .assign((t, v) -> {
-                    if (v.get("type").equals("Storno"))
-                        t.setNote(Messages.MsgErrorOrderCancellationUnsupported);
-                })
+                .assign((t, v) -> v.getTransactionContext().put(FAILURE,
+                                Messages.MsgErrorOrderCancellationUnsupported))
 
                 // Gattungsbezeichnung ISIN
                 // Commerzbank AG Inhaber-Aktien o.N. DE000CBK1001
@@ -662,7 +660,7 @@ public class OnvistaPDFExtractor extends AbstractPDFExtractor
 
                 .conclude(ExtractorUtils.fixGrossValueA())
 
-                .wrap(t -> {
+                .wrap((t, ctx) -> {
                     // If we have multiple entries in the document, with
                     // taxes and tax refunds, then the "negative" flag
                     // must be removed.
@@ -674,10 +672,9 @@ public class OnvistaPDFExtractor extends AbstractPDFExtractor
 
                     if (t.getCurrencyCode() != null && t.getAmount() != 0)
                     {
-                        if (t.getNote() == null || !t.getNote().equals(Messages.MsgErrorOrderCancellationUnsupported))
-                            return new TransactionItem(t);
-                        else
-                            return new NonImportableItem(Messages.MsgErrorOrderCancellationUnsupported);
+                        TransactionItem item = new TransactionItem(t);
+                        item.setFailureMessage(ctx.getString(FAILURE));
+                        return item;
                     }
                     return null;
                 });
@@ -754,9 +751,10 @@ public class OnvistaPDFExtractor extends AbstractPDFExtractor
                     // must be removed.
                     type.getCurrentContext().remove("negative");
 
-                    if (t.getCurrencyCode() != null && t.getAmount() != 0)
-                        return new TransactionItem(t);
-                    return new NonImportableItem(Messages.MsgErrorTransactionTypeNotSupported);
+                    TransactionItem item = new TransactionItem(t);
+                    if (t.getCurrencyCode() == null || t.getAmount() == 0)
+                        item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
+                    return item;
                 });
         
         block.set(pdfTransaction);
@@ -770,7 +768,8 @@ public class OnvistaPDFExtractor extends AbstractPDFExtractor
                         + "|Wertlose Ausbuchung"
                         + "|Kapitalerh.hung"
                         + "|Kapitalherabsetzung"
-                        + "|Umtausch", (context, lines) -> {
+                        + "|Umtausch" 
+                        + "|Ausbuchung der Rechte", (context, lines) -> {
             Pattern pDate = Pattern.compile("(^|^[\\s]+).*, (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4})$");
             // read the current context here
             for (String line : lines)
@@ -791,16 +790,16 @@ public class OnvistaPDFExtractor extends AbstractPDFExtractor
             return entry;
         });
 
-        Block firstRelevantLine = new Block("^(Einbuchung:|Ausbuchung:|Wir erhielten zu Gunsten Ihres Depots).*");
+        Block firstRelevantLine = new Block("^(Einbuchung:|Ausbuchung:|Wir erhielten zu Gunsten Ihres Depots|Dividendengutschrift).*");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
         pdfTransaction
                 // Is type --> "Ausbuchung" change from DELIVERY_INBOUND to DELIVERY_OUTBOUND
                 .section("type").optional()
-                .match("^(?<type>Einbuchung|Ausbuchung):([\\s]+)?$")
+                .match("^(?<type>Einbuchung|Ausbuchung|.*Ausbuchung der Rechte.*)[:]?([\\s]+)?$")
                 .assign((t, v) -> {
-                    if (v.get("type").equals("Ausbuchung"))
+                    if (v.get("type").contains("Ausbuchung"))
                     {
                         t.setType(PortfolioTransaction.Type.DELIVERY_OUTBOUND);
                     }
@@ -811,11 +810,11 @@ public class OnvistaPDFExtractor extends AbstractPDFExtractor
                 // Nominal Ex-Tag
                 // STK 12,000 04.07.2017
                 .section("name", "isin", "name1", "shares")
-                .find("(Einbuchung:|Ausbuchung:|Wir erhielten zu Gunsten Ihres Depots).*")
+                .find("(Einbuchung:|Ausbuchung:|Wir erhielten zu Gunsten Ihres Depots|Dividendengutschrift).*")
                 .find("Gattungsbezeichnung ISIN")
                 .match("^(?<name>.*) (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$")
                 .match("^(?<name1>.*)")
-                .match("^STK (?<shares>[\\.,\\d]+)( [\\d]{2}\\.[\\d]{2}\\.[\\d]{4})?( [\\d]{2}\\.[\\d]{2}\\.[\\d]{4})?$")
+                .match("^STK (?<shares>[\\.,\\d]+)( [\\d]{2}\\.[\\d]{2}\\.[\\d]{4})?( [\\d]{2}\\.[\\d]{2}\\.[\\d]{4})?( [\\w]{3} [\\.,\\d]+)?$")
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
 
@@ -848,6 +847,11 @@ public class OnvistaPDFExtractor extends AbstractPDFExtractor
                 // Einbuchung der Rechte zur Dividende wahlweise. Bitte beachten Sie hierzu unser separates Anschreiben.
                 .section("note").optional()
                 .match("^(?<note>Einbuchung der Rechte zur Dividende wahlweise\\.) .*$")
+                .assign((t, v) -> t.setNote(v.get("note")))
+                
+                // Im Zuge der Geldzahlung erfolgt die Ausbuchung der Rechte. Ein separater Beleg wird nicht erstellt.
+                .section("note").optional()
+                .match("^(?<note>Im Zuge der Geldzahlung erfolgt die Ausbuchung der Rechte\\. Ein separater Beleg wird nicht erstellt\\.).*$")
                 .assign((t, v) -> t.setNote(v.get("note")))
 
                 .wrap(t -> {

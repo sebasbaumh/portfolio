@@ -140,10 +140,8 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                 // Storno, da der Ursprungsauftrag mit falscher Entgeltberechnung erfolgte.
                 .section("type").optional()
                 .match("^(?<type>Storno), .*$")
-                .assign((t, v) -> {
-                    if (v.get("type").equals("Storno"))
-                        t.setNote(Messages.MsgErrorOrderCancellationUnsupported);
-                })
+                .assign((t, v) -> v.getTransactionContext().put(FAILURE,
+                                Messages.MsgErrorOrderCancellationUnsupported))
 
                 // Nominale Wertpapierbezeichnung ISIN (WKN)
                 // EUR 2.000,00 8,75 % METALCORP GROUP B.V. DE000A1HLTD2 (A1HLTD)
@@ -244,13 +242,12 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                         t.setNote(trim(v.get("note")));
                 })
 
-                .wrap(t -> {
+                .wrap((t, ctx) -> {
                     if (t.getPortfolioTransaction().getCurrencyCode() != null && t.getPortfolioTransaction().getAmount() != 0)
                     {
-                        if (t.getPortfolioTransaction().getNote() == null || !t.getPortfolioTransaction().getNote().equals(Messages.MsgErrorOrderCancellationUnsupported))
-                            return new BuySellEntryItem(t);
-                        else
-                            return new NonImportableItem(Messages.MsgErrorOrderCancellationUnsupported);
+                        BuySellEntryItem item = new BuySellEntryItem(t);
+                        item.setFailureMessage(ctx.getString(FAILURE));
+                        return item;
                     }
                     return null;
                 });
@@ -867,6 +864,7 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                                 + "(?i)(?<note2>(Bargeldeinzahlung"
                                 + "|R.ckruf\\/Nachforschung"
                                 + "|Identifikationscode"
+                                + "|Stornorechnung"
                                 + "|Girokarte)).*$")
                 .assign((t, v) -> {
                     Map<String, String> context = type.getCurrentContext();
@@ -881,7 +879,10 @@ public class DkbPDFExtractor extends AbstractPDFExtractor
                     {
                         t.setDateTime(asDate(v.get("day") + "." + v.get("month2") + "." + context.get("year")));
                     }
-
+                    if (v.get("note2").equals("Stornorechnung"))
+                    {
+                        t.setType(AccountTransaction.Type.FEES_REFUND);
+                    }
                     t.setAmount(asAmount(v.get("amount")));
                     t.setCurrencyCode(asCurrencyCode(context.get("currency")));
                     t.setNote(v.get("note1") + " " + v.get("note2"));
