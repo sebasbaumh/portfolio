@@ -214,7 +214,7 @@ public class SecurityListView extends AbstractFinanceView
                     FileDialog fileDialog = new FileDialog(Display.getDefault().getActiveShell(), SWT.OPEN);
                     fileDialog.setFilterNames(
                                     new String[] { Messages.CSVImportLabelFileCSV, Messages.CSVImportLabelFileAll });
-                    fileDialog.setFilterExtensions(new String[] { "*.csv", "*.*" }); //$NON-NLS-1$ //$NON-NLS-2$
+                    fileDialog.setFilterExtensions(new String[] { "*.csv;*.CSV", "*.*" }); //$NON-NLS-1$ //$NON-NLS-2$
                     String fileName = fileDialog.open();
 
                     if (fileName == null)
@@ -373,10 +373,8 @@ public class SecurityListView extends AbstractFinanceView
         {
             for (Object attribute : security.getAttributes().getMap().values())
             {
-                if (!(attribute instanceof LimitPrice))
+                if (!(attribute instanceof LimitPrice limit))
                     continue;
-
-                LimitPrice limit = (LimitPrice) attribute;
 
                 SecurityPrice latest = security.getSecurityPrice(LocalDate.now());
                 if (latest != null && limit.isExceeded(latest))
