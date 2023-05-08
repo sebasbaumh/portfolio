@@ -608,6 +608,7 @@ public class Messages extends NLS
     public static String LabelError;
     public static String LabelErrorNoHoldings;
     public static String LabelErrorNoTaxonomySelected;
+    public static String LabelErrorProtocolDetails;
     public static String LabelEurostatRegion;
     public static String LabelExcessReturnBaselineDataSeries;
     public static String LabelExcessReturnOperator;
@@ -773,6 +774,7 @@ public class Messages extends NLS
     public static String LabelKeyIndicators;
     public static String LabelMaxDrawdown;
     public static String LabelMaxDrawdownDuration;
+    public static String LabelMeasureDistance;
     public static String LabelMetricCheckInterval;
     public static String LabelMetric;
     public static String LabelMetricDays;
@@ -946,6 +948,7 @@ public class Messages extends NLS
     public static String MsgDialogNotAValidCurrency;
     public static String MsgDialogNotAValidISIN;
     public static String MsgEmbeddedBrowserError;
+    public static String MsgErrorAccountNotExist;
     public static String MsgErrorConvertedAmount;
     public static String MsgErrorConvertToBuySellCurrencyMismatch;
     public static String MsgErrorDividendsYearBetween1900AndNow;
@@ -955,6 +958,7 @@ public class Messages extends NLS
     public static String MsgErrorNoInvestmentVehicleFoundAtURL;
     public static String MsgErrorNotAValidDate;
     public static String MsgErrorOpeningFile;
+    public static String MsgErrorPortfolioNotExist;
     public static String MsgErrorSavingIniFile;
     public static String MsgErrorTradeCollectionWithErrors;
     public static String MsgErrorUpdating;
@@ -1005,6 +1009,7 @@ public class Messages extends NLS
     public static String NewFileWizardTaxonomyTitle;
     public static String PageDescriptionSelectSecurity;
     public static String PageTitleSelectSecurity;
+    public static String PDFImportDebugInformation;
     public static String PDFImportDebugTextExtraction;
     public static String PDFImportFilterName;
     public static String PDFImportWizardDescription;
@@ -1195,9 +1200,6 @@ public class Messages extends NLS
     public static String SplitWizardReviewQuotesTitle;
     public static String SplitWizardReviewTransactionsDescription;
     public static String SplitWizardReviewTransactionsTitle;
-    public static String SurveyIcon;
-    public static String SurveyReminder;
-    public static String SurveyTooltip;
     public static String EventWizardTitle;
     public static String EventWizardDescription;
     public static String EventWizardLabelMessage;
@@ -1250,6 +1252,9 @@ public class Messages extends NLS
     public static String FilterNotRetired;
     public static String MenuFilterTrades;
     public static String FilterValuationNonZero;
+    public static String FollowUpWidget_Option_Sorting;
+    public static String FollowUpWidget_Option_SortingByDateAscending;
+    public static String FollowUpWidget_Option_SortingByDateDescending;
     public static String ForceClearPersistedStateDialogTitle;
     public static String ForceClearPersistedStateMessage;
     public static String HeatmapOrnamentAverage;

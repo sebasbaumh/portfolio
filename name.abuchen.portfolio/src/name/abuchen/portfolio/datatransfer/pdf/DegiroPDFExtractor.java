@@ -1,6 +1,7 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
 import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetGrossUnit;
+
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
 import java.math.BigDecimal;
@@ -158,7 +159,7 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
                             + "|Valuta Debitering"
                             + "|Prelievo"
                             + "|Retirada Cambio de Divisa"
-                            + "|FX vyučtování konverze měny).* "
+                            + "|FX vyu.tov.n. konverze m.ny).* "
                             + "(?<fxRate>[\\.,'\\d\\s]+) "
                             + "(?<currency>[\\w]{3}) "
                             + "(\\-)?(?<amount>[\\.,'\\d\\s]+) "
@@ -202,7 +203,7 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
                             + "|Credito"
                             + "|Ingreso Cambio de Divisa"
                             + "|Prelievo FX"
-                            + "|FX vyučtování konverze měny).* "
+                            + "|FX vyu.tov.ní konverze m.ny).* "
                             + "(?<currency>[\\w]{3}) "
                             + "(\\-)?(?<amount>[\\.,'\\d\\s]+) "
                             + "[\\w]{3}.*$");
@@ -1105,7 +1106,7 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
                                                     + "|DEGIRO Aansluitingskosten"
                                                     + "|Giro Exchange Connection Fee"
                                                     + "|DEGIRO Costi di connessione"
-                                                    + "|DEGIRO poplatek za Obchodování)) .* "
+                                                    + "|DEGIRO poplatek za Obchodov.n.)) .* "
                                                     + "(?<currency>[\\w]{3})"
                                                     + "(?<type>\\s(\\-)?)"
                                                     + "(?<amount>[\\.,'\\d\\s]+) "
@@ -1129,7 +1130,7 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
                                                     + "|DEGIRO Aansluitingskosten"
                                                     + "|Giro Exchange Connection Fee"
                                                     + "|DEGIRO Costi di connessione"
-                                                    + "|DEGIRO poplatek za Obchodování)( [\\d]{4})?( \\(.*\\))?).* "
+                                                    + "|DEGIRO poplatek za Obchodov.n.)( [\\d]{4})?( \\(.*\\))?).* "
                                                     + "(?<currency>[\\w]{3})"
                                                     + "(?<type>\\s(\\-)?)"
                                                     + "(?<amount>[\\.,'\\d\\s]+) "
@@ -1343,7 +1344,8 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
                         + "|Transactions"
                         + "|Transakcje"
                         + "|Operazioni"
-                        + "|Transakce)");
+                        + "|Transakce"
+                        + "|Transa..es)");
         this.addDocumentTyp(type);
 
         Block blockBuy = new Block("^[\\d]{2}\\-[\\d]{2}\\-[\\d]{4} [\\d]{2}:[\\d]{2} .* [A-Z]{2}[A-Z0-9]{9}[0-9] .* ([\\w]{3}|[\\w]{3} [\\w]{4}) .*([\\.\\d]+,[\\d]{2}|[\\w]{3})([\\s]+)?$");
@@ -2070,8 +2072,6 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
     @Override
     protected long asAmount(String value)
     {
-        value = value.trim().replaceAll("\\s", ""); //$NON-NLS-1$ //$NON-NLS-2$
-
         String language = "de"; //$NON-NLS-1$
         String country = "DE"; //$NON-NLS-1$
 
@@ -2100,8 +2100,6 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
     @Override
     protected long asShares(String value)
     {
-        value = value.trim().replaceAll("\\s", ""); //$NON-NLS-1$ //$NON-NLS-2$
-
         String language = "de"; //$NON-NLS-1$
         String country = "DE"; //$NON-NLS-1$
 
@@ -2130,8 +2128,6 @@ public class DegiroPDFExtractor extends AbstractPDFExtractor
     @Override
     protected BigDecimal asExchangeRate(String value)
     {
-        value = value.trim().replaceAll("\\s", ""); //$NON-NLS-1$ //$NON-NLS-2$
-
         String language = "de"; //$NON-NLS-1$
         String country = "DE"; //$NON-NLS-1$
 
