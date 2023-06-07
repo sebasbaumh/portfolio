@@ -375,6 +375,7 @@ public class Messages extends NLS
     public static String CSVImportSeparatorTab;
     public static String CSVImportWizardDescription;
     public static String CSVImportWizardTitle;
+    public static String DescriptionDashboardUse;
     public static String DescriptionDataRelativeToReportingPeriod;
     public static String DesktopAPIBrowserActionNotSupported;
     public static String DesktopAPIErrorOpeningURL;
@@ -556,10 +557,13 @@ public class Messages extends NLS
     public static String LabelChartDetailMovingAverage_100days;
     public static String LabelChartDetailMovingAverage_200days;
     public static String LabelChartDetailSettings;
+    public static String LabelChartDetailSettingsShowHorizontalLinesMain;
+    public static String LabelChartDetailSettingsShowHorizontalLinesPercentage;
     public static String LabelChartDetailSettingsShowLimits;
     public static String LabelChartDetailSettingsShowMarkerLines;
     public static String LabelChartDetailSettingsShowDataLabel;
     public static String LabelChartDetailSettingsShowMissingTradingDays;
+    public static String LabelChartDetailSettingsShowPercentageAxis;
     public static String LabelChartShowLabels;
     public static String LabelChartType;
     public static String LabelCleanHTML;
@@ -602,6 +606,11 @@ public class Messages extends NLS
     public static String LabelDoImport;
     public static String LabelDoNotImport;
     public static String LabelEarnings;
+    public static String LabelEarningsPerMonth;
+    public static String LabelEarningsPerQuarter;
+    public static String LabelEarningsPerYear;
+    public static String LabelEarningsTransactionList;
+    public static String LabelEmptyDashboard;
     public static String LabelExpand;
     public static String LabelExpandAll;
     public static String LabelExpenses;
@@ -791,6 +800,7 @@ public class Messages extends NLS
     public static String LabelSuffix_PreTax;
     public static String LabelTaxonomies;
     public static String LabelTaxonomyTemplates;
+    public static String LabelTemplate;
     public static String LabelTheme;
     public static String LabelToday;
     public static String LabelToolTipDividendDetails;
@@ -939,6 +949,7 @@ public class Messages extends NLS
     public static String MsgAccountFromMissing;
     public static String MsgAccountMustBeDifferent;
     public static String MsgAccountToMissing;
+    public static String MsgCheckMissingTickerSymbol;
     public static String MsgConfirmInstall;
     public static String MsgCreateTransactionsAutomaticallyUponOpening;
     public static String MsgDateIsInTheFuture;
@@ -1051,12 +1062,15 @@ public class Messages extends NLS
     public static String PrefDescriptionDivvyDiary;
     public static String PrefDescriptionEODHistoricalData;
     public static String PrefDescriptionFinnhub;
+    public static String PrefDescriptionLeeway;
     public static String PrefDescriptionPortfolioReport;
     public static String PrefDescriptionProxy;
     public static String PrefDescriptionQuandl;
+    public static String PrefDescriptionTwelveData;
     public static String PrefDivvyDiaryAPIKey;
     public static String PrefEODHistoricalDataAPIKey;
     public static String PrefFinnhubAPIKey;
+    public static String PrefLeewayAPIKey;
     public static String PrefLabelAlwaysDisplayCurrencyCode;
     public static String PrefLabelAutoSaveFrequency;
     public static String PrefLabelDisplayPA;
@@ -1094,8 +1108,11 @@ public class Messages extends NLS
     public static String PrefTitleDivvyDiary;
     public static String PrefTitleEODHistoricalData;
     public static String PrefTitleFinnhub;
+    public static String PrefTitleLeeway;
     public static String PrefTitlePortfolioReport;
     public static String PrefTitleQuandl;
+    public static String PrefTitleTwelveData;
+    public static String PrefTwelveDataAPIKey;
     public static String PresetsPrefPageDescription;
     public static String PresetsPrefPageNow;
     public static String PresetsPrefPageStartOfDay;

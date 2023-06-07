@@ -8,16 +8,6 @@ www.finanzen.net/zero
 Seite 1/1
 Herrn Karlsruhe
 20.04.2023
-PDFBox Version: 1.8.17
-Portfolio Performance Version: 0.62.0
------------------------------------------
-Baader Bank AG   Weihenstephaner Straße 4   85716 Unterschleißheim Gartenstraße 67
-T  00800 00 586336*   F  +49 89 5150 2442    service@baaderbank.de 76135 Karlsruhe
-www.finanzen.net/zero
-+49 89 5455 8188
-Seite 1/1
-Herrn Karlsruhe
-20.04.2023
 Max Mustermann
 Musterstraße 1 Max Mustermann
 01234 Musterstadt  Stamm-Nr.: 00000      Portfolio: 1
