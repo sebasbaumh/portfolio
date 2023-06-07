@@ -2,6 +2,7 @@ package name.abuchen.portfolio.datatransfer.pdf;
 
 import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetGrossUnit;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -17,6 +18,7 @@ import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
 import name.abuchen.portfolio.money.Money;
+import name.abuchen.portfolio.money.Values;
 
 @SuppressWarnings("nls")
 public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
@@ -25,7 +27,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
     {
         super(client);
 
-        addBankIdentifier("TRADE REPUBLIC"); //$NON-NLS-1$
+        addBankIdentifier("TRADE REPUBLIC");
 
         addBuySellTransaction();
         addSellWithNegativeAmountTransaction();
@@ -42,7 +44,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
     @Override
     public String getLabel()
     {
-        return "Trade Republic Bank GmbH"; //$NON-NLS-1$
+        return "Trade Republic Bank GmbH";
     }
 
     private void addBuySellTransaction()
@@ -51,6 +53,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         + "(Kauf"
                         + "|Verkauf"
                         + "|Sparplanausf.hrung"
+                        + "|SAVINGS PLAN"
                         + "|Ex.cution de l.investissement programm.) .*"
                         + "|REINVESTIERUNG)");
         this.addDocumentTyp(type);
@@ -66,6 +69,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         + "(Kauf"
                         + "|Verkauf"
                         + "|Sparplanausf.hrung"
+                        + "|SAVINGS PLAN"
                         + "|Ex.cution de l.investissement programm.) .*"
                         + "|REINVESTIERUNG)");
         type.addBlock(firstRelevantLine);
@@ -74,7 +78,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
         pdfTransaction
                 // Is type --> "Verkauf" change from BUY to SELL
                 .section("type").optional()
-                .match("^((Limit|Stop\\-Market|Market)\\-Order )?(?<type>(Kauf|Verkauf|Sparplanausf.hrung|Ex.cution de l.investissement programm.)) .*$")
+                .match("^((Limit|Stop\\-Market|Market)\\-Order )?"
+                                + "(?<type>(Kauf"
+                                + "|Verkauf"
+                                + "|Sparplanausf.hrung"
+                                + "|SAVINGS PLAN"
+                                + "|Ex.cution de l.investissement programm.))"
+                                + " .*$")
                 .assign((t, v) -> {
                     if ("Verkauf".equals(v.get("type")))
                         t.setType(PortfolioTransaction.Type.SELL);
@@ -89,14 +99,14 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                 // @formatter:on
                                 section -> section
                                         .attributes("name", "currency", "isin", "nameContinued")
-                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$")
+                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$")
                                         .match("^(?<nameContinued>.*)$")
                                         .match("^(ISIN([\\s])?:([\\s])?)?(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$")
                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v)))
                                 ,
 
                                 // This is for the reinvestment of dividends
-                                // We pick the second 
+                                // We pick the second
 
                                 // @formatter:off
                                 // 1 Reinvestierung Vodafone Group PLC 699 Stk.
@@ -125,6 +135,14 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         .attributes("shares")
                                         .match("^.* (?<shares>[\\.,\\d]+) (Stk\\.|titre\\(s\\)) .*$")
                                         .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
+                                ,
+                                // @formatter:off
+                                // Berkshire Hathaway Inc. 0.3367 Pcs. 297.00 EUR 100.00 EUR
+                                // @formatter:on
+                                section -> section
+                                        .attributes("shares")
+                                        .match("^.* (?<shares>[\\.,\\d]+) Pcs\\. .*$")
+                                        .assign((t, v) -> t.setShares(asShares(v.get("shares"), "en", "US")))
                                 ,
                                 // @formatter:off
                                 // 1 Reinvestierung Vodafone Group PLC 699 Stk.
@@ -159,10 +177,11 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                 ,
                                 // @formatter:off
                                 // Sparplanausführung am 18.11.2019 an der Lang & Schwarz Exchange.
+                                // Savings plan execution on 16.05.2023 on the Lang & Schwarz Exchange.
                                 // @formatter:on
                                 section -> section
                                         .attributes("date")
-                                        .match("^Sparplanausf.hrung .* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$")
+                                        .match("^(Sparplanausf.hrung|Savings plan) .* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$")
                                         .assign((t, v) -> t.setDate(asDate(v.get("date"))))
                                 ,
 
@@ -191,14 +210,14 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .match("GESAMT (?<negative>\\-)[\\.,\\d]+ [\\w]{3}")
                 .assign((t, v) -> {
                     if (t.getPortfolioTransaction().getType().isLiquidation())
-                        type.getCurrentContext().put("negative", "X");
+                        type.getCurrentContext().putBoolean("negative", true);
                 })
 
                 .oneOf(
                                 // @formatter:off
                                 // There might be two lines with "GESAMT" or "TOTAL"
                                 // - one for gross
-                                // - one for the net value 
+                                // - one for the net value
                                 // we pick the second
                                 // @formatter:on
 
@@ -211,7 +230,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         .match("^(GESAMT|TOTAL) (\\-)?(?<gross>[\\.,\\d]+) (?<grossCurrency>[\\w]{3})$")
                                         .match("^(GESAMT|TOTAL) (\\-)?(?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                                         .assign((t, v) -> {
-                                            if ("X".equals(type.getCurrentContext().get("negative")))
+                                            if (type.getCurrentContext().getBoolean("negative"))
                                             {
                                                 t.setAmount(asAmount(v.get("gross")));
                                                 t.setCurrencyCode(asCurrencyCode(v.get("grossCurrency")));
@@ -219,7 +238,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                             else
                                             {
                                                 t.setAmount(asAmount(v.get("amount")));
-                                                t.setCurrencyCode(asCurrencyCode(v.get("currency")));                                                
+                                                t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                             }
                                         })
                                 ,
@@ -476,7 +495,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                 // @formatter:off
                                 // There might be two lines with "GESAMT"
                                 // - one for gross
-                                // - one for the net value 
+                                // - one for the net value
                                 // we pick the second
                                 // @formatter:on
 
@@ -558,7 +577,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
                     if (t.getCurrencyCode() != null && t.getAmount() == 0)
                         item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
-                    
+
                     return item;
                 });
 
@@ -643,7 +662,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
         block.set(pdfTransaction);
     }
-    
+
     private void addDeliveryInOutBoundTransaction()
     {
         DocumentType type = new DocumentType("(UMTAUSCH\\/BEZUG"
@@ -655,7 +674,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
             Pattern pDate = Pattern.compile("^(.*) DATUM (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4})$");
             Pattern pSkipTransaction = Pattern.compile("^ABRECHNUNG$");
             Pattern pTransactionPosition = Pattern.compile("^(?<transactionPosition>[\\d]) (Barausgleich|Kurswert) (\\-)?[\\.,\\d]+ [\\w]{3}$");
-            context.put("skipTransaction", Boolean.FALSE.toString());
+            context.putBoolean("skipTransaction", false);
             context.put("transactionPosition", "0");
 
             for (String line : lines)
@@ -668,10 +687,10 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 // delivery in/outbond.
                 m = pSkipTransaction.matcher(line);
                 if (m.matches())
-                    context.put("skipTransaction", Boolean.TRUE.toString());
+                    context.putBoolean("skipTransaction", true);
 
                 m = pTransactionPosition.matcher(line);
-                if (m.matches() && Boolean.parseBoolean(context.get("skipTransaction")))
+                if (m.matches() && context.getBoolean("skipTransaction"))
                     context.put("transactionPosition", m.group("transactionPosition"));
             }
         });
@@ -731,7 +750,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                     t.setAmount(0L);
 
                     if (v.get("position").equals(context.get("transactionPosition")))
-                    {                       
+                    {
                         type.getCurrentContext().put("name", v.get("name"));
                         type.getCurrentContext().put("nameContinued", v.get("nameContinued"));
                         type.getCurrentContext().put("isin", v.get("isin"));
@@ -757,10 +776,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .wrap(t -> {
                     // If we have a "ABRECHNUNG", then this is not a
                     // delivery in/outbond. We skip this transaction.
-                    Map<String, String> context = type.getCurrentContext();
-                    boolean skipTransactions = Boolean.parseBoolean(context.get("skipTransaction"));
-
-                    if (skipTransactions && context.get("transactionPosition").equals(context.get("position")))
+                    if (type.getCurrentContext().getBoolean("skipTransaction")
+                                    && type.getCurrentContext().get("transactionPosition").equals(type.getCurrentContext().get("position")))
                         return null;
                     else
                         return new TransactionItem(t);
@@ -998,7 +1015,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
                     if (t.getCurrencyCode() != null && t.getAmount() == 0)
                         item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
-                    
+
                     return item;
                 });
     }
@@ -1211,7 +1228,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .section("negative").optional()
                 .match("^GESAMT [\\.,\\d]+ [\\w]{3}$")
                 .match("^GESAMT (?<negative>\\-)[\\.,\\d]+ [\\w]{3}$")
-                .assign((t, v) -> type.getCurrentContext().put("negative", "X"))
+                .assign((t, v) -> type.getCurrentContext().putBoolean("negative", true))
 
                 // @formatter:off
                 // GESAMT -0,66 EUR
@@ -1219,8 +1236,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .section("negative").optional()
                 .match("^GESAMT (?<negative>\\-)[\\.,\\d]+ [\\w]{3}$")
                 .assign((t, v) -> {
-                    if (!"X".equals(type.getCurrentContext().get("negative")))
-                        type.getCurrentContext().put("negative", "X");
+                    if (!type.getCurrentContext().getBoolean("negative"))
+                        type.getCurrentContext().putBoolean("negative", true);
                 })
 
                 // @formatter:off
@@ -1228,8 +1245,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 // @formatter:on
                 .section("currency", "amount").optional()
                 .match("^Fremdkostenzuschlag \\-(?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$")
-                .assign((t, v) -> {                            
-                    if ("X".equals(type.getCurrentContext().get("negative")))
+                .assign((t, v) -> {
+                    if (type.getCurrentContext().getBoolean("negative"))
                     {
                         t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                         t.setAmount(asAmount(v.get("amount")));
@@ -1302,7 +1319,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .match("^Kapitalertrag(s)?steuer Optimierung (?<tax>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (v.getTransactionContext().get(FAILURE) != null)
-                        processTaxEntries(t, v, type);     
+                        processTaxEntries(t, v, type);
                 })
 
                 // @formatter:off
@@ -1312,7 +1329,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .match("^Solidarit.tszuschlag Optimierung (?<tax>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (v.getTransactionContext().get(FAILURE) != null)
-                        processTaxEntries(t, v, type);     
+                        processTaxEntries(t, v, type);
                 })
 
                 // @formatter:off
@@ -1322,7 +1339,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .match("^Kirchensteuer Optimierung (?<tax>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
                     if (v.getTransactionContext().get(FAILURE) != null)
-                        processTaxEntries(t, v, type);     
+                        processTaxEntries(t, v, type);
                 });
     }
 
@@ -1335,7 +1352,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 .section("fee", "currency").optional()
                 .match("^Fremdkostenzuschlag \\-(?<fee>[\\.,\\d]+) (?<currency>[\\w]{3})$")
                 .assign((t, v) -> {
-                    if (!"X".equals(type.getCurrentContext().get("negative")))
+                    if (!type.getCurrentContext().getBoolean("negative"))
                         processFeeEntries(t, v, type);
                 })
 
@@ -1344,13 +1361,57 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                 // @formatter:on
                 .section("fee", "currency").optional()
                 .match("^Geb.hr Kundenweisung \\-(?<fee>[\\.,\\d]+) (?<currency>[\\w]{3})$")
-                .assign((t, v) -> processFeeEntries(t, v, type))
+                .assign((t, v) -> {
+                    if (!type.getCurrentContext().getBoolean("negative"))
+                        processFeeEntries(t, v, type);
+                })
 
                 // @formatter:off
                 // Fremde Spesen -0,12 USD
                 // @formatter:on
                 .section("fee", "currency").optional()
                 .match("^Fremde Spesen \\-(?<fee>[\\.,\\d]+) (?<currency>[\\w]{3})$")
-                .assign((t, v) -> processFeeEntries(t, v, type));
+                .assign((t, v) -> {
+                    if (!type.getCurrentContext().getBoolean("negative"))
+                        processFeeEntries(t, v, type);
+                });
+    }
+
+    @Override
+    protected long asAmount(String value)
+    {
+        String language = "de";
+        String country = "DE";
+
+        int lastDot = value.lastIndexOf(".");
+        int lastComma = value.lastIndexOf(",");
+
+        // returns the greater of two int values
+        if (Math.max(lastDot, lastComma) == lastDot)
+        {
+            language = "en";
+            country = "US";
+        }
+
+        return ExtractorUtils.convertToNumberLong(value, Values.Amount, language, country);
+    }
+
+    @Override
+    protected BigDecimal asExchangeRate(String value)
+    {
+        String language = "de";
+        String country = "DE";
+
+        int lastDot = value.lastIndexOf(".");
+        int lastComma = value.lastIndexOf(",");
+
+        // returns the greater of two int values
+        if (Math.max(lastDot, lastComma) == lastDot)
+        {
+            language = "en";
+            country = "US";
+        }
+
+        return ExtractorUtils.convertToNumberBigDecimal(value, Values.Share, language, country);
     }
 }
