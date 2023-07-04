@@ -390,9 +390,14 @@ public class Messages extends NLS
     public static String DividendsDialogLabelSpecialDistribution;
     public static String DividendsDialogTitleShares;
     public static String DivvyDiaryConfirmUpload;
+    public static String DivvyDiaryIncludeTransactionHistory;
     public static String DivvyDiaryMissingAPIKey;
     public static String DivvyDiaryMsgUploading;
     public static String DivvyDiaryUploadSuccessfulMsg;
+    public static String MyDividends24ConfirmUpload;
+    public static String MyDividends24MissingAPIKey;
+    public static String MyDividends24MsgUploading;
+    public static String MyDividends24UploadSuccessfulMsg;
     public static String EODHistoricalDataMissingAPIKey;
     public static String EditWizardAttributesTitle;
     public static String EditWizardLatestQuoteFeedTitle;
@@ -436,13 +441,11 @@ public class Messages extends NLS
     public static String ImportWizardPasteSourceTitle;
     public static String ImportWizardReviewDescription;
     public static String ImportWizardReviewTitle;
-    public static String IntroChangeLanguageInPreferences;
     public static String IntroLabelActions;
     public static String IntroLabelHelp;
     public static String IntroLabelRecentlyUsedFiles;
     public static String IntroLabelSamples;
     public static String IntroLabelTranslation;
-    public static String IntroLabelTranslationInfo;
     public static String IntroNewAndNoteworthyText;
     public static String IntroNewFile;
     public static String IntroNewFileText;
@@ -611,6 +614,7 @@ public class Messages extends NLS
     public static String LabelEarningsPerYear;
     public static String LabelEarningsTransactionList;
     public static String LabelEmptyDashboard;
+    public static String LabelEmptyTaxonomy;
     public static String LabelExpand;
     public static String LabelExpandAll;
     public static String LabelExpenses;
@@ -818,6 +822,7 @@ public class Messages extends NLS
     public static String FilterOnlyProfitableTrades;
     public static String LabelTradesTurnoverRate;
     public static String LabelTradingActivityChart;
+    public static String LabelTransactionCount;
     public static String LabelTransactions;
     public static String LabelTransferals;
     public static String LabelTransfer;
@@ -841,6 +846,7 @@ public class Messages extends NLS
     public static String LabelViewTaxonomyDefinition;
     public static String LabelViewTreeMap;
     public static String LabelVolatility;
+    public static String LabelWatchlist;
     public static String LabelWithoutClassification;
     public static String LabelXDays;
     public static String LabelYear;
@@ -1061,6 +1067,7 @@ public class Messages extends NLS
     public static String PrefDescriptionAlphaVantage;
     public static String PrefDescriptionDivvyDiary;
     public static String PrefDescriptionEODHistoricalData;
+    public static String PrefDescriptionMyDividends24;
     public static String PrefDescriptionFinnhub;
     public static String PrefDescriptionLeeway;
     public static String PrefDescriptionPortfolioReport;
@@ -1068,6 +1075,7 @@ public class Messages extends NLS
     public static String PrefDescriptionQuandl;
     public static String PrefDescriptionTwelveData;
     public static String PrefDivvyDiaryAPIKey;
+    public static String PrefMyDividends24APIKey;
     public static String PrefEODHistoricalDataAPIKey;
     public static String PrefFinnhubAPIKey;
     public static String PrefLeewayAPIKey;
@@ -1106,6 +1114,7 @@ public class Messages extends NLS
     public static String PrefTitleBackup;
     public static String PrefTitleCalendar;
     public static String PrefTitleDivvyDiary;
+    public static String PrefTitleMyDividends24;
     public static String PrefTitleEODHistoricalData;
     public static String PrefTitleFinnhub;
     public static String PrefTitleLeeway;

@@ -71,6 +71,7 @@ public class PaymentsView extends AbstractFinanceView
 
         CurrencyConverterImpl converter = new CurrencyConverterImpl(factory, client.getBaseCurrency());
         model = new PaymentsViewModel(converter, client);
+        setToContext(PaymentsViewModel.class.getName(), model);
 
         // setup filter
         clientFilterMenu = new ClientFilterMenu(client, preferences, filter -> {
@@ -209,6 +210,7 @@ public class PaymentsView extends AbstractFinanceView
         createChartTab(folder, Images.VIEW_BARCHART, new PaymentsPerQuarterChartBuilder());
         createChartTab(folder, Images.VIEW_BARCHART, new PaymentsPerYearChartBuilder());
         createChartTab(folder, Images.VIEW_LINECHART, new PaymentsAccumulatedChartBuilder());
+        createTab(folder, Images.CALENDAR_OFF, PaymentsYearlyOverviewTab.class);
         createTab(folder, Images.VIEW_TABLE, TransactionsTab.class);
 
         int tab = viewInput.getTab();
@@ -248,7 +250,7 @@ public class PaymentsView extends AbstractFinanceView
     @Override
     protected void addPanePages(List<InformationPanePage> pages)
     {
-        super.addPanePages(pages);
+        pages.add(make(PaymentsTooltipPane.class));
         pages.add(make(SecurityPriceChartPane.class));
         pages.add(make(HistoricalPricesPane.class));
         pages.add(make(TransactionsPane.class));
