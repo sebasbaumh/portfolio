@@ -76,6 +76,7 @@ public enum Images
     NEXT("next.png"), //$NON-NLS-1$
     PREVIOUS("previous.png"), //$NON-NLS-1$
     CHEVRON("chevron.png"), //$NON-NLS-1$
+    DOT_HORIZONAL("dot_horizontal.png"), //$NON-NLS-1$
     INTERVAL("interval.png"), //$NON-NLS-1$
     NEW_TRANSACTION("new_transaction.png"), //$NON-NLS-1$
     INVERT_EXCHANGE_RATE("invert_exchange_rate.png"), //$NON-NLS-1$
@@ -106,6 +107,7 @@ public enum Images
     
     POEDITOR_LOGO("poeditor-logo.png"), //$NON-NLS-1$
     DIVVYDIARY_LOGO("divvydiary.com-logo.png"), //$NON-NLS-1$
+    MYDIVIDENDS24_LOGO("mydividends24.de-logo.png"), //$NON-NLS-1$
     EODHISTORICALDATA_LOGO("eodhistoricaldata-logo.png"), //$NON-NLS-1$
     PORTFOLIO_REPORT_LOGO("portfolio-report.net-logo.png"), //$NON-NLS-1$
     GITHUB_LOGO("github.com-logo.png"); //$NON-NLS-1$

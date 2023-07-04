@@ -1,7 +1,18 @@
-package name.abuchen.portfolio.datatransfer.pdf.santanderconsumerbankag;
+package name.abuchen.portfolio.datatransfer.pdf.santanderconsumerbank;
 
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.deposit;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasAmount;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasDate;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasNote;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasSource;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.interest;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.taxes;
+import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countAccountTransactions;
+import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countBuySell;
+import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countSecurities;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static org.junit.Assert.assertNull;
 
@@ -19,7 +30,7 @@ import name.abuchen.portfolio.datatransfer.ImportAction.Status;
 import name.abuchen.portfolio.datatransfer.actions.AssertImportActions;
 import name.abuchen.portfolio.datatransfer.actions.CheckCurrenciesAction;
 import name.abuchen.portfolio.datatransfer.pdf.PDFInputFile;
-import name.abuchen.portfolio.datatransfer.pdf.SantanderConsumerBankAGPDFExtractor;
+import name.abuchen.portfolio.datatransfer.pdf.SantanderConsumerBankPDFExtractor;
 import name.abuchen.portfolio.model.Account;
 import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
@@ -32,12 +43,12 @@ import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
 
 @SuppressWarnings("nls")
-public class SantanderConsumerBankAGPDFExtractorTest
+public class SantanderConsumerBankPDFExtractorTest
 {
     @Test
     public void testWertpapierKauf01()
     {
-        SantanderConsumerBankAGPDFExtractor extractor = new SantanderConsumerBankAGPDFExtractor(new Client());
+        SantanderConsumerBankPDFExtractor extractor = new SantanderConsumerBankPDFExtractor(new Client());
 
         List<Exception> errors = new ArrayList<>();
 
@@ -81,7 +92,7 @@ public class SantanderConsumerBankAGPDFExtractorTest
     @Test
     public void testWertpapierKauf02()
     {
-        SantanderConsumerBankAGPDFExtractor extractor = new SantanderConsumerBankAGPDFExtractor(new Client());
+        SantanderConsumerBankPDFExtractor extractor = new SantanderConsumerBankPDFExtractor(new Client());
 
         List<Exception> errors = new ArrayList<>();
 
@@ -125,7 +136,7 @@ public class SantanderConsumerBankAGPDFExtractorTest
     @Test
     public void testDividende01()
     {
-        SantanderConsumerBankAGPDFExtractor extractor = new SantanderConsumerBankAGPDFExtractor(new Client());
+        SantanderConsumerBankPDFExtractor extractor = new SantanderConsumerBankPDFExtractor(new Client());
 
         List<Exception> errors = new ArrayList<>();
 
@@ -178,7 +189,7 @@ public class SantanderConsumerBankAGPDFExtractorTest
         Client client = new Client();
         client.addSecurity(security);
 
-        SantanderConsumerBankAGPDFExtractor extractor = new SantanderConsumerBankAGPDFExtractor(client);
+        SantanderConsumerBankPDFExtractor extractor = new SantanderConsumerBankPDFExtractor(client);
 
         List<Exception> errors = new ArrayList<>();
 
@@ -217,7 +228,7 @@ public class SantanderConsumerBankAGPDFExtractorTest
     @Test
     public void testDividende02()
     {
-        SantanderConsumerBankAGPDFExtractor extractor = new SantanderConsumerBankAGPDFExtractor(new Client());
+        SantanderConsumerBankPDFExtractor extractor = new SantanderConsumerBankPDFExtractor(new Client());
 
         List<Exception> errors = new ArrayList<>();
 
@@ -255,5 +266,40 @@ public class SantanderConsumerBankAGPDFExtractorTest
                         is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(0.00))));
         assertThat(transaction.getUnitSum(Unit.Type.FEE),
                         is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(0.00))));
+    }
+
+    @Test
+    public void testKontoauszug01()
+    {
+        SantanderConsumerBankPDFExtractor extractor = new SantanderConsumerBankPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug01.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(4L));
+        assertThat(results.size(), is(4));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+        
+        // assert transaction
+        assertThat(results, hasItem(taxes(hasDate("2023-05-31"), hasAmount("EUR", 1.66), //
+                        hasSource("Kontoauszug01.txt"), hasNote(null))));
+
+        // assert transaction
+        assertThat(results, hasItem(interest(hasDate("2023-05-31"), hasAmount("EUR", 6.63), //
+                        hasSource("Kontoauszug01.txt"), hasNote("Habenzinsen"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-05-19"), hasAmount("EUR", 34), //
+                        hasSource("Kontoauszug01.txt"),
+                        hasNote("von Konto AT123456789012345678 lautend auf Max Muster"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-05-15"), hasAmount("EUR", 0.01), //
+                        hasSource("Kontoauszug01.txt"),
+                        hasNote("von Konto AT123456789012345678 lautend auf Max Muster"))));
     }
 }
