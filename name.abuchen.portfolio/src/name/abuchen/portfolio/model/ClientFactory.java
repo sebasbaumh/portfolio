@@ -819,8 +819,15 @@ public class ClientFactory
                 fixSourceAttributeOfTransactions(client);
             case 54: // NOSONAR
                 addKeyToTaxonomyClassifications(client);
-            case 55:
+            case 55: // NOSONAR
                 fixGrossValueUnits(client);
+            case 56:
+                // migrate client filters into model (done when setting the
+                // client input as we do not have access to the preferences
+                // here)
+
+                // remove obsolete MARKET properties
+                removeMarketSecurityProperty(client);
 
                 client.setVersion(Client.CURRENT_VERSION);
                 break;
@@ -1502,6 +1509,12 @@ public class ClientFactory
             // = 3,95 EUR) because otherwise the user cannot open the file at
             // all (and manually fix the issue)
         }
+    }
+
+    private static void removeMarketSecurityProperty(Client client)
+    {
+        for (Security security : client.getSecurities())
+            security.removePropertyIf(p -> p == null || p.getType() == SecurityProperty.Type.MARKET);
     }
 
     @SuppressWarnings("nls")
