@@ -1,12 +1,7 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
 import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetGrossUnit;
-
 import static name.abuchen.portfolio.util.TextUtil.trim;
-
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import name.abuchen.portfolio.Messages;
 import name.abuchen.portfolio.datatransfer.ExtrExchangeRate;
@@ -45,17 +40,19 @@ public class GenoBrokerPDFExtractor extends AbstractPDFExtractor
         this.addDocumentTyp(type);
 
         Transaction<BuySellEntry> pdfTransaction = new Transaction<>();
-        pdfTransaction.subject(() -> {
-            BuySellEntry entry = new BuySellEntry();
-            entry.setType(PortfolioTransaction.Type.BUY);
-            return entry;
-        });
 
         Block firstRelevantLine = new Block("^.*Kundennummer.*$", "^Den Gegenwert buchen wir.*$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
-        pdfTransaction
+        pdfTransaction //
+
+                        .subject(() -> {
+                            BuySellEntry portfolioTransaction = new BuySellEntry();
+                            portfolioTransaction.setType(PortfolioTransaction.Type.BUY);
+                            return portfolioTransaction;
+                        })
+
                         // Is type --> "Verkauf" change from BUY to SELL
                         .section("type").optional() //
                         .match("^Wertpapier Abrechnung (?<type>(Kauf|Verkauf)).*$") //
@@ -188,29 +185,46 @@ public class GenoBrokerPDFExtractor extends AbstractPDFExtractor
         DocumentType type = new DocumentType("Dividendengutschrift");
         this.addDocumentTyp(type);
 
-        Block block = new Block("^.* Kundenservice .*$");
-        type.addBlock(block);
         Transaction<AccountTransaction> pdfTransaction = new Transaction<>();
 
-        pdfTransaction.subject(() -> {
-            AccountTransaction entry = new AccountTransaction();
-            entry.setType(AccountTransaction.Type.DIVIDENDS);
-            return entry;
-        });
+        Block firstRelevantLine = new Block("^.* Kundenservice .*$");
+        type.addBlock(firstRelevantLine);
+        firstRelevantLine.set(pdfTransaction);
 
-        pdfTransaction
-                        // @formatter:off
-                        // Stück 1.000                              CROPENERGIES AG
-                        // INHABER-AKTIEN O.N.
-                        // DE000A0LAUP1    (A0LAUP)
-                        // Dividende pro Stück                      0,60         EUR
-                        // @formatter:on
-                        .section("name", "nameContinued", "isin", "wkn", "currency") //
-                        .match("^St.ck [\\.,\\d]+ ([\\s]+)?(?<name>.*)$") //
-                        .match("^(?<nameContinued>.*)$") //
-                        .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) ([\\s]+)?\\((?<wkn>[A-Z0-9]{6})\\)$") //
-                        .match("^Dividende pro St.ck .* (?<currency>[\\w]{3})$") //
-                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v)))
+        pdfTransaction //
+
+                        .subject(() -> {
+                            AccountTransaction accountTransaction = new AccountTransaction();
+                            accountTransaction.setType(AccountTransaction.Type.DIVIDENDS);
+                            return accountTransaction;
+                        })
+
+                        .oneOf( //
+                                        // @formatter:off
+                                        // Stück 1.000                              CROPENERGIES AG
+                                        // INHABER-AKTIEN O.N.
+                                        // DE000A0LAUP1    (A0LAUP)
+                                        // Dividende pro Stück                      0,60         EUR
+                                        // @formatter:on
+                                        section -> section
+                                                        .attributes("name", "nameContinued", "isin", "wkn", "currency") //
+                                                        .match("^St.ck [\\.,\\d]+ (?<name>.*)$") //
+                                                        .match("^(?<nameContinued>.*)$") //
+                                                        .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) ([\\s]+)?\\((?<wkn>[A-Z0-9]{6})\\)$") //
+                                                        .match("^Dividende pro St.ck .* (?<currency>[\\w]{3})$") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
+                                        // Stück 600 EQUINOR ASA NO0010096985 (675213)
+                                        // NAVNE-AKSJER NK 2,50
+                                        // Zahlbarkeitstag 25.08.2023 Dividende pro Stück 9,4091 NOK
+                                        // @formatter:on
+                                        section -> section //
+                                                .attributes("name", "isin", "wkn", "nameContinued", "currency") //
+                                                .match("^St.ck [\\.,\\d]+ (?<name>.*) (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) \\((?<wkn>[A-Z0-9]{6})\\)$") //
+                                                .match("^(?<nameContinued>.*)$") //
+                                                .match("^.* Dividende pro St.ck [\\.,\\d]+ (?<currency>[\\w]{3})$") //
+                                                .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v)))
+                                )
 
                         // @formatter:off
                         // Stück 1.000                              CROPENERGIES AG
@@ -220,10 +234,10 @@ public class GenoBrokerPDFExtractor extends AbstractPDFExtractor
                         .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
 
                         // @formatter:off
-                        // Zahlbarkeitstag                         14.07.2023
+                        // Den Betrag buchen wir mit Wertstellung 14.07.2023 zu Gunsten des Kontos 12345678 (IBAN DE05 7206 9274 0000 0000
                         // @formatter:on
                         .section("date") //
-                        .match("^Zahlbarkeitstag ([\\s]+)?(?<date>[\\d]{2}\\.[\\d]{2}.[\\d]{4})$") //
+                        .match("^Den Betrag buchen wir mit Wertstellung (?<date>[\\d]{2}\\.[\\d]{2}.[\\d]{4}).*$") //
                         .assign((t, v) -> t.setDateTime(asDate(v.get("date"))))
 
                         // @formatter:off
@@ -240,15 +254,15 @@ public class GenoBrokerPDFExtractor extends AbstractPDFExtractor
                         // Devisenkurs                             EUR / CAD  1,4915
                         // Dividendengutschrift                                   14.133,00     CAD        9.475,70+   EUR
                         // @formatter:on
-                        .section("baseCurrency", "termCurrency", "exchangeRate", "fxGross", "fxCurrency", "gross", "currency").optional() //
+                        .section("baseCurrency", "termCurrency", "exchangeRate", "fxGross", "gross").optional() //
                         .match("^Devisenkurs ([\\s]+)?(?<baseCurrency>[\\w]{3}) \\/ (?<termCurrency>[\\w]{3}) ([\\s]+)?(?<exchangeRate>[\\.,\\d]+)$") //
-                        .match("^Dividendengutschrift ([\\s]+)?(?<fxGross>[\\.,\\d]+) ([\\s]+)?(?<fxCurrency>[\\w]{3}) ([\\s]+)?(?<gross>[\\.,\\d]+)\\+ ([\\s]+)?(?<currency>[\\w]{3})$") //
+                        .match("^Dividendengutschrift ([\\s]+)?(?<fxGross>[\\.,\\d]+) ([\\s]+)?[\\w]{3} ([\\s]+)?(?<gross>[\\.,\\d]+)\\+ ([\\s]+)?[\\w]{3}$") //
                         .assign((t, v) -> { //
                             ExtrExchangeRate rate = asExchangeRate(v);
                             type.getCurrentContext().putType(rate);
 
-                            Money gross = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("gross")));
-                            Money fxGross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("fxGross")));
+                            Money gross = Money.of(rate.getBaseCurrency(), asAmount(v.get("gross")));
+                            Money fxGross = Money.of(rate.getTermCurrency(), asAmount(v.get("fxGross")));
 
                             checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                         })
@@ -265,39 +279,35 @@ public class GenoBrokerPDFExtractor extends AbstractPDFExtractor
 
         addTaxesSectionsTransaction(pdfTransaction, type);
         addFeesSectionsTransaction(pdfTransaction, type);
-
-        block.set(pdfTransaction);
     }
 
     private void addDeliveryInOutBoundTransaction()
     {
-        DocumentType type = new DocumentType("Fusion", (context, lines) -> {
-            Pattern pDate = Pattern.compile("^Ex\\-Tag: (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4})$");
+        final DocumentType type = new DocumentType("Fusion", //
+                        documentContext -> documentContext //
+                                        // @formatter:off
+                                        // Ex-Tag: 07.08.2023
+                                        // @formatter:on
+                                        .section("date") //
+                                        .match("^Ex\\-Tag: (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4})$") //
+                                        .assign((ctx, v) -> ctx.put("date", v.get("date"))));
 
-            for (String line : lines)
-            {
-                Matcher mDate = pDate.matcher(line);
-                if (mDate.matches())
-                {
-                    context.put("date", mDate.group("date"));
-                    break;
-                }
-            }
-        });
         this.addDocumentTyp(type);
 
         Transaction<PortfolioTransaction> pdfTransaction = new Transaction<>();
-        pdfTransaction.subject(() -> {
-            PortfolioTransaction entry = new PortfolioTransaction();
-            entry.setType(PortfolioTransaction.Type.DELIVERY_INBOUND);
-            return entry;
-        });
 
         Block firstRelevantLine = new Block("^(Einbuchung|Ausbuchung).*$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
-        pdfTransaction
+        pdfTransaction //
+
+                        .subject(() -> {
+                            PortfolioTransaction portfolioTransaction = new PortfolioTransaction();
+                            portfolioTransaction.setType(PortfolioTransaction.Type.DELIVERY_INBOUND);
+                            return portfolioTransaction;
+                        })
+
                         // @formatter:off
                         // Is type --> "Ausbuchung" change from DELIVERY_INBOUND to DELIVERY_OUTBOUND
                         // @formatter:on
@@ -314,15 +324,13 @@ public class GenoBrokerPDFExtractor extends AbstractPDFExtractor
                         // REGISTERED SHARES DL -,01
                         // @formatter:on
                         .section("name", "isin", "wkn", "nameContinued") //
+                        .documentContext("date") //
                         .find("(Einbuchung|Ausbuchung).*") //
                         .match("^St.ck [\\.,\\d]+(\\-)? (?<name>.*) (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) \\((?<wkn>[A-Z0-9]{6})\\)$") //
                         .match("^(?<nameContinued>.*)$") //
                         .assign((t, v) -> { //
-                            Map<String, String> context = type.getCurrentContext();
-
                             t.setSecurity(getOrCreateSecurity(v));
-
-                            t.setDateTime(asDate(context.get("date")));
+                            t.setDateTime(asDate(v.get("date")));
 
                             // No amount available
                             v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionTypeNotSupported);
@@ -354,14 +362,14 @@ public class GenoBrokerPDFExtractor extends AbstractPDFExtractor
                         // Einbehaltene Quellensteuer 25 % auf 14.133,00 CAD     2.368,93-    EUR
                         // @formatter:on
                         .section("withHoldingTax", "currency").optional() //
-                        .match("^Einbehaltene Quellensteuer [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} .* (?<withHoldingTax>[\\.,\\d]+)\\- ([\\s]+)?(?<currency>[\\w]{3}).*$") //
+                        .match("^Einbehaltene Quellensteuer [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} ([\\s]+)?(?<withHoldingTax>[\\.,\\d]+)\\- ([\\s]+)?(?<currency>[\\w]{3}).*$") //
                         .assign((t, v) -> processWithHoldingTaxEntries(t, v, "withHoldingTax", type))
 
                         // @formatter:off
                         // Anrechenbare Quellensteuer 15 % auf 9.475,70 EUR             1.421,36     EUR
                         // @formatter:on
                         .section("creditableWithHoldingTax", "currency").optional() //
-                        .match("^Anrechenbare Quellensteuer [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} .* (?<creditableWithHoldingTax>[\\.,\\d]+) ([\\s]+)?(?<currency>[\\w]{3}).*$") //
+                        .match("^Anrechenbare Quellensteuer [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} ([\\s]+)?(?<creditableWithHoldingTax>[\\.,\\d]+) ([\\s]+)?(?<currency>[\\w]{3}).*$") //
                         .assign((t, v) -> processWithHoldingTaxEntries(t, v, "creditableWithHoldingTax", type))
 
                         // @formatter:off
@@ -375,23 +383,27 @@ public class GenoBrokerPDFExtractor extends AbstractPDFExtractor
 
                         // @formatter:off
                         // Kapitalertragsteuer 25 % auf 584,13 EUR      146,03-    EUR
+                        // Kapitalertragsteuer 25 % auf 486,03 EUR 121,50- EUR
+                        // Kapitalertragsteuer 25,00% auf 38,43 EUR 9,61- EUR
                         // @formatter:on
                         .section("tax", "currency").optional() //
-                        .match("^Kapitalertrags(s)?teuer [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} .* (?<tax>[\\.,\\d]+)\\- ([\\s]+)?(?<currency>[\\w]{3}).*$") //
+                        .match("^Kapitalertrags(s)?teuer [\\.,\\d]+([\\s]+)?% .* [\\.,\\d]+ [\\w]{3} ([\\s]+)?(?<tax>[\\.,\\d]+)\\- ([\\s]+)?(?<currency>[\\w]{3}).*$") //
                         .assign((t, v) -> processTaxEntries(t, v, type))
 
                         // @formatter:off
                         // Solidaritätszuschlag 5,5 % auf 146,03 EUR     8,03-    EUR
+                        // Solidaritätszuschlag 5,5 % auf 121,50 EUR 6,68- EUR
+                        // Solidaritätszuschlag 5,50% auf 9,61 EUR 0,53- EUR
                         // @formatter:on
                         .section("tax", "currency").optional() //
-                        .match("^Solidarit.tszuschlag [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} .* (?<tax>[\\.,\\d]+)\\- ([\\s]+)?(?<currency>[\\w]{3}).*$") //
+                        .match("^Solidarit.tszuschlag [\\.,\\d]+([\\s]+)?% .* [\\.,\\d]+ [\\w]{3} ([\\s]+)?(?<tax>[\\.,\\d]+)\\- ([\\s]+)?(?<currency>[\\w]{3}).*$") //
                         .assign((t, v) -> processTaxEntries(t, v, type))
 
                         // @formatter:off
                         // Kirchensteuer 5,5 % auf 146,03 EUR     8,03-    EUR
                         // @formatter:on
                         .section("tax", "currency").optional() //
-                        .match("^Kirchensteuer [\\.,\\d]+ % .* [\\.,\\d]+ [\\w]{3} .* (?<tax>[\\.,\\d]+)\\- ([\\s]+)?(?<currency>[\\w]{3}).*$") //
+                        .match("^Kirchensteuer [\\.,\\d]+([\\s]+)?% .* [\\.,\\d]+ [\\w]{3} ([\\s]+)?(?<tax>[\\.,\\d]+)\\- ([\\s]+)?(?<currency>[\\w]{3}).*$") //
                         .assign((t, v) -> processTaxEntries(t, v, type));
     }
 

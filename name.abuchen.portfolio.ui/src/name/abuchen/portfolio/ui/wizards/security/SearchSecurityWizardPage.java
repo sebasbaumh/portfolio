@@ -2,6 +2,7 @@ package name.abuchen.portfolio.ui.wizards.security;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -135,8 +136,17 @@ public class SearchSecurityWizardPage extends WizardPage
         searchButton.addSelectionListener(SelectionListener.widgetSelectedAdapter(onSearchEvent));
 
         resultTable.addSelectionChangedListener(event -> {
+            setErrorMessage(null);
             item = (ResultItem) ((IStructuredSelection) event.getSelection()).getFirstElement();
-            setPageComplete(item != null && !existingSymbols.contains(item.getSymbol()));
+
+            boolean symbolAlreadyExist = item != null && item.getSymbol() != null && !item.getSymbol().isEmpty()
+                            && existingSymbols.contains(item.getSymbol());
+
+            setPageComplete(item != null && !symbolAlreadyExist);
+
+            if (symbolAlreadyExist)
+                setErrorMessage(MessageFormat.format(Messages.SearchSecurityWizardPageSymbolAlreadyExistsInfo,
+                                item.getSymbol()));
         });
 
         setControl(container);
@@ -247,7 +257,7 @@ public class SearchSecurityWizardPage extends WizardPage
         {
             ResultItem item = (ResultItem) element;
 
-            if (item.getSymbol() != null && symbols.contains(item.getSymbol()))
+            if (item.getSymbol() != null && !item.getSymbol().isEmpty() && symbols.contains(item.getSymbol()))
                 return Display.getCurrent().getSystemColor(SWT.COLOR_GRAY);
             else
                 return null;
