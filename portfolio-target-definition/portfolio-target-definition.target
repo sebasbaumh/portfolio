@@ -25,21 +25,21 @@
 		<unit id="org.eclipse.nebula.widgets.cdatetime.feature.feature.group" version="1.5.0.202106201019"/>
 	</location>
 	<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
-		<repository location="https://download.eclipse.org/technology/babel/update-site/R0.19.2/2021-12/"/>
-		<unit id="org.eclipse.babel.nls_eclipse_de.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_es.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_fr.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_it.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_nl.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_pt.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_pt_BR.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_cs.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_ru.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_sk.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_pl.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_zh.feature.group" version="4.22.0.v20211218020001"/>
-    <unit id="org.eclipse.babel.nls_eclipse_zh_TW.feature.group" version="4.22.0.v20211218020001"/>
-		<unit id="org.eclipse.babel.nls_eclipse_da.feature.group" version="4.22.0.v20211218020001"/>
+		<repository location="https://download.eclipse.org/technology/babel/update-site/R0.20.0/2022-12/"/>
+		<unit id="org.eclipse.babel.nls_eclipse_de.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_es.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_fr.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_it.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_nl.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_pt.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_pt_BR.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_cs.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_ru.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_sk.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_pl.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_zh.feature.group" version="4.26.0.v20230220105658"/>
+    <unit id="org.eclipse.babel.nls_eclipse_zh_TW.feature.group" version="4.26.0.v20230220105658"/>
+		<unit id="org.eclipse.babel.nls_eclipse_da.feature.group" version="4.26.0.v20230220105658"/>
 	</location>
 	<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
 		<repository location="https://download.eclipse.org/swtchart/releases/0.14.0/repository"/>
@@ -47,12 +47,12 @@
 		<unit id="org.eclipse.swtchart.feature.source.feature.group" version="0.14.0.202301260747"/>
 	</location>
 	<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
-		<repository location="https://download.eclipse.org/eclipse/updates/4.28/R-4.28-202306050440/"/>
-		<unit id="org.eclipse.e4.rcp.feature.group" version="4.28.0.v20230525-0648"/>
-		<unit id="org.eclipse.e4.rcp.source.feature.group" version="4.28.0.v20230525-0648"/>
-		<unit id="org.eclipse.equinox.executable" version="3.8.2100.v20230415-0944"/>
-		<unit id="org.eclipse.equinox.executable.feature.group" version="3.8.2100.v20230415-0944"/>
-		<unit id="org.eclipse.platform.feature.group" version="4.28.0.v20230605-0440"/>
+		<repository location="https://download.eclipse.org/eclipse/updates/4.29/R-4.29-202309031000/"/>
+		<unit id="org.eclipse.e4.rcp.feature.group" version="4.29.0.v20230825-1346"/>
+		<unit id="org.eclipse.e4.rcp.source.feature.group" version="4.29.0.v20230825-1346"/>
+		<unit id="org.eclipse.equinox.executable" version="3.8.2200.v20230717-2134"/>
+		<unit id="org.eclipse.equinox.executable.feature.group" version="3.8.2200.v20230717-2134"/>
+		<unit id="org.eclipse.platform.feature.group" version="4.29.0.v20230903-1000"/>
 	</location>
 	<location includeDependencyDepth="none" includeDependencyScopes="compile" includeSource="true" label="Apache PDFBox 1.8" missingManifest="generate" type="Maven">
 		<dependencies>

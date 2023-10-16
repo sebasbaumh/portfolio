@@ -1,5 +1,13 @@
 package name.abuchen.portfolio.datatransfer.pdf.dkb;
 
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.deposit;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.fee;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasAmount;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasDate;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasNote;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasSource;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.interestCharge;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.removal;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countAccountTransactions;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countBuySell;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countSecurities;
@@ -8,14 +16,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static org.junit.Assert.assertNull;
-
-import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.deposit;
-import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.fee;
-import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasAmount;
-import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasDate;
-import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasNote;
-import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasSource;
-import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.removal;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -2164,7 +2164,7 @@ public class DkbPDFExtractorTest
     }
 
     @Test
-    public void testWertpapierAusgang03()
+    public void testWertpapierAusgang01()
     {
         DkbPDFExtractor extractor = new DkbPDFExtractor(new Client());
 
@@ -4085,6 +4085,188 @@ public class DkbPDFExtractorTest
         // assert transaction
         assertThat(results, hasItem(fee(hasDate("2023-07-03"), hasAmount("EUR", 4.50), //
                         hasSource("GiroKontoauszug23.txt"), hasNote("Entgelt für Konto ohne mtl. Eingang"))));
+    }
+
+    @Test
+    public void testGiroKontoauszug24()
+    {
+        DkbPDFExtractor extractor = new DkbPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "GiroKontoauszug24.txt"),
+                        errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(26L));
+        assertThat(results.size(), is(26));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-07"), hasAmount("EUR", 200.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Dauerauftrag"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-07"), hasAmount("EUR", 150.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Dauerauftrag"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-07"), hasAmount("EUR", 55.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-07"), hasAmount("EUR", 50.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-08-07"), hasAmount("EUR", 237.44), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Zahlungseingang"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-14"), hasAmount("EUR", 60.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-17"), hasAmount("EUR", 76.05), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-17"), hasAmount("EUR", 29.70), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Basislastschrift"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-18"), hasAmount("EUR", 48.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Basislastschrift"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-18"), hasAmount("EUR", 35.50), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-18"), hasAmount("EUR", 12.75), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-21"), hasAmount("EUR", 100.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Geldautomat"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-22"), hasAmount("EUR", 50.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-28"), hasAmount("EUR", 50.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-28"), hasAmount("EUR", 40.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Basislastschrift"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-29"), hasAmount("EUR", 86.88), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-08-29"), hasAmount("EUR", 800.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Zahlungseingang"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-30"), hasAmount("EUR", 9.99), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-08-30"), hasAmount("EUR", 75.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Zahlungseingang"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-09-01"), hasAmount("EUR", 50.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Basislastschrift"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-09-01"), hasAmount("EUR", 5.99), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Basislastschrift"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-09-04"), hasAmount("EUR", 277.97), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Überweisung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-09-04"), hasAmount("EUR", 100.00), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Geldautomat"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-09-04"), hasAmount("EUR", 62.70), //
+                        hasSource("GiroKontoauszug24.txt"), hasNote("Kartenzahlung"))));
+    }
+
+    @Test
+    public void testGiroKontoauszug25()
+    {
+        DkbPDFExtractor extractor = new DkbPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "GiroKontoauszug25.txt"),
+                        errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(3L));
+        assertThat(results.size(), is(3));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-23"), hasAmount("EUR", 200.90), //
+                        hasSource("GiroKontoauszug25.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-08-28"), hasAmount("EUR", 3.93), //
+                        hasSource("GiroKontoauszug25.txt"), hasNote("Kartenzahlung (Fremdwährung)"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-09-01"), hasAmount("EUR", 1900.00), //
+                        hasSource("GiroKontoauszug25.txt"), hasNote("Zahlungseingang"))));
+    }
+
+    @Test
+    public void testGiroKontoauszug26()
+    {
+        DkbPDFExtractor extractor = new DkbPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "GiroKontoauszug26.txt"),
+                        errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(7L));
+        assertThat(results.size(), is(7));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-09-05"), hasAmount("EUR", 480.00), //
+                        hasSource("GiroKontoauszug26.txt"), hasNote("Basislastschrift"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-09-05"), hasAmount("EUR", 20.00), //
+                        hasSource("GiroKontoauszug26.txt"), hasNote("Basislastschrift"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-09-06"), hasAmount("EUR", 73.36), //
+                        hasSource("GiroKontoauszug26.txt"), hasNote("Kartenzahlung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-09-06"), hasAmount("EUR", 9999.99), //
+                        hasSource("GiroKontoauszug26.txt"), hasNote("Lohn, Gehalt, Rente"))));
+
+        // assert transaction
+        assertThat(results, hasItem(interestCharge(hasDate("2023-10-02"), hasAmount("EUR", 0.01), //
+                        hasSource("GiroKontoauszug26.txt"), hasNote("Abrechnungszeitraum vom 01.07.2023 bis 30.09.2023"))));
     }
 
     @Test
