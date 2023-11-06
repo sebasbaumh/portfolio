@@ -346,18 +346,23 @@ public class SecuritiesChart
     }
 
     private Color colorQuote;
+    private Color colorQuoteAreaPositive;
+    private Color colorQuoteAreaNegative;
 
-    private static final Color colorEventPurchase = Colors.getColor(26, 173, 33);
-    private static final Color colorEventSale = Colors.getColor(232, 51, 69);
-    private static final Color colorEventDividend = Colors.getColor(128, 0, 128);
+    private Color colorEventPurchase;
+    private Color colorEventSale;
+    private Color colorEventDividend;
 
-    private static final Color colorHigh = Colors.getColor(0, 102, 0);
-    private static final Color colorLow = Colors.getColor(128, 0, 0);
+    private Color colorExtremeMarkerHigh;
+    private Color colorExtremeMarkerLow;
 
-    private static final Color colorFifoPurchasePrice = Colors.getColor(226, 122, 121);
-    private static final Color colorMovingAveragePurchasePrice = Colors.getColor(150, 82, 81);
-    private static final Color colorBollingerBands = Colors.getColor(201, 141, 68);
+    private Color colorNonTradingDay;
+
+    private static final Color colorFifoPurchasePrice = Colors.getColor(226, 122, 121); // #E27A79
+    private static final Color colorMovingAveragePurchasePrice = Colors.getColor(150, 82, 81); // #965251
+    private static final Color colorBollingerBands = Colors.getColor(201, 141, 68); // #C98D44
     private static final Color colorMACD = Colors.getColor(226, 155, 200); // #E29BC8
+
     private static final Color colorSMA1 = Colors.getColor(179, 107, 107); // #B36B6B
     private static final Color colorSMA2 = Colors.getColor(179, 167, 107); // #B3A76B
     private static final Color colorSMA3 = Colors.getColor(131, 179, 107); // #83B36B
@@ -373,11 +378,6 @@ public class SecuritiesChart
     private static final Color colorEMA5 = Colors.getColor(107, 155, 200); // #6B9BC8
     private static final Color colorEMA6 = Colors.getColor(119, 107, 200); // #776BC8
     private static final Color colorEMA7 = Colors.getColor(200, 107, 200); // #C86BB3
-
-    private static final Color colorAreaPositive = Colors.getColor(90, 114, 226);
-    private static final Color colorAreaNegative = Colors.getColor(226, 91, 90);
-
-    private static final Color colorNonTradingDay = Colors.getColor(255, 137, 89);
 
     private static final String PREF_KEY = "security-chart-details"; //$NON-NLS-1$
 
@@ -447,6 +447,46 @@ public class SecuritiesChart
     public void setQuoteColor(Color color)
     {
         this.colorQuote = color;
+    }
+
+    public void setQuoteAreaNegative(Color color)
+    {
+        this.colorQuoteAreaNegative = color;
+    }
+
+    public void setQuoteAreaPositive(Color color)
+    {
+        this.colorQuoteAreaPositive = color;
+    }
+
+    public void setPurchaseColor(Color color)
+    {
+        this.colorEventPurchase = color;
+    }
+
+    public void setSaleColor(Color color)
+    {
+        this.colorEventSale = color;
+    }
+
+    public void setDividendColor(Color color)
+    {
+        this.colorEventDividend = color;
+    }
+
+    public void setExtremeMarkerHighColor(Color color)
+    {
+        this.colorExtremeMarkerHigh = color;
+    }
+
+    public void setExtremeMarkerLowColor(Color color)
+    {
+        this.colorExtremeMarkerLow = color;
+    }
+
+    public void setNonTradingColor(Color color)
+    {
+        this.colorNonTradingDay = color;
     }
 
     private void setupTooltip()
@@ -874,15 +914,15 @@ public class SecuritiesChart
                                 Messages.LabelChartDetailChartDevelopmentClosing + "Negative"); //$NON-NLS-1$
                 lineSeries2ndNegative.setSymbolType(PlotSymbolType.NONE);
                 lineSeries2ndNegative.setYAxisId(1);
-                configureSeriesPainter(lineSeries2ndNegative, javaDates, valuesRelativeNegative, colorAreaNegative, 1,
-                                LineStyle.SOLID, true, false);
+                configureSeriesPainter(lineSeries2ndNegative, javaDates, valuesRelativeNegative, colorQuoteAreaNegative,
+                                1, LineStyle.SOLID, true, false);
 
                 ILineSeries lineSeries2ndPositive = (ILineSeries) chart.getSeriesSet().createSeries(SeriesType.LINE,
                                 Messages.LabelChartDetailChartDevelopmentClosing + "Positive"); //$NON-NLS-1$
                 lineSeries2ndPositive.setSymbolType(PlotSymbolType.NONE);
                 lineSeries2ndPositive.setYAxisId(1);
-                configureSeriesPainter(lineSeries2ndPositive, javaDates, valuesRelativePositive, colorAreaPositive, 1,
-                                LineStyle.SOLID, true, false);
+                configureSeriesPainter(lineSeries2ndPositive, javaDates, valuesRelativePositive, colorQuoteAreaPositive,
+                                1, LineStyle.SOLID, true, false);
             }
 
             ILineSeries lineSeries = (ILineSeries) chart.getSeriesSet().createSeries(SeriesType.LINE,
@@ -1385,9 +1425,9 @@ public class SecuritiesChart
                         .min(Comparator.comparing(SecurityPrice::getValue));
 
         max.ifPresent(high -> addExtremeMarker(high, PlotSymbolType.DIAMOND, //
-                        Messages.LabelChartDetailMarkerHigh, colorHigh));
+                        Messages.LabelChartDetailMarkerHigh, colorExtremeMarkerHigh));
         min.ifPresent(low -> addExtremeMarker(low, PlotSymbolType.DIAMOND, //
-                        Messages.LabelChartDetailMarkerLow, colorLow));
+                        Messages.LabelChartDetailMarkerLow, colorExtremeMarkerLow));
     }
 
     private void addExtremeMarker(SecurityPrice price, PlotSymbolType plotSymbolType, String seriesLabel, Color color)
@@ -1424,7 +1464,7 @@ public class SecuritiesChart
 
                     event.gc.setForeground(Colors.theme().defaultForeground());
 
-                    if (inner.getSymbolColor() == colorHigh)
+                    if (inner.getSymbolColor() == colorExtremeMarkerHigh)
                         y = y - textExtent.y - inner.getSymbolSize();
                     else
                         y = y + inner.getSymbolSize();
