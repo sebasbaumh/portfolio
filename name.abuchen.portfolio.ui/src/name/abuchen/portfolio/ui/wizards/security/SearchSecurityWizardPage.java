@@ -54,6 +54,7 @@ public class SearchSecurityWizardPage extends WizardPage
         super(PAGE_ID);
         setTitle(Messages.SecurityMenuAddNewSecurity);
         setDescription(Messages.SecurityMenuAddNewSecurityDescription);
+        setPageComplete(false);
 
         this.client = client;
     }
@@ -76,6 +77,7 @@ public class SearchSecurityWizardPage extends WizardPage
 
         final Button searchButton = new Button(container, SWT.PUSH);
         searchButton.setText(Messages.LabelSearch);
+        searchButton.setEnabled(false);
 
         final TableViewer resultTable = new TableViewer(container, SWT.FULL_SELECTION);
         CopyPasteSupport.enableFor(resultTable);
@@ -133,6 +135,12 @@ public class SearchSecurityWizardPage extends WizardPage
                         (SecuritySearchProvider.Type) typeBox.getStructuredSelection().getFirstElement(), resultTable);
 
         searchBox.addSelectionListener(SelectionListener.widgetDefaultSelectedAdapter(onSearchEvent));
+        searchBox.addModifyListener(e -> {
+            if (e.widget instanceof Text txt)
+            {
+                searchButton.setEnabled(!txt.getText().isBlank());
+            }
+        });
         searchButton.addSelectionListener(SelectionListener.widgetSelectedAdapter(onSearchEvent));
 
         resultTable.addSelectionChangedListener(event -> {
@@ -161,6 +169,12 @@ public class SearchSecurityWizardPage extends WizardPage
     {
         try
         {
+            if (query.isBlank())
+                return;
+
+            // after searching, selection required to enable finish button
+            setPageComplete(false);
+
             getContainer().run(true, false, progressMonitor -> {
                 List<SecuritySearchProvider> providers = Factory.getSearchProvider();
 
@@ -189,6 +203,8 @@ public class SearchSecurityWizardPage extends WizardPage
 
                     if (!errors.isEmpty())
                         setErrorMessage(String.join(", ", errors)); //$NON-NLS-1$
+                    else
+                        setErrorMessage(null);
                 });
 
             });
