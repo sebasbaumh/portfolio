@@ -321,12 +321,21 @@ public class PortfolioListView extends AbstractFinanceView implements Modificati
                             setInput();
                         }));
 
-        manager.add(new ConfirmAction(Messages.PortfolioMenuDelete,
+        var label = Messages.PortfolioMenuDelete;
+        if (!portfolio.getTransactions().isEmpty())
+            label += " (" + MessageFormat.format(Messages.LabelTransactionCount, portfolio.getTransactions().size()) //$NON-NLS-1$
+                            + ")"; //$NON-NLS-1$
+
+        Action action = new ConfirmAction(label,
                         MessageFormat.format(Messages.PortfolioMenuDeleteConfirm, portfolio.getName()), a -> {
                             getClient().removePortfolio(portfolio);
                             markDirty();
                             setInput();
-                        }));
+                        });
+
+        action.setEnabled(portfolio.getTransactions().isEmpty());
+
+        manager.add(action);
     }
 
     // //////////////////////////////////////////////////////////////

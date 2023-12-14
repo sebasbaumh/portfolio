@@ -2,7 +2,7 @@
 <feature
       id="name.abuchen.portfolio.feature"
       label="Portfolio Performance"
-      version="0.65.6"
+      version="0.66.2"
       provider-name="Andreas Buchen">
 
    <description url="http://buchen.github.io/portfolio/">
@@ -58,6 +58,20 @@ For purposes of the EPL, &quot;Program&quot; will mean the Content.
 
    <plugin
          id="com.sun.activation.javax.activation"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="com.twelvemonkeys.imageio.bmp"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.apache.aries.spifly.dynamic.bundle"
          download-size="0"
          install-size="0"
          version="0.0.0"
