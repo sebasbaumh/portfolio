@@ -1,6 +1,7 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
 import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetGrossUnit;
+import static name.abuchen.portfolio.util.TextUtil.concatenate;
 import static name.abuchen.portfolio.util.TextUtil.replaceMultipleBlanks;
 import static name.abuchen.portfolio.util.TextUtil.stripBlanks;
 import static name.abuchen.portfolio.util.TextUtil.stripBlanksAndUnderscores;
@@ -433,12 +434,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("note").optional() //
                         .match("^.* Rechnungsnummer[\\s]{1,}: (?<note>.*)$") //
-                        .assign((t, v) -> {
-                            if (t.getNote() != null)
-                                t.setNote(t.getNote() + " | R.-Nr.: " + trim(v.get("note")));
-                            else
-                                t.setNote("R.-Nr.: " + trim(v.get("note")));
-                        })
+                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), "R.-Nr.: " + trim(v.get("note")), " | ")))
 
                         .conclude(ExtractorUtils.fixGrossValueBuySell())
 
@@ -628,12 +624,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("note").optional() //
                         .match("^.* Rechnungsnummer[\\s]{1,}: (?<note>.*)$") //
-                        .assign((t, v) -> {
-                            if (t.getNote() != null)
-                                t.setNote(t.getNote() + " | R.-Nr.: " + trim(v.get("note")));
-                            else
-                                t.setNote("R.-Nr.: " + trim(v.get("note")));
-                        })
+                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), "R.-Nr.: " + trim(v.get("note")), " | ")))
 
                         .wrap(t -> {
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
@@ -930,12 +921,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                                         + "|Schlussdividende" //
                                         + "|monatl\\. Dividende))" //
                                         + ".*$") //
-                        .assign((t, v) -> {
-                            if (t.getNote() != null)
-                                t.setNote(t.getNote() + " | " + trim(v.get("note")));
-                            else
-                                t.setNote(trim(v.get("note")));
-                        })
+                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), trim(v.get("note")), " | ")))
 
                         .wrap((t, ctx) -> {
                             TransactionItem item = new TransactionItem(t);
@@ -1139,6 +1125,9 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                                                             }
                                                             else
                                                             {
+                                                                // Store in transaction context
+                                                                v.getTransactionContext().put(ATTRIBUTE_GROSS_TAXES_TREATMENT, grossBeforeTaxes);
+
                                                                 t.setMonetaryAmount(deductedTaxes);
                                                             }
                                                         }),
@@ -1203,7 +1192,7 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                         .match("^.*R([\\s]+)?e([\\s]+)?f([\\s]+)?e([\\s]+)?r([\\s]+)?e([\\s]+)?n([\\s]+)?z([\\s]+)?\\-([\\s]+)?N([\\s]+)?u([\\s]+)?m([\\s]+)?m([\\s]+)?e([\\s]+)?r([\\s]+)?:[\\s]{1,}(?<note>.*)$")
                         .assign((t, v) -> {
                             if (t.getType().isCredit())
-                                t.setNote("Ref.-Nr.: " + stripBlanks(v.get("note")).substring(0, 16));
+                                t.setNote(concatenate(t.getNote(), "Ref.-Nr.: " + stripBlanks(v.get("note")).substring(0, 16), " | "));
                         })
 
                         .wrap((t, ctx) -> {
@@ -1837,21 +1826,24 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
 
                 saleTransaction.getPortfolioTransaction().addUnit(new Unit(Unit.Type.TAX, taxesTransaction.getMonetaryAmount()));
 
-                if (!saleTransaction.getSource().equals(taxesTransaction.getSource()))
-                    saleTransaction.setSource(saleTransaction.getSource() + "; " + taxesTransaction.getSource());
+                saleTransaction.setSource(concatenate(saleTransaction.getSource(), taxesTransaction.getSource(), "; "));
 
-                saleTransaction.setNote(concat(saleTransaction.getNote(), taxesTransaction.getNote()));
+                saleTransaction.setNote(concatenate(saleTransaction.getNote(), taxesTransaction.getNote(), " | "));
 
                 items.remove(pair.tax());
             }
         }
 
-        // @formatter:off
-        // This loop iterates through a list of dividend and tax pairs and processes them.
-        //
-        // For each pair, it adjusts the gross amount of the dividend transaction if necessary,
-        // based on whether the taxes base (gross) is greater than the calculated gross amount (withholding tax).
-        // @formatter:on
+         // @formatter:off
+         // This loop processes a list of dividend and tax pairs, adjusting the gross amount of dividend transactions as needed.
+         //
+         // For each pair, it checks if there is a corresponding tax transaction. If present, it considers the gross taxes treatment,
+         // adjusting the gross amount of the dividend transaction if necessary. If taxes amount is zero and gross taxes treatment
+         // is less than the dividend amount, it adjusts the taxes and sets the dividend amount to the gross taxes treatment.
+         // If taxes amount is not zero, it sets the dividend amount to the gross taxes treatment and fixes the gross value.
+         //
+         // If there is no tax transaction, it simply fixes the gross value of the dividend transaction.
+         // @formatter:on
         for (TransactionTaxesPair pair : dividendTaxPairs)
         {
             var dividendTransaction = (AccountTransaction) pair.transaction().getSubject();
@@ -1863,19 +1855,31 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
 
                 if (grossTaxesTreatment != null)
                 {
-                    dividendTransaction.setMonetaryAmount(grossTaxesTreatment);
-                    ExtractorUtils.fixGrossValue().accept(dividendTransaction);
+                    Money dividendAmount = dividendTransaction.getMonetaryAmount();
+                    Money taxesAmount = taxesTransaction.getMonetaryAmount();
+
+                    if (taxesAmount.isZero() && grossTaxesTreatment.isLessThan(dividendAmount))
+                    {
+                        Money adjustedTaxes  = dividendAmount.subtract(grossTaxesTreatment);
+                        dividendTransaction.addUnit(new Unit(Unit.Type.TAX, adjustedTaxes ));
+                        dividendTransaction.setMonetaryAmount(grossTaxesTreatment);
+                    }
+                    else
+                    {
+                        dividendTransaction.setMonetaryAmount(grossTaxesTreatment);
+                    }
                 }
 
-                dividendTransaction.setMonetaryAmount(dividendTransaction.getMonetaryAmount()
+                ExtractorUtils.fixGrossValue().accept(dividendTransaction);
+
+                dividendTransaction.setMonetaryAmount(dividendTransaction.getMonetaryAmount() //
                                 .subtract(taxesTransaction.getMonetaryAmount()));
 
                 dividendTransaction.addUnit(new Unit(Unit.Type.TAX, taxesTransaction.getMonetaryAmount()));
 
-                if (!dividendTransaction.getSource().equals(taxesTransaction.getSource()))
-                    dividendTransaction.setSource(dividendTransaction.getSource() + "; " + taxesTransaction.getSource());
+                dividendTransaction.setSource(concatenate(dividendTransaction.getSource(), taxesTransaction.getSource(), "; "));
 
-                dividendTransaction.setNote(concat(dividendTransaction.getNote(), taxesTransaction.getNote()));
+                dividendTransaction.setNote(concatenate(dividendTransaction.getNote(), taxesTransaction.getNote(), " | "));
 
                 items.remove(pair.tax());
             }
@@ -1986,16 +1990,5 @@ public class ComdirectPDFExtractor extends AbstractPDFExtractor
                             }
                         } //
         );
-    }
-
-    private String concat(String first, String second)
-    {
-        if (first == null && second == null)
-            return null;
-
-        if (first != null && second == null)
-            return first;
-
-        return first == null ? second : first + "; " + second;
     }
 }
