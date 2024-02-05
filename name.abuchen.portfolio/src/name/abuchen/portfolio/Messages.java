@@ -257,6 +257,7 @@ public class Messages extends NLS
     public static String MsgErrorDuplicateTicker;
     public static String MsgErrorDuplicateWKN;
     public static String MsgErrorEncrypting;
+    public static String MsgErrorFeedCurrencyMismatch;
     public static String MsgErrorIllegalForexUnit;
     public static String MsgErrorInvalidURL;
     public static String MsgErrorInvalidWKN;
@@ -276,6 +277,7 @@ public class Messages extends NLS
     public static String MsgErrorQuandlMissingAPIKey;
     public static String MsgErrorQuandlMissingCode;
     public static String MsgErrorOrderCancellationUnsupported;
+    public static String MsgErrorSecurityHasMalformedURL;
     public static String MsgErrorTradeCollector_MissingHoldingsForSell;
     public static String MsgErrorTradeCollector_MissingHoldingsForTransfer;
     public static String MsgErrorTradeCollector_NoHoldingsForSell;
