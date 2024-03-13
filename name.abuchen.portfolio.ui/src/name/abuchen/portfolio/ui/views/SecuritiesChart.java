@@ -1249,11 +1249,17 @@ public class SecuritiesChart
 
         if (chartConfig.contains(ChartDetails.SHOW_MARKER_LINES))
         {
+            var showLabels = chartConfig.contains(ChartDetails.SHOW_DATA_LABELS);
             transactions.forEach(t -> {
-                String label = Values.Share.format(t.getType().isPurchase() ? t.getShares() : -t.getShares());
-                double value = t.getGrossPricePerShare(converter.with(t.getSecurity().getCurrencyCode())).getAmount()
-                                / Values.Quote.divider();
-                chart.addMarkerLine(t.getDateTime().toLocalDate(), color, label, value);
+                if (showLabels)
+                {
+                    String label = Values.Share.format(t.getType().isPurchase() ? t.getShares() : -t.getShares());
+                    double value = t.getGrossPricePerShare(converter.with(t.getSecurity().getCurrencyCode()))
+                                    .getAmount() / Values.Quote.divider();
+                    chart.addMarkerLine(t.getDateTime().toLocalDate(), color, label, value);
+                }
+                else
+                    chart.addMarkerLine(t.getDateTime().toLocalDate(), color, null);
             });
         }
         else
@@ -1340,8 +1346,9 @@ public class SecuritiesChart
 
         if (chartConfig.contains(ChartDetails.SHOW_MARKER_LINES))
         {
+            var showLabels = chartConfig.contains(ChartDetails.SHOW_DATA_LABELS);
             dividends.forEach(t -> chart.addMarkerLine(t.getDateTime().toLocalDate(), colorEventDividend,
-                            getDividendLabel(t)));
+                            showLabels ? getDividendLabel(t) : null));
         }
         else
         {
@@ -1468,15 +1475,21 @@ public class SecuritiesChart
     private void addExtremeMarker(SecurityPrice price, PlotSymbolType plotSymbolType, String seriesLabel, Color color)
     {
         LocalDate eventDate = price.getDate();
-        String valueFormat = Values.Quote.format(price.getValue());
         double value = price.getValue() / Values.Quote.divider();
 
         if (chartConfig.contains(ChartDetails.SHOW_MARKER_LINES))
         {
-            chart.addMarkerLine(eventDate, color, valueFormat);
+            if (chartConfig.contains(ChartDetails.SHOW_DATA_LABELS))
+            {
+                String valueFormat = Values.Quote.format(price.getValue());
+                chart.addMarkerLine(eventDate, color, valueFormat, value);
+            }
+            else
+                chart.addMarkerLine(eventDate, color, null, value);
         }
         else
         {
+            String valueFormat = Values.Quote.format(price.getValue());
             Date zonedDate = Date.from(eventDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
 
             ILineSeries inner = (ILineSeries) chart.getSeriesSet().createSeries(SeriesType.LINE, seriesLabel);
@@ -1565,10 +1578,13 @@ public class SecuritiesChart
     private void addMacdMarkerLines(ChartInterval chartInterval, Color color)
     {
         MovingAverageConvergenceDivergence macd = new MovingAverageConvergenceDivergence(this.security, chartInterval);
-        ChartLineSeriesAxes macdLines = macd.getMacdLine();
-        ChartLineSeriesAxes signalLines = macd.getSignalLine();
-        if (macdLines == null || macdLines.getValues() == null || macdLines.getDates() == null
-                        || signalLines.getValues() == null || signalLines.getDates() == null)
+        var macdLines = macd.getMacdLine();
+        var signalLines = macd.getSignalLine();
+
+        // macd and signal lines may exist separately set - avoid creating an
+        // axis if both do not exist
+
+        if (macdLines.isEmpty() && signalLines.isEmpty())
             return;
 
         Supplier<IAxis> yAxisFactory = () -> {
@@ -1583,31 +1599,37 @@ public class SecuritiesChart
 
         int yAxisId = chart.getOrCreateAxis(ChartDetails.MACD, yAxisFactory).getId();
 
-        ILineSeries lineSeriesMacd = (ILineSeries) chart.getSeriesSet().createSeries(SeriesType.LINE,
-                        Messages.LabelChartDetailIndicatorMacd);
-        lineSeriesMacd.setXDateSeries(macdLines.getDates());
-        lineSeriesMacd.setLineStyle(LineStyle.SOLID);
-        lineSeriesMacd.setLineWidth(2);
-        lineSeriesMacd.enableArea(false);
-        lineSeriesMacd.setSymbolType(PlotSymbolType.NONE);
-        lineSeriesMacd.setYSeries(macdLines.getValues());
-        lineSeriesMacd.setAntialias(swtAntialias);
-        lineSeriesMacd.setLineColor(color);
-        lineSeriesMacd.setYAxisId(yAxisId);
-        lineSeriesMacd.setVisibleInLegend(true);
+        if (macdLines.isPresent())
+        {
+            ILineSeries lineSeriesMacd = (ILineSeries) chart.getSeriesSet().createSeries(SeriesType.LINE,
+                            Messages.LabelChartDetailIndicatorMacd);
+            lineSeriesMacd.setXDateSeries(macdLines.get().getDates());
+            lineSeriesMacd.setLineStyle(LineStyle.SOLID);
+            lineSeriesMacd.setLineWidth(2);
+            lineSeriesMacd.enableArea(false);
+            lineSeriesMacd.setSymbolType(PlotSymbolType.NONE);
+            lineSeriesMacd.setYSeries(macdLines.get().getValues());
+            lineSeriesMacd.setAntialias(swtAntialias);
+            lineSeriesMacd.setLineColor(color);
+            lineSeriesMacd.setYAxisId(yAxisId);
+            lineSeriesMacd.setVisibleInLegend(true);
+        }
 
-        ILineSeries lineSeriesSignal = (ILineSeries) chart.getSeriesSet().createSeries(SeriesType.LINE,
-                        Messages.LabelChartDetailIndicatorMacdSignal);
-        lineSeriesSignal.setXDateSeries(signalLines.getDates());
-        lineSeriesSignal.setLineStyle(LineStyle.DOT);
-        lineSeriesSignal.setLineWidth(2);
-        lineSeriesSignal.enableArea(false);
-        lineSeriesSignal.setSymbolType(PlotSymbolType.NONE);
-        lineSeriesSignal.setYSeries(signalLines.getValues());
-        lineSeriesSignal.setAntialias(swtAntialias);
-        lineSeriesSignal.setLineColor(color);
-        lineSeriesSignal.setYAxisId(yAxisId);
-        lineSeriesSignal.setVisibleInLegend(false);
+        if (signalLines.isPresent())
+        {
+            ILineSeries lineSeriesSignal = (ILineSeries) chart.getSeriesSet().createSeries(SeriesType.LINE,
+                            Messages.LabelChartDetailIndicatorMacdSignal);
+            lineSeriesSignal.setXDateSeries(signalLines.get().getDates());
+            lineSeriesSignal.setLineStyle(LineStyle.DOT);
+            lineSeriesSignal.setLineWidth(2);
+            lineSeriesSignal.enableArea(false);
+            lineSeriesSignal.setSymbolType(PlotSymbolType.NONE);
+            lineSeriesSignal.setYSeries(signalLines.get().getValues());
+            lineSeriesSignal.setAntialias(swtAntialias);
+            lineSeriesSignal.setLineColor(color);
+            lineSeriesSignal.setYAxisId(yAxisId);
+            lineSeriesSignal.setVisibleInLegend(false);
+        }
     }
 
     private void addFIFOPurchasePrice(ChartInterval chartInterval)
