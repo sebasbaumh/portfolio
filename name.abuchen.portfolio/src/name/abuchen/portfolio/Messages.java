@@ -59,7 +59,6 @@ public class Messages extends NLS
     public static String CSVDefPortfolio;
     public static String CSVDefPortfolioTransactions;
     public static String CSVDefSecurities;
-    public static String CSVFormatApostrophe;
     public static String CSVFormatDDMMMYYYY;
     public static String CSVFormatDDMMMYYYY_English;
     public static String CSVFormatDDMMMYYYY_German;
@@ -75,9 +74,6 @@ public class Messages extends NLS
     public static String CSVFormatMMDDYYYY;
     public static String CSVFormatMMDDYYYY1;
     public static String CSVFormatMMMDDYYYY;
-    public static String CSVFormatNumberFrance;
-    public static String CSVFormatNumberGermany;
-    public static String CSVFormatNumberUS;
     public static String CSVFormatYYYYMM;
     public static String CSVFormatYYYYMMDD;
     public static String CSVFormatYYYYMMDDSlashes;
@@ -104,6 +100,8 @@ public class Messages extends NLS
     public static String FixDeleteTransaction;
     public static String FixDeleteTransactionDone;
     public static String FixReferenceAccountNameProposal;
+    public static String FixSetDateToToday;
+    public static String FixSetDateToTodayDone;
     public static String FixSetSecurity;
     public static String FixSetSecurityDone;
     public static String IBXML_Label;
@@ -121,6 +119,7 @@ public class Messages extends NLS
     public static String IssueMissingPortfolioTransfer;
     public static String IssueMissingReferenceAccount;
     public static String IssueTransactionMissingCurrencyCode;
+    public static String IssueTransactionWithoutDate;
     public static String IssuePortfolioTransactionWithoutSecurity;
     public static String LabelAssetAllocation;
     public static String LabelCreditSuisseHTMLTable;
