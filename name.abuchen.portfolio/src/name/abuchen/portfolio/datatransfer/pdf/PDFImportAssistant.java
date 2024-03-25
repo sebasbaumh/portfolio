@@ -28,13 +28,14 @@ public class PDFImportAssistant
         this.client = client;
         this.files = files;
 
+        extractors.add(new AdvanziaBankPDFExtractor(client));
         extractors.add(new AJBellSecuritiesLimitedPDFExtractor(client));
         extractors.add(new AkfBankPDFExtractor(client));
         extractors.add(new AvivaPLCPDFExtractor(client));
         extractors.add(new BaaderBankPDFExtractor(client));
         extractors.add(new Bank11PDFExtractor(client));
         extractors.add(new BankSLMPDFExtractor(client));
-        extractors.add(new BarclaysPDFExtractor(client));
+        extractors.add(new BarclaysBankIrelandPLCPDFExtractor(client));
         extractors.add(new BisonPDFExtractor(client));
         extractors.add(new BondoraCapitalPDFExtractor(client));
         extractors.add(new ComdirectPDFExtractor(client));
@@ -93,7 +94,8 @@ public class PDFImportAssistant
         extractors.add(new SelfWealthPDFExtractor(client));
         extractors.add(new SimpelPDFExtractor(client));
         extractors.add(new SolarisbankAGPDFExtractor(client));
-        extractors.add(new StakePDFExtractor(client));
+        extractors.add(new StakeshopPtyLtdPDFExtractor(client));
+        extractors.add(new SunrisePDFExtractor(client));
         extractors.add(new SuresseDirektBankPDFExtractor(client));
         extractors.add(new SwissquotePDFExtractor(client));
         extractors.add(new TargobankPDFExtractor(client));

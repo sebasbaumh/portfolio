@@ -5,7 +5,7 @@
 
 	<groupId>name.abuchen.portfolio</groupId>
 	<artifactId>portfolio-app</artifactId>
-	<version>0.68.2</version>
+	<version>0.68.3</version>
 	<packaging>pom</packaging>
 
 	<name>Portfolio Performance</name>
@@ -413,7 +413,7 @@
 						<storetype>PKCS11</storetype>
 						<providerClass>sun.security.pkcs11.SunPKCS11</providerClass>
 						<storepass>${jarsigner.storepass}</storepass>
-						<alias>e0f08454-41b5-4143-91d8-471c1d8004c3</alias>
+						<alias>Andreas Buchen</alias>
 						<providerArg>${jarsigner.providerArg}</providerArg>
 						<certchain>${project.basedir}/../portfolio-app/certchain.txt</certchain>
 						<tsa>http://time.certum.pl/</tsa>
@@ -422,7 +422,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-gpg-plugin</artifactId>
-					<version>3.1.0</version>
+					<version>3.2.1</version>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -448,7 +448,7 @@
 				<plugin>
 					<groupId>org.sonarsource.scanner.maven</groupId>
 					<artifactId>sonar-maven-plugin</artifactId>
-					<version>3.10.0.2594</version>
+					<version>3.11.0.3922</version>
 				</plugin>
 				<plugin>
 					<groupId>name.abuchen</groupId>
