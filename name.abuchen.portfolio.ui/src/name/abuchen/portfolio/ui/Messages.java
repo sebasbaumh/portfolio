@@ -571,6 +571,7 @@ public class Messages extends NLS
     public static String LabelChartDetailSettingsShowPercentageAxis;
     public static String LabelChartShowLabels;
     public static String LabelChartType;
+    public static String LabelChooseFileToImportFrom;
     public static String LabelCleanHTML;
     public static String LabelClientClearCustomItems;
     public static String LabelClientFilterDialogMessage;
@@ -703,6 +704,7 @@ public class Messages extends NLS
     public static String LabelPerformanceChart;
     public static String LabelPerformanceIRR;
     public static String LabelPerformanceMetric;
+    public static String LabelPickFile;
     public static String LabelPickFileFormat;
     public static String LabelPortfolioFeeRate;
     public static String LabelPortfolioPerformance;
@@ -962,7 +964,7 @@ public class Messages extends NLS
     public static String MenuTaxonomyMakeAssignment;
     public static String MenuTaxonomyRename;
     public static String MenuTaxonomySortByName;
-    public static String MenuTaxonomySortByTypName;
+    public static String MenuTaxonomySortByType;
     public static String MenuTaxonomySortTreeBy;
     public static String MenuTaxonomyWeightFix;
     public static String MenuTransactionDelete;
@@ -1027,6 +1029,7 @@ public class Messages extends NLS
     public static String MsgRestartRequired;
     public static String MsgSecurityHasNoQuotes;
     public static String MsgThemeRestartRequired;
+    public static String MsgUpdatedXEntries;
     public static String MsgUpdateNewInVersionX;
     public static String MsgUpdateNoWritePermissions;
     public static String MsgUpdateRequiresLatestJavaVersion;
