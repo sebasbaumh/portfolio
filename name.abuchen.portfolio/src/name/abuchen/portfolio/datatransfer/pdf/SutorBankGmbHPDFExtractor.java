@@ -1,6 +1,7 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
 import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetFee;
+import static name.abuchen.portfolio.datatransfer.ExtractorUtils.checkAndSetTax;
 import static name.abuchen.portfolio.util.TextUtil.stripBlanks;
 import static name.abuchen.portfolio.util.TextUtil.trim;
 
@@ -12,17 +13,21 @@ import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
-import name.abuchen.portfolio.money.CurrencyUnit;
 import name.abuchen.portfolio.money.Money;
 
 /**
- * @implNote Sutor always provides the amount in EUR, column "Betrag in EUR"
+ * @formatter:off
+ * @implNote JustTrade is a service provided by Sutor Bank,
+ *           which it has outsourced to JT Technologies GmbH.
+ *
+ * @implSpec The account statement transactions are reported in EUR.
+ * @formatter:on
  */
 
 @SuppressWarnings("nls")
-public class JustTradePDFExtractor extends AbstractPDFExtractor
+public class SutorBankGmbHPDFExtractor extends AbstractPDFExtractor
 {
-    public JustTradePDFExtractor(Client client)
+    public SutorBankGmbHPDFExtractor(Client client)
     {
         super(client);
 
@@ -35,12 +40,13 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
         addDividendeTransaction();
         addAdvanceTaxTransaction();
         addAccountStatementTransaction();
+        addNonImportableTransaction();
     }
 
     @Override
     public String getLabel()
     {
-        return "Sutor Bank / justTRADE";
+        return "Sutor Bank GmbH / justTRADE";
     }
 
     private void addBuySellTransaction()
@@ -459,6 +465,10 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                         })
 
                         .oneOf( //
+                                        // @formatter:off
+                                        // 23.06.2020 22.06.2020 Storno Kauf Storno Kauf Xtrackers MSCI World Min Vol ETF -3,9988 1,0000 130,57
+                                        // 13:31 OTC IE00BL25JN58 32,6523 US$
+                                        // @formatter:on
                                         section -> section //
                                                         .attributes("date", "amount", "name", "shares", "time", "isin") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
@@ -478,12 +488,51 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                             t.setDate(asDate(v.get("date"), v.get("time")));
                                                             t.setShares(asShares(v.get("shares")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
 
                                                             v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported);
                                                         }),
-                                        // Storno ohne Wechselkurs
+                                        // @formatter:off
+                                        // 25.03.2024 22.03.2024 Verkauf Verkauf X-trackers MSCI USA Index -8,2731 1,0823 1.139,97 1.173,40 -31,69
+                                        // 10:41 Tradegate LU0274210672 153,5065 US$ -1,74
+                                        //
+                                        // 25.03.2024 22.03.2024 Verkauf Verkauf X-trackers MSCI EMU INDEX dis -3,3986 172,65 177,47 -4,57
+                                        // 10:47 Tradegate LU0846194776 52,2200 EUR -0,25
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("date", "shares", "amount", "tax1", "time", "isin", "tax2") //
+                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} "
+                                                                        + "(?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) "
+                                                                        + "Verkauf Verkauf " + "(?<name>.*) "
+                                                                        + "\\-(?<shares>[\\.,\\d]+) "
+                                                                        + "([\\.,\\d]+ )?"
+                                                                        + "(?<amount>[\\.,\\d]+) "
+                                                                        + "[\\.,\\d]+ "
+                                                                        + "\\-(?<tax1>[\\.,\\d]+)$") //
+                                                        .match("^(?<time>[\\d]{2}:[\\d]{2}) " + ".* "
+                                                                        + "(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) "
+                                                                        + "[\\.,\\d]+ ([\\w]{2}\\p{Sc}|[\\w]{3}) "
+                                                                        + "\\-(?<tax2>[\\.,\\d]+)$") //
+                                                        .assign((t, v) -> {
+                                                            t.setSecurity(getOrCreateSecurity(v));
+
+                                                            t.setDate(asDate(v.get("date"), v.get("time")));
+                                                            t.setShares(asShares(v.get("shares")));
+
+                                                            t.setCurrencyCode("EUR");
+                                                            t.setAmount(asAmount(v.get("amount")));
+
+                                                            Money tax1 = Money.of(t.getPortfolioTransaction().getCurrencyCode(), asAmount(v.get("tax1")));
+                                                            Money tax2 = Money.of(t.getPortfolioTransaction().getCurrencyCode(), asAmount(v.get("tax2")));
+                                                            Money tax = tax1.add(tax2);
+
+                                                            checkAndSetTax(tax, t, type.getCurrentContext());
+                                                        }),
+                                        // @formatter:off
+                                        // 01.07.2020 01.07.2020 Kauf Kauf iShares Edge MSCI EM Min Vol ETF 1,9784 1,1200 -48,44
+                                        // 12:56 OTC IE00B8KGV557 27,4228 US$
+                                        // @formatter:on
                                         section -> section //
                                                         .attributes("date", "amount", "name", "shares", "time", "isin") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
@@ -504,9 +553,13 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                             t.setDate(asDate(v.get("date"), v.get("time")));
                                                             t.setShares(asShares(v.get("shares")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
                                                         }),
+                                        // @formatter:off
+                                        // 01.07.2020 01.07.2020 Kauf Kauf Vanguard EUR Eurozone Gov Bond ETF 26,7524 -719,05
+                                        // 12:46 OTC IE00BH04GL39 26,8780 EUR
+                                        // @formatter:on
                                         section -> section //
                                                         .attributes("date", "amount", "name", "shares", "time", "isin") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
@@ -526,9 +579,12 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                             t.setDate(asDate(v.get("date"), v.get("time")));
                                                             t.setShares(asShares(v.get("shares")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
                                                         }),
+                                        // @formatter:off
+                                        // 05.07.2019 04.07.2019 -8,35 Kauf iShares Core MSCI Emerging Markets 1,1288 28,50 US$ 0,3308
+                                        // @formatter:on
                                         section -> section //
                                                         .attributes("date", "amount", "name", "shares") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
@@ -546,9 +602,12 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                             t.setDate(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
                                                         }),
+                                        // @formatter:off
+                                        // 04.07.2019 02.07.2019 -75,22 Kauf Dimensional European Value Fund 12,01 EUR 6,2631
+                                        // @formatter:on
                                         section -> section //
                                                         .attributes("date", "amount", "name", "shares") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
@@ -565,9 +624,12 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                             t.setDate(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
                                                         }),
+                                        // @formatter:off
+                                        // 04.07.2019 03.07.2019 -242,09 Kauf Lyxor Core Stoxx Europe 600 acc 158,60 1,5264
+                                        // @formatter:on
                                         section -> section //
                                                         .attributes("date", "amount", "name", "shares") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
@@ -583,9 +645,12 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                             t.setDate(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
                                                         }),
+                                        // @formatter:off
+                                        // 08.07.2019 05.07.2019 0,98 Gebührentilgung iShares Core MSCI Emerging Markets 1,1260 28,48 US$ -0,0387
+                                        // @formatter:on
                                         section -> section //
                                                         .attributes("date", "amount", "note", "name", "shares") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
@@ -602,11 +667,14 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                             t.setDate(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
 
                                                             t.setNote(v.get("note"));
                                                         }),
+                                        // @formatter:off
+                                        // 09.07.2019 06.07.2019 4,78 Gebührentilgung Lyxor Core Stoxx Europe 600 acc 159,78 EUR -0,0299
+                                        // @formatter:on
                                         section -> section //
                                                         .attributes("date", "amount", "note", "name", "shares") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
@@ -622,7 +690,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                             t.setDate(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
 
                                                             t.setNote(v.get("note"));
@@ -631,22 +699,67 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                         .wrap((t, ctx) -> {
                             BuySellEntryItem item = new BuySellEntryItem(t);
 
-                            if (t.getPortfolioTransaction().getCurrencyCode() != null && t.getPortfolioTransaction().getAmount() == 0)
-                                item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
-
                             if (ctx.getString(FAILURE) != null)
                                 item.setFailureMessage(ctx.getString(FAILURE));
 
                             return item;
                         });
 
-        Transaction<AccountTransaction> depositBlock = new Transaction<>();
+        Transaction<AccountTransaction> dividendsBlock = new Transaction<>();
 
-        firstRelevantLine = new Block("^.*([^staatlichen] Zulage|(Einzahlung )?automatischer Lastschrifteinzug).*$");
+        firstRelevantLine = new Block("^.* Aussch.ttung Betrag der Aussch.ttung.*$");
         type.addBlock(firstRelevantLine);
-        firstRelevantLine.set(depositBlock);
+        firstRelevantLine.set(dividendsBlock);
 
-        depositBlock //
+        dividendsBlock //
+
+                        .subject(() -> {
+                            AccountTransaction accountTransaction = new AccountTransaction();
+                            accountTransaction.setType(AccountTransaction.Type.DIVIDENDS);
+                            return accountTransaction;
+                        })
+
+                        // @formatter:off
+                        // 13.03.2024 07.03.2024 Ausschüttung Betrag der Ausschüttung X-trackers MSCI EMU INDEX dis - 0,64 0,79 -0,14
+                        // LU0846194776 EUR -0,01
+                        // @formatter:on
+                        .section("date", "name", "amount", "tax1", "tax2") //
+                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
+                                        + "(?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) " //
+                                        + "Aussch.ttung Betrag der Aussch.ttung " //
+                                        + "(?<name>.*) " //
+                                        + "\\- " //
+                                        + "(?<amount>[\\.,\\d]+) " //
+                                        + "[\\.,\\d]+ " //
+                                        + "\\-(?<tax1>[\\.,\\d]+)$") //
+                        .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) " //
+                                        + "([\\w]{2}\\p{Sc}|[\\w]{3}) "
+                                        + "\\-(?<tax2>[\\.,\\d]+)$") //
+                        .assign((t, v) -> {
+                            t.setSecurity(getOrCreateSecurity(v));
+
+                            t.setDateTime(asDate(v.get("date")));
+                            t.setShares(0L);
+
+                            t.setCurrencyCode("EUR");
+                            t.setAmount(asAmount(v.get("amount")));
+
+                            Money tax1 = Money.of(t.getCurrencyCode(), asAmount(v.get("tax1")));
+                            Money tax2 = Money.of(t.getCurrencyCode(), asAmount(v.get("tax2")));
+                            Money tax = tax1.add(tax2);
+
+                            checkAndSetTax(tax, t, type.getCurrentContext());
+                        })
+
+                        .wrap(TransactionItem::new);
+
+        Transaction<AccountTransaction> depositRemovalBlock = new Transaction<>();
+
+        firstRelevantLine = new Block("^.*([^staatlichen] Zulage|Einzahlung |Auszahlung |automatischer Lastschrifteinzug).*$");
+        type.addBlock(firstRelevantLine);
+        firstRelevantLine.set(depositRemovalBlock);
+
+        depositRemovalBlock //
 
                         .subject(() -> {
                             AccountTransaction accountTransaction = new AccountTransaction();
@@ -655,6 +768,9 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                         })
 
                         .oneOf( //
+                                        // @formatter:off
+                                        // 01.02.2019 01.02.2019 160,42 automatischer Lastschrifteinzug
+                                        // @formatter:on
                                         section -> section //
                                                         .attributes("date", "amount", "note") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
@@ -665,21 +781,30 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                         .assign((t, v) -> {
                                                             t.setDateTime(asDate(v.get("date")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
 
                                                             t.setNote(v.get("note"));
                                                         }),
+                                        // @formatter:off
+                                        // 02.03.2020 02.03.2020 Einzahlung automatischer Lastschrifteinzug - 175,00
+                                        // 25.03.2024 25.03.2024 Auszahlung Überweisung bei Kündigung - -2.858,95
+                                        // @formatter:on
                                         section -> section //
-                                                        .attributes("date", "amount", "note") //
-                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
-                                                                        + "(?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) " //
-                                                                        + "(?<note>Einzahlung automatischer Lastschrifteinzug) " //
-                                                                        + "\\- (?<amount>[\\.,\\d]+)$") //
+                                                        .attributes("date", "type", "amount", "note") //
+                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} "
+                                                                        + "(?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) "
+                                                                        + "(?<type>(Einzahlung|Auszahlung)) "
+                                                                        + "(?<note>.*) \\- "
+                                                                        + "(\\-)?(?<amount>[\\.,\\d]+)$") //
                                                         .assign((t, v) -> {
+                                                            // Is type is "-" change from DEPOSIT to REMOVAL
+                                                            if ("Auszahlung".equals(trim(v.get("type"))))
+                                                                t.setType(AccountTransaction.Type.REMOVAL);
+
                                                             t.setDateTime(asDate(v.get("date")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
 
                                                             t.setNote(v.get("note"));
@@ -687,20 +812,58 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
 
                         .wrap(TransactionItem::new);
 
-        Transaction<AccountTransaction> feeBlock = new Transaction<>();
+        Transaction<AccountTransaction> taxesBlock = new Transaction<>();
 
-        firstRelevantLine = new Block(".* (Verwaltungsgeb.hr\\/Vertriebskosten" //
+        firstRelevantLine = new Block("^.* Steuerbuchung.*$");
+        type.addBlock(firstRelevantLine);
+        firstRelevantLine.set(taxesBlock);
+
+        taxesBlock //
+
+                        .subject(() -> {
+                            AccountTransaction accountTransaction = new AccountTransaction();
+                            accountTransaction.setType(AccountTransaction.Type.TAXES);
+                            return accountTransaction;
+                        })
+
+                        // @formatter:off
+                        // 20.01.2024 20.01.2024 Steuerbuchung KapSt2023Vorabpauschale AIS-Amundi I.S.Stoxx - -0,26
+                        // 20.01.2024 20.01.2024 Steuerbuchung KapSt2023Vorabpauschale Amundi Prime Japan - - -0,06
+                        // @formatter:on
+                        .section("date", "note", "amount") //
+                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} " //
+                                        + "(?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) " //
+                                        + "Steuerbuchung " //
+                                        + ".*[\\d]{4}(?<note>Vorabpauschale .*) "
+                                        + "\\- .*" //
+                                        + "\\-(?<amount>[\\.,\\d]+)$") //
+                        .assign((t, v) -> {
+                            t.setDateTime(asDate(v.get("date")));
+
+                            t.setCurrencyCode("EUR");
+                            t.setAmount(asAmount(v.get("amount")));
+
+                            t.setNote(v.get("note"));
+                        })
+
+                        .wrap(TransactionItem::new);
+
+        Transaction<AccountTransaction> feesBlock = new Transaction<>();
+
+        firstRelevantLine = new Block("^.* (Verwaltungsgeb.hr\\/Vertriebskosten" //
                         + "|anteil\\.Verwaltgeb.hr\\/Vertriebskosten" //
                         + "|Kontof.hrungs\\-u\\.Depotgeb.hren" //
                         + "|Geb.hr anteilige Depot\\- u. Verwaltgeb.hr" //
                         + "|Geb.hr anteilige Kontof.hrungsgeb.hr" //
+                        + "|Geb.hr Servicegeb.hr" //
+                        + "|Verm.gensverwaltungsgeb.hr" //
                         + "|Depot\\- u\\. Verwaltgeb.hr" //
                         + "|Kontof.hrungsgeb.hr" //
-                        + "|Umbuchung Geld).*");
+                        + "|Umbuchung Geld).*$");
         type.addBlock(firstRelevantLine);
-        firstRelevantLine.set(feeBlock);
+        firstRelevantLine.set(feesBlock);
 
-        feeBlock //
+        feesBlock //
 
                         .subject(() -> {
                             AccountTransaction accountTransaction = new AccountTransaction();
@@ -724,7 +887,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                         .assign((t, v) -> {
                                                             t.setDateTime(asDate(v.get("date")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
 
                                                             t.setNote(v.get("note"));
@@ -736,7 +899,9 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                                         + "(anteil\\.|Geb.hr (anteil\\.|anteilige )?|Geb.hren (anteil\\.|anteilige )?)?" //
                                                                         + "(?<note>(Verwaltungsgeb.hr\\/Vertriebskosten" //
                                                                         + "|Kontof.hrungs\\-u\\.Depotgeb.hren" //
+                                                                        + "|Servicegeb.hr" //
                                                                         + "|Verwaltgeb.hr\\/Vertriebskosten" //
+                                                                        + "|Verm.gensverwaltungsgeb.hr" //
                                                                         + "|Kontof.hrungs\\-u.Depotgeb.hren" //
                                                                         + "|Depot\\- u\\. Verwaltgeb.hr" //
                                                                         + "|Kontof.hrungsgeb.hr)).* " //
@@ -744,7 +909,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                         .assign((t, v) -> {
                                                             t.setDateTime(asDate(v.get("date")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
 
                                                             t.setNote(v.get("note"));
@@ -759,7 +924,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                         .assign((t, v) -> {
                                                             t.setDateTime(asDate(v.get("date")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
 
                                                             t.setNote(v.get("note"));
@@ -772,7 +937,9 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                                         + "(anteil\\.|Geb.hr (anteil\\.|anteilige )?|Geb.hren (anteil\\.|anteilige )?)?" //
                                                                         + "(?<note2>(Verwaltungsgeb.hr\\/Vertriebskosten" //
                                                                         + "|Kontof.hrungs\\-u\\.Depotgeb.hren" //
+                                                                        + "|Servicegeb.hr" //
                                                                         + "|Verwaltgeb.hr\\/Vertriebskosten" //
+                                                                        + "|Verm.gensverwaltungsgeb.hr" //
                                                                         + "|Kontof.hrungs\\-u.Depotgeb.hren" //
                                                                         + "|Depot\\- u\\. Verwaltgeb.hr" //
                                                                         + "|Kontof.hrungsgeb.hr)).* " //
@@ -782,7 +949,7 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
 
                                                             t.setDateTime(asDate(v.get("date")));
 
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
                                                             t.setAmount(asAmount(v.get("amount")));
 
                                                             t.setNote(v.get("note1") + " " + v.get("note2") + " vom " + v.get("stornoDate"));
@@ -790,13 +957,13 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
 
                         .wrap(TransactionItem::new);
 
-        Transaction<PortfolioTransaction> pdfTransaction = new Transaction<>();
+        Transaction<PortfolioTransaction> deliveryOutbound = new Transaction<>();
 
         firstRelevantLine = new Block("^.* .bertrag .*$");
         type.addBlock(firstRelevantLine);
-        firstRelevantLine.set(pdfTransaction);
+        firstRelevantLine.set(deliveryOutbound);
 
-        pdfTransaction //
+        deliveryOutbound //
 
                         .subject(() -> {
                             PortfolioTransaction portfolioTransaction = new PortfolioTransaction();
@@ -816,18 +983,98 @@ public class JustTradePDFExtractor extends AbstractPDFExtractor
                                                                         + "[\\.,\\d]+$") //
                                                         .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) ([\\w]{2}\\p{Sc}|[\\w]{3})$") //
                                                         .assign((t, v) -> {
-                                                            t.setSecurity(getOrCreateSecurity(v));
-
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
+                                                            t.setSecurity(getOrCreateSecurity(v));
 
                                                             t.setAmount(0L);
-                                                            t.setCurrencyCode(asCurrencyCode(CurrencyUnit.EUR));
+                                                            t.setCurrencyCode("EUR");
 
                                                             t.setNote(v.get("note"));
+
+                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionTypeNotSupported);
                                                         }))
 
-                        .wrap(TransactionItem::new);
+                        .wrap((t, ctx) -> {
+                            TransactionItem item = new TransactionItem(t);
+
+                            if (ctx.getString(FAILURE) != null)
+                                item.setFailureMessage(ctx.getString(FAILURE));
+
+                            return item;
+                        });
+    }
+
+    private void addNonImportableTransaction()
+    {
+        final DocumentType type = new DocumentType("(Kapitalver.nderung \\- Bezugsrechtsemission" //
+                        + "|.bernahme \\- Vergleichsplan)");
+        this.addDocumentTyp(type);
+
+        Transaction<PortfolioTransaction> pdfTransaction = new Transaction<>();
+
+        Block firstRelevantLine = new Block("^(Kapitalver.nderung \\- Bezugsrechtsemission"
+                        + "|.bernahme - Vergleichsplan)$");
+        type.addBlock(firstRelevantLine);
+        firstRelevantLine.set(pdfTransaction);
+
+        pdfTransaction //
+
+                        .subject(() -> {
+                            PortfolioTransaction portfolioTransaction = new PortfolioTransaction();
+                            portfolioTransaction.setType(PortfolioTransaction.Type.DELIVERY_OUTBOUND);
+                            return portfolioTransaction;
+                        })
+
+                        // @formatter:off
+                        // Produktbezeichnung - OXFORD SQUARE CAP. DL-,01
+                        // Internationale Wertpapierkennnummer US69181V1070
+                        // @formatter:on
+                        .section("name", "isin") //
+                        .match("^Produktbezeichnung \\- (?<name>.*)$") //
+                        .match("^Internationale Wertpapierkennnummer (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
+                        .assign((t, v) -> {
+                            if (v.get("name").endsWith(":"))
+                                v.put("name", v.get("name").substring(0, v.get("name").length() - 1));
+
+                            t.setSecurity(getOrCreateSecurity(v));
+
+                            t.setCurrencyCode(asCurrencyCode(t.getSecurity().getCurrencyCode()));
+                            t.setAmount(0L);
+
+                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionTypeNotSupported);
+                        })
+
+                        // @formatter:off
+                        // Anzahl/Nominale 500,00
+                        // @formatter:on
+                        .section("shares") //
+                        .match("^Anzahl\\/Nominale (?<shares>[\\.,\\d]+)$") //
+                        .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
+
+                        // @formatter:off
+                        // Ex Datum - Tag 25. Mai 2023
+                        // @formatter:on
+                        .section("date") //
+                        .match("^Ex Datum \\- Tag (?<date>[\\d]{1,2}\\. .* [\\d]{4})$") //
+                        .assign((t, v) -> t.setDateTime(asDate(v.get("date").replace("Mrz", "Mär"))))
+
+                        // @formatter:off
+                        // Verhältnis Neu/ Alt 1 : 3,00
+                        // Verhältnis Neu/ Alt 1,00 : 1,00
+                        // @formatter:on
+                        .section("note").optional() //
+                        .match("^(?<note>Verh.ltnis Neu\\/.*)$") //
+                        .assign((t, v) -> t.setNote(trim(v.get("note"))))
+
+                        .wrap((t, ctx) -> {
+                            TransactionItem item = new TransactionItem(t);
+
+                            if (ctx.getString(FAILURE) != null)
+                                item.setFailureMessage(ctx.getString(FAILURE));
+
+                            return item;
+                        });
     }
 
     private <T extends Transaction<?>> void addTaxesSectionsTransaction(T transaction, DocumentType type)
