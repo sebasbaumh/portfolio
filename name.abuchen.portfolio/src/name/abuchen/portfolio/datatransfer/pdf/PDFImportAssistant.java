@@ -31,11 +31,14 @@ public class PDFImportAssistant
         extractors.add(new AdvanziaBankPDFExtractor(client));
         extractors.add(new AJBellSecuritiesLimitedPDFExtractor(client));
         extractors.add(new AkfBankPDFExtractor(client));
+        extractors.add(new ArkeaDirectBankPDFExtractor(client));
         extractors.add(new AvivaPLCPDFExtractor(client));
         extractors.add(new BaaderBankPDFExtractor(client));
         extractors.add(new Bank11PDFExtractor(client));
         extractors.add(new BankSLMPDFExtractor(client));
         extractors.add(new BarclaysBankIrelandPLCPDFExtractor(client));
+        extractors.add(new BasellandschaftlicheKantonalbankPDFExtractor(client));
+        extractors.add(new BigbankPDFExtractor(client));
         extractors.add(new BisonPDFExtractor(client));
         extractors.add(new BondoraCapitalPDFExtractor(client));
         extractors.add(new ComdirectPDFExtractor(client));
@@ -66,9 +69,9 @@ public class PDFImportAssistant
         extractors.add(new GladbacherBankAGPDFExtractor(client));
         extractors.add(new HargreavesLansdownPlcExtractor(client));
         extractors.add(new HelloBankPDFExtractor(client));
+        extractors.add(new HypothekarbankLenzburgAGPDFExtractor(client));
         extractors.add(new INGDiBaPDFExtractor(client));
         extractors.add(new JTDirektbankPDFExtractor(client));
-        extractors.add(new JustTradePDFExtractor(client));
         extractors.add(new KBCGroupNVPDFExtractor(client));
         extractors.add(new KeytradeBankPDFExtractor(client));
         extractors.add(new MLPBankingAGPDFExtractor(client));
@@ -97,6 +100,7 @@ public class PDFImportAssistant
         extractors.add(new StakeshopPtyLtdPDFExtractor(client));
         extractors.add(new SunrisePDFExtractor(client));
         extractors.add(new SuresseDirektBankPDFExtractor(client));
+        extractors.add(new SutorBankGmbHPDFExtractor(client));
         extractors.add(new SwissquotePDFExtractor(client));
         extractors.add(new TargobankPDFExtractor(client));
         extractors.add(new TigerBrokersPteLtdPDFExtractor(client));
@@ -108,6 +112,7 @@ public class PDFImportAssistant
         extractors.add(new WealthsimpleInvestmentsIncPDFExtractor(client));
         extractors.add(new WirBankPDFExtractor(client));
         extractors.add(new WeberbankPDFExtractor(client));
+        extractors.add(new ZuercherKantonalbankPDFExtractor(client));
     }
 
     public Map<Extractor, List<Item>> run(IProgressMonitor monitor, Map<File, List<Exception>> errors)

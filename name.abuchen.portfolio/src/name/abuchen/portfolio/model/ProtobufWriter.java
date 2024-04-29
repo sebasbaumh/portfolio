@@ -98,7 +98,7 @@ import name.abuchen.portfolio.money.Money;
         byte[] signature = new byte[SIGNATURE.length];
         int read = input.read(signature);
         if (read != SIGNATURE.length)
-            throw new IOException();
+            throw new IOException("tried to read " + SIGNATURE.length + " bytes but only got " + read); //$NON-NLS-1$ //$NON-NLS-2$
         if (!Arrays.equals(signature, SIGNATURE))
             throw new IOException(Messages.MsgNotAPortfolioFile);
 
@@ -207,7 +207,8 @@ import name.abuchen.portfolio.money.Money;
                         ((DividendEvent) event).setSource(newEvent.getData(3).getString());
                         break;
                     default:
-                        throw new UnsupportedOperationException();
+                        throw new UnsupportedOperationException(
+                                        "unsupported type " + newEvent.getType() + "(" + newEvent.getTypeValue() + ")"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                 }
 
                 event.setDate(LocalDate.ofEpochDay(newEvent.getDate()));
@@ -881,6 +882,8 @@ import name.abuchen.portfolio.money.Money;
 
             Map<String, PMap.Builder> data = new HashMap<>();
             security.getProperties().forEach(p -> {
+                if (p == null)
+                    return;
                 PMap.Builder map = data.computeIfAbsent(p.getType().name(), k -> PMap.newBuilder());
                 map.addEntries(PKeyValue.newBuilder().setKey(p.getName())
                                 .setValue(PAnyValue.newBuilder().setString(p.getValue())).build());

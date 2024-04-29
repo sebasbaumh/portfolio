@@ -129,6 +129,17 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .match("^[\\d] (Barausgleich|Kurswert) [\\.,\\d]+ (?<currency>[\\w]{3})$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
                                         // @formatter:off
+                                        // Bundesrep.Deutschland 1.019 EUR 98,05 % 999,13 EUR
+                                        // Bundesobl.Ser.180 v.2019(24)
+                                        // ISIN: DE0001141802
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "currency", "nameContinued", "isin") //
+                                                        .match("^(?<name>.*) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ % [\\.,\\d]+ [\\w]{3}$")
+                                                        .match("^(?<nameContinued>.*)$")
+                                                        .match("^ISIN: (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$")
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
                                         // This is for the reinvestment of dividends
                                         // We pick the second
                                         //
@@ -173,6 +184,19 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .attributes("shares") //
                                                         .match("^[\\d] (Ausbuchung|Tilgung) .* (?<shares>[\\.,\\d]+) Stk\\.$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
+                                        // @formatter:off
+                                        // Bundesrep.Deutschland 1.019 EUR 98,05 % 999,13 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^.* (?<shares>[\\.,\\d]+) [\\w]{3} [\\.,\\d]+ % [\\.,\\d]+ [\\w]{3}$")
+                                                        .assign((t, v) -> {
+                                                            // @formatter:off
+                                                            // Percentage quotation, workaround for bonds
+                                                            // @formatter:on
+                                                            BigDecimal shares = asBigDecimal(v.get("shares"));
+                                                            t.setShares(Values.Share.factorize(shares.doubleValue() / 100));
+                                                        }),
                                         // @formatter:off
                                         // 1 Reinvestierung Vodafone Group PLC 699 Stk.
                                         // 2 Reinvestierung Vodafone Group PLC 22 Stk.
@@ -1299,18 +1323,45 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                             return accountTransaction;
                         })
 
-                        // @formatter:off
-                        // Kapitalertragsteuer Optimierung 3,75 EUR
-                        // @formatter:on
-                        .section("amount", "currency", "date") //
-                        .match("^Kapitalertrags(s)?teuer Optimierung [\\.,\\d]+ (?<currency>[\\w]{3})$") //
-                        .find("VERRECHNUNGSKONTO VALUTA BETRAG") //
-                        .match("^.* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) (?<amount>[\\.,\\d]+)$") //
-                        .assign((t, v) -> {
-                            t.setAmount(asAmount(v.get("amount")));
-                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
-                            t.setDateTime(asDate(v.get("date")));
-                        })
+                        .oneOf( //
+                                        // @formatter:off
+                                        // Kapitalertragsteuer Optimierung 3,75 EUR
+                                        // BUCHUNG
+                                        // DE00000000000000000000 23.11.2020 4,26
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("currency", "date", "amount") //
+                                                        .match("^Kapitalertrags(s)?teuer Optimierung [\\.,\\d]+ (?<currency>[\\w]{3})$") //
+                                                        .find("BUCHUNG") //
+                                                        .match("^.* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) (?<amount>[\\.,\\d]+)$") //
+                                                        .assign((t, v) -> {
+                                                            t.setDateTime(asDate(v.get("date")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                        }),
+                                        // @formatter:off
+                                        // HSBC Trinkaus & Burkhardt GmbH 400 Stk. 2,21 EUR
+                                        // TurboC O.End salesfor
+                                        // ISIN: DE000HS33QJ0
+                                        // BUCHUNG
+                                        // VERRECHNUNGSKONTO WERTSTELLUNG BETRAG
+                                        // DE30501108019081234567 11.04.2024 2,21 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "shares", "nameContinued", "isin", "date", "amount", "currency") //
+                                                        .match("^(?<name>.*) (?<shares>[\\.,\\d]+) Stk\\. [\\.,\\d]+ [\\w]{3}$") //
+                                                        .match("^(?<nameContinued>.*)$") //
+                                                        .match("^ISIN: (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
+                                                        .find("BUCHUNG") //
+                                                        .match("^.* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
+                                                        .assign((t, v) -> {
+                                                            t.setSecurity(getOrCreateSecurity(v));
+
+                                                            t.setShares(asShares(v.get("shares")));
+                                                            t.setDateTime(asDate(v.get("date")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                        }))
 
                         .wrap(TransactionItem::new);
     }
@@ -1656,6 +1707,17 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .match("^[\\d] (Barausgleich|Kurswert) [\\.,\\d]+ (?<currency>[\\w]{3})$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
                                         // @formatter:off
+                                        // Bundesrep.Deutschland 1.019 EUR 98,05 % 999,13 EUR
+                                        // Bundesobl.Ser.180 v.2019(24)
+                                        // ISIN: DE0001141802
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "currency", "nameContinued", "isin") //
+                                                        .match("^(?<name>.*) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ % [\\.,\\d]+ [\\w]{3}$")
+                                                        .match("^(?<nameContinued>.*)$")
+                                                        .match("^ISIN: (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$")
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
                                         // This is for the reinvestment of dividends
                                         // We pick the second
                                         //
@@ -1700,6 +1762,19 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .attributes("shares") //
                                                         .match("^[\\d] (Ausbuchung|Tilgung) .* (?<shares>[\\.,\\d]+) Stk\\.$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
+                                        // @formatter:off
+                                        // Bundesrep.Deutschland 1.019 EUR 98,05 % 999,13 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^.* (?<shares>[\\.,\\d]+) [\\w]{3} [\\.,\\d]+ % [\\.,\\d]+ [\\w]{3}$")
+                                                        .assign((t, v) -> {
+                                                            // @formatter:off
+                                                            // Percentage quotation, workaround for bonds
+                                                            // @formatter:on
+                                                            BigDecimal shares = asBigDecimal(v.get("shares"));
+                                                            t.setShares(Values.Share.factorize(shares.doubleValue() / 100));
+                                                        }),
                                         // @formatter:off
                                         // 1 Reinvestierung Vodafone Group PLC 699 Stk.
                                         // 2 Reinvestierung Vodafone Group PLC 22 Stk.
