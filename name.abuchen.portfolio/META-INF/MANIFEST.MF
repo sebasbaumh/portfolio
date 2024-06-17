@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %Bundle-Name
 Bundle-SymbolicName: name.abuchen.portfolio
-Bundle-Version: 0.68.4
+Bundle-Version: 0.69.0
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Export-Package: name.abuchen.portfolio,
  name.abuchen.portfolio.checks,
@@ -21,6 +21,7 @@ Export-Package: name.abuchen.portfolio,
  name.abuchen.portfolio.online.impl,
  name.abuchen.portfolio.online.portfolioreport,
  name.abuchen.portfolio.snapshot,
+ name.abuchen.portfolio.snapshot.balance,
  name.abuchen.portfolio.snapshot.filter,
  name.abuchen.portfolio.snapshot.security,
  name.abuchen.portfolio.snapshot.trades,

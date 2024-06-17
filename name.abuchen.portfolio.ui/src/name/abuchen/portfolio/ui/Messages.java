@@ -17,6 +17,7 @@ public class Messages extends NLS
     public static String AccountMenuImportCSV;
     public static String AccountMenuImportPDF;
     public static String AccountMenuTransfer;
+    public static String AccountMenuTroubleshootBalanceDiscrepancy;
     public static String AttributeSettings;
     public static String AttributeSettings_NoSettingAvailable;
     public static String AttributeSettings_LimitPrice_ColorSettings;
@@ -129,6 +130,12 @@ public class Messages extends NLS
     public static String ColumnConvertedAmount;
     public static String ColumnCount;
     public static String ColumnCountByYear;
+    public static String ColumnDividendsNextExDate;
+    public static String ColumnDividendsNextExDate_MenuLabel;
+    public static String ColumnDividendsNextPaymentDate;
+    public static String ColumnDividendsNextPaymentDate_MenuLabel;
+    public static String ColumnDividendsNextPaymentAmount;
+    public static String ColumnDividendsNextPaymentAmount_MenuLabel;
     public static String ColumnLatest_MenuLabel;
     public static String ColumnLatestDate_MenuLabel;
     public static String ColumnLatestHistoricalDate_MenuLabel;
@@ -163,6 +170,7 @@ public class Messages extends NLS
     public static String RebalanceAmbiguousTooltip;
     public static String RebalanceInexactTooltip;
     public static String ColumnDeltaValue;
+    public static String ColumnDiscrepancy;
     public static String ColumnDistanceFromMovingAverage;
     public static String ColumnDistanceFromMovingAverage_Description;
     public static String ColumnDistanceFromMovingAverage_Option;
@@ -191,6 +199,7 @@ public class Messages extends NLS
     public static String ColumnEntryValue;
     public static String ColumnErrorMessages;
     public static String ColumnExchangeRate;
+    public static String ColumnExpectedBalance;
     public static String ColumnExpectedReturn;
     public static String ColumnExpectedReturn_MenuLabel;
     public static String ColumnExpectedReturn_Description;
@@ -467,6 +476,7 @@ public class Messages extends NLS
     public static String InvestmentPlanMenuGenerateTransactions;
     public static String InvestmentPlanOptionDelivery;
     public static String InvestmentPlanOptionDeposit;
+    public static String InvestmentPlanOptionInterest;
     public static String InvestmentPlanOptionRemoval;
     public static String InvestmentPlanTitleEditPlan;
     public static String InvestmentPlanTitleNewPlan;
@@ -474,6 +484,7 @@ public class Messages extends NLS
     public static String InvestmentPlanTxForMultiplePlansCreated;
     public static String InvestmentPlanTypeBuyDelivery;
     public static String InvestmentPlanTypeDeposit;
+    public static String InvestmentPlanTypeInterest;
     public static String InvestmentPlanTypeRemoval;
     public static String JobLabelAutoSave;
     public static String JobLabelSyncSecuritiesOnline;
@@ -591,6 +602,7 @@ public class Messages extends NLS
     public static String LabelColumns;
     public static String LabelColumnsInReverseOrder;
     public static String LabelCommon;
+    public static String LabelConfigureSharpeRatioRisklessIRR;
     public static String LabelConsumerPriceIndex;
     public static String LabelConvertBuySellIntoDeliveryTransactions;
     public static String LabelCopyToClipboard;
@@ -768,6 +780,7 @@ public class Messages extends NLS
     public static String LabelSelectYearSince;
     public static String LabelSaleTransactionsOnly;
     public static String LabelSemiVolatility;
+    public static String LabelSharpeRatio;
     public static String LabelSettings;
     public static String LabelShowOnlyOneYear;
     public static String LabelShowRawResponse;
@@ -1165,6 +1178,7 @@ public class Messages extends NLS
     public static String SecurityListFilterDateReached;
     public static String SecurityListFilterDistanceFromAth;
     public static String SecurityListFilterHideInactive;
+    public static String SecurityListFilterOnlyInactive;
     public static String SecurityListFilterLimitPriceExceeded;
     public static String SecurityListFilterOnlyExchangeRates;
     public static String SecurityListFilterOnlySecurities;
@@ -1242,6 +1256,7 @@ public class Messages extends NLS
     public static String SecurityTabHistoricalQuotes;
     public static String SecurityTabTrades;
     public static String SecurityTabTransactions;
+    public static String SharpeRatioRisklessIRR;
     public static String SiteAppLandingpage;
     public static String SiteNewAndNoteworthy;
     public static String SplitWizardDefinitionDescription;
@@ -1279,6 +1294,7 @@ public class Messages extends NLS
     public static String TooltipRebalancingIndicator;
     public static String TooltipSecurityLatestPrice;
     public static String TooltipSemiVolatility;
+    public static String TooltipSharpeRatio;
     public static String TooltipTurnoverRate;
     public static String TooltipVolatility;
     public static String TransactionFilter;
@@ -1322,6 +1338,8 @@ public class Messages extends NLS
     public static String OptionDateIsInTheFuture;
     public static String OptionDateIsInThePast;
     public static String YearlyPerformanceHeatmapToolTip;
+    public static String LabelExpandCurrentMonth;
+    public static String LabelTreeExpansionConfig;
     static
     {
         // initialize resource bundle

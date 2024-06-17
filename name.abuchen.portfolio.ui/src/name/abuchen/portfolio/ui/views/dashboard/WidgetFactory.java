@@ -5,14 +5,18 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.Map;
 import java.util.OptionalDouble;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.LongStream;
 
 import name.abuchen.portfolio.math.AllTimeHigh;
 import name.abuchen.portfolio.math.Risk.Drawdown;
 import name.abuchen.portfolio.math.Risk.Volatility;
+import name.abuchen.portfolio.model.ClientProperties;
 import name.abuchen.portfolio.model.Dashboard;
+import name.abuchen.portfolio.model.Dashboard.Widget;
 import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
@@ -25,6 +29,7 @@ import name.abuchen.portfolio.ui.views.dashboard.earnings.EarningsByTaxonomyChar
 import name.abuchen.portfolio.ui.views.dashboard.earnings.EarningsChartWidget;
 import name.abuchen.portfolio.ui.views.dashboard.earnings.EarningsHeatmapWidget;
 import name.abuchen.portfolio.ui.views.dashboard.earnings.EarningsListWidget;
+import name.abuchen.portfolio.ui.views.dashboard.earnings.EarningsListWidget.ExpansionSetting;
 import name.abuchen.portfolio.ui.views.dashboard.heatmap.CostHeatmapWidget;
 import name.abuchen.portfolio.ui.views.dashboard.heatmap.InvestmentHeatmapWidget;
 import name.abuchen.portfolio.ui.views.dashboard.heatmap.PerformanceHeatmapWidget;
@@ -69,7 +74,6 @@ public enum WidgetFactory
                     (widget, data) -> IndicatorWidget.<Double>create(widget, data) //
                                     .with(Values.AnnualizedPercent2) //
                                     .with((ds, period) -> data.calculate(ds, period).getPerformanceIRR()) //
-                                    .withBenchmarkDataSeries(false) //
                                     .build()),
 
     ABSOLUTE_CHANGE(Messages.LabelAbsoluteChange, Messages.LabelStatementOfAssets, //
@@ -174,6 +178,36 @@ public enum WidgetFactory
                                     .withColoredValues(false) //
                                     .build()),
 
+    SHARPE_RATIO(Messages.LabelSharpeRatio, Messages.LabelRiskIndicators, //
+                    (widget, data) -> IndicatorWidget.<Double>create(widget, data) //
+                                    .with(Values.PercentPlain) //
+                                    .withColoredValues(false) //
+                                    .withConfig(delegate -> new RiskFreeRateOfReturnConfig(delegate)) //
+                                    .with((ds, period) -> {
+                                        PerformanceIndex index = data.calculate(ds, period);
+                                        double r = index.getPerformanceIRR();
+                                        double rf = new ClientProperties(data.getClient()).getRiskFreeRateOfReturn();
+                                        double volatility = index.getVolatility().getStandardDeviation();
+
+                                        // handle invalid rf value
+                                        if (Double.isNaN(rf))
+                                            return Double.NaN;
+
+                                        double excessReturn = r - rf;
+                                        return excessReturn / volatility;
+                                    }) //
+                                    .withTooltip((ds, period) -> {
+                                        PerformanceIndex index = data.calculate(ds, period);
+                                        double r = index.getPerformanceIRR();
+                                        double rf = new ClientProperties(data.getClient()).getRiskFreeRateOfReturn();
+                                        double volatility = index.getVolatility().getStandardDeviation();
+                                        double sharpeRatio = (r - rf) / volatility;
+                                        return MessageFormat.format(Messages.TooltipSharpeRatio,
+                                                        Values.Percent5.format(r), Values.Percent2.format(rf),
+                                                        volatility, sharpeRatio);
+                                    }) //
+                                    .build()),
+
     SEMIVOLATILITY(Messages.LabelSemiVolatility, Messages.LabelRiskIndicators, //
                     (widget, data) -> IndicatorWidget.<Double>create(widget, data) //
                                     .with(Values.Percent2) //
@@ -211,7 +245,9 @@ public enum WidgetFactory
     HEATMAP_YEARLY(Messages.LabelYearlyHeatmap, Messages.ClientEditorLabelPerformance,
                     YearlyPerformanceHeatmapWidget::new),
 
-    EARNINGS(Messages.LabelEarningsTransactionList, Messages.LabelEarnings, EarningsListWidget::new),
+    EARNINGS(Messages.LabelEarningsTransactionList, Messages.LabelEarnings, //
+                    config -> config.put(Dashboard.Config.LAYOUT.name(), ExpansionSetting.EXPAND_CURRENT_MONTH.name()),
+                    EarningsListWidget::new),
 
     HEATMAP_EARNINGS(Messages.LabelHeatmapEarnings, Messages.LabelEarnings, EarningsHeatmapWidget::new),
 
@@ -361,14 +397,22 @@ public enum WidgetFactory
 
     private String label;
     private String group;
+    private Consumer<Map<String, String>> defaultConfigFunction;
     private BiFunction<Dashboard.Widget, DashboardData, WidgetDelegate<?>> createFunction;
 
-    private WidgetFactory(String label, String group,
+    private WidgetFactory(String label, String group, Consumer<Map<String, String>> defaultConfigFunction,
                     BiFunction<Dashboard.Widget, DashboardData, WidgetDelegate<?>> createFunction)
     {
         this.label = label;
         this.group = group;
+        this.defaultConfigFunction = defaultConfigFunction;
         this.createFunction = createFunction;
+    }
+
+    private WidgetFactory(String label, String group,
+                    BiFunction<Dashboard.Widget, DashboardData, WidgetDelegate<?>> createFunction)
+    {
+        this(label, group, null, createFunction);
     }
 
     public String getLabel()
@@ -381,8 +425,20 @@ public enum WidgetFactory
         return group;
     }
 
-    public WidgetDelegate<?> create(Dashboard.Widget widget, DashboardData data)
+    public WidgetDelegate<?> constructDelegate(Dashboard.Widget widget, DashboardData data)
     {
         return this.createFunction.apply(widget, data);
+    }
+
+    public Widget constructWidget()
+    {
+        Dashboard.Widget widget = new Dashboard.Widget();
+        widget.setLabel(label);
+        widget.setType(name());
+
+        if (defaultConfigFunction != null)
+            defaultConfigFunction.accept(widget.getConfiguration());
+
+        return widget;
     }
 }

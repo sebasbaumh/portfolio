@@ -17,6 +17,8 @@ public class Messages extends NLS
     public static String AttributesVendorName;
     public static String AttributesLogoName;
     public static String AttributesLogoColumn;
+    public static String BalanceCheckFutureTransactionsWithMatchingValue;
+    public static String BalanceCheckTransactionsOnOtherAccountWithMatchingValue;
     public static String ColumnCapitalGains;
     public static String ColumnCurrencyGains;
     public static String ColumnEarnings;
@@ -176,6 +178,7 @@ public class Messages extends NLS
     public static String LabelStatementOfAssets;
     public static String LabelSuffixEntryCorrected;
     public static String LabelSum;
+    public static String LabelTradeCalendarASX;
     public static String LabelTradeCalendarDefault;
     public static String LabelTradeCalendarEuronext;
     public static String LabelTradeCalendarGermany;

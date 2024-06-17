@@ -1,5 +1,6 @@
 package name.abuchen.portfolio.datatransfer.pdf.swissquote;
 
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.dividend;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.fee;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasAmount;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasCurrencyCode;
@@ -18,6 +19,7 @@ import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasTicker;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasWkn;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.interestCharge;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.purchase;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.sale;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.security;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countAccountTransactions;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countBuySell;
@@ -28,7 +30,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static org.junit.Assert.assertNull;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -46,6 +47,7 @@ import name.abuchen.portfolio.datatransfer.actions.AssertImportActions;
 import name.abuchen.portfolio.datatransfer.actions.CheckCurrenciesAction;
 import name.abuchen.portfolio.datatransfer.pdf.PDFInputFile;
 import name.abuchen.portfolio.datatransfer.pdf.SwissquotePDFExtractor;
+import name.abuchen.portfolio.datatransfer.pdf.TestCoinSearchProvider;
 import name.abuchen.portfolio.model.Account;
 import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
@@ -56,6 +58,7 @@ import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.CurrencyUnit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
+import name.abuchen.portfolio.online.SecuritySearchProvider;
 import name.abuchen.portfolio.online.impl.CoinGeckoQuoteFeed;
 
 @SuppressWarnings("nls")
@@ -64,19 +67,9 @@ public class SwissquotePDFExtractorTest
     SwissquotePDFExtractor extractor = new SwissquotePDFExtractor(new Client())
     {
         @Override
-        protected CoinGeckoQuoteFeed lookupFeed()
+        protected List<SecuritySearchProvider> lookupCryptoProvider()
         {
-            // mock the list of coins to avoid remote call
-            return new CoinGeckoQuoteFeed()
-            {
-                @Override
-                public synchronized List<Coin> getCoins() throws IOException
-                {
-                    return List.of( //
-                                    new Coin("bitcoin", "BTC", "Bitcoin"), //
-                                    new Coin("ethereum", "ETH", "Ethereum"));
-                }
-            };
+            return TestCoinSearchProvider.cryptoProvider();
         }
     };
 
@@ -360,6 +353,68 @@ public class SwissquotePDFExtractorTest
     }
 
     @Test
+    public void testWertpapierKauf06()
+    {
+        SwissquotePDFExtractor extractor = new SwissquotePDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kauf06.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, "USD");
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin(null), hasWkn(null), hasTicker(null), //
+                        hasName("QQQ MAY24 460C"), //
+                        hasCurrencyCode("USD"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(purchase( //
+                        hasDate("2024-03-25T00:00"), hasShares(100.00), //
+                        hasSource("Kauf06.txt"), //
+                        hasNote("Referenz: 539850276"), //
+                        hasAmount("USD", 3144.75), hasGrossValue("USD", 3135.00), //
+                        hasTaxes("USD", 0.00), hasFees("USD", 2.25 + 7.50))));
+    }
+
+    @Test
+    public void testWertpapierKauf07()
+    {
+        SwissquotePDFExtractor extractor = new SwissquotePDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kauf07.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, "USD");
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin(null), hasWkn(null), hasTicker(null), //
+                        hasName("SPY JUL24 527C"), //
+                        hasCurrencyCode("USD"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(purchase( //
+                        hasDate("2024-05-29T00:00"), hasShares(100.00), //
+                        hasSource("Kauf07.txt"), //
+                        hasNote("Referenz: 581899025"), //
+                        hasAmount("USD", 3579.35), hasGrossValue("USD", 3573.00), //
+                        hasTaxes("USD", 0.00), hasFees("USD", 1.35 + 5.00))));
+    }
+
+    @Test
     public void testWertpapierVerkauf01()
     {
         Client client = new Client();
@@ -500,6 +555,130 @@ public class SwissquotePDFExtractorTest
         account.setCurrencyCode("CHF");
         Status s = c.process(entry, account, entry.getPortfolio());
         assertThat(s, is(Status.OK_STATUS));
+    }
+
+    @Test
+    public void testWertpapierVerkauf03()
+    {
+        SwissquotePDFExtractor extractor = new SwissquotePDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Verkauf03.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, "USD");
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin(null), hasWkn(null), hasTicker(null), //
+                        hasName("SPY JUL24 527C"), //
+                        hasCurrencyCode("USD"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(sale( //
+                        hasDate("2024-06-07T00:00"), hasShares(100.00), //
+                        hasSource("Verkauf03.txt"), //
+                        hasNote("Referenz: XXXXXX"), //
+                        hasAmount("USD", 1159.55), hasGrossValue("USD", 1160.00), //
+                        hasTaxes("USD", 0.00), hasFees("USD", 0.45))));
+    }
+
+    @Test
+    public void testWertpapierVerkauf04()
+    {
+        SwissquotePDFExtractor extractor = new SwissquotePDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Verkauf04.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, "USD");
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin(null), hasWkn(null), hasTicker(null), //
+                        hasName("SPY JUL24 530C"), //
+                        hasCurrencyCode("USD"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(sale( //
+                        hasDate("2024-05-24T00:00"), hasShares(100.00), //
+                        hasSource("Verkauf04.txt"), //
+                        hasNote("Referenz: 579076719"), //
+                        hasAmount("USD", 2348.10), hasGrossValue("USD", 2350.00), //
+                        hasTaxes("USD", 0.00), hasFees("USD", 0.90 + 1.00))));
+    }
+
+    @Test
+    public void testWertpapierVerkauf05()
+    {
+        SwissquotePDFExtractor extractor = new SwissquotePDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Verkauf05.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, "USD");
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin(null), hasWkn(null), hasTicker(null), //
+                        hasName("SPY JUL24 527C"), //
+                        hasCurrencyCode("USD"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(sale( //
+                        hasDate("2024-05-31T00:00"), hasShares(100.00), //
+                        hasSource("Verkauf05.txt"), //
+                        hasNote("Referenz: 583488434"), //
+                        hasAmount("USD", 3461.65), hasGrossValue("USD", 3468.00), //
+                        hasTaxes("USD", 0.00), hasFees("USD", 1.35 + 5.00))));
+    }
+
+    @Test
+    public void testWertpapierVerkauf06()
+    {
+        SwissquotePDFExtractor extractor = new SwissquotePDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Verkauf06.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, "USD");
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin(null), hasWkn(null), hasTicker(null), //
+                        hasName("NVDA AUG24 1,130P"), //
+                        hasCurrencyCode("USD"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(sale( //
+                        hasDate("2024-06-04T00:00"), hasShares(100.00), //
+                        hasSource("Verkauf06.txt"), //
+                        hasNote("Referenz: 585697505"), //
+                        hasAmount("USD", 7044.55), hasGrossValue("USD", 7050.00), //
+                        hasTaxes("USD", 0.00), hasFees("USD", 0.45 + 5.00))));
     }
 
     @Test
@@ -801,6 +980,37 @@ public class SwissquotePDFExtractorTest
                         is(Money.of(CurrencyUnit.USD, Values.Amount.factorize(0.00))));
         assertThat(transaction.getUnitSum(Unit.Type.FEE),
                         is(Money.of(CurrencyUnit.USD, Values.Amount.factorize(0.00))));
+    }
+
+    @Test
+    public void testDividende07()
+    {
+        SwissquotePDFExtractor extractor = new SwissquotePDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Dividende07.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, "EUR");
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin("NL0009690239"), hasWkn(null), hasTicker(null), //
+                        hasName("VanEck Global Real Estate ETF"), //
+                        hasCurrencyCode("EUR"))));
+
+        // check dividend transaction
+        assertThat(results, hasItem(dividend( //
+                        hasDate("2023-12-13T00:00"), hasShares(420.000), //
+                        hasSource("Dividende07.txt"), //
+                        hasNote("Referenz: 548895976"), //
+                        hasAmount("EUR", 114.24), hasGrossValue("EUR", 134.40), //
+                        hasTaxes("EUR", 20.16), hasFees("EUR", 0.00))));
     }
 
     @Test
