@@ -1,6 +1,7 @@
 package name.abuchen.portfolio.datatransfer.pdf.consorsbank;
 
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.check;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.deposit;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.dividend;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasAmount;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasCurrencyCode;
@@ -16,9 +17,13 @@ import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasSource;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasTaxes;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasTicker;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasWkn;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.interest;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.purchase;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.removal;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.sale;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.security;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.taxes;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.withFailureMessage;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countAccountTransactions;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countBuySell;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countSecurities;
@@ -1470,6 +1475,70 @@ public class ConsorsbankPDFExtractorTest
                         hasNote("269730691.001 | Stückzins 356 Tage 25,60 EUR"), //
                         hasAmount("EUR", 6241.78), hasGrossValue("EUR", 6240.83), //
                         hasTaxes("EUR", 0.00), hasFees("EUR", 0.95))));
+    }
+
+    @Test
+    public void testWertpapierKauf27()
+    {
+        ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kauf27.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin("IE00B6R52259"), hasWkn("A1JMDF"), hasTicker(null), //
+                        hasName("ISHSV-MSCI ACWI DL A"), //
+                        hasCurrencyCode("EUR"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(purchase( //
+                        hasDate("2020-05-04T09:30:41"), hasShares(1.16993), //
+                        hasSource("Kauf27.txt"), //
+                        hasNote("164197312.001"), //
+                        hasAmount("EUR", 50.00), hasGrossValue("EUR", 49.26), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.74))));
+    }
+
+    @Test
+    public void testWertpapierKauf28()
+    {
+        ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kauf28.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin("IE00BK1PV551"), hasWkn("A1XEY2"), hasTicker(null), //
+                        hasName("X(IE)-MSCI WORLD 1D"), //
+                        hasCurrencyCode("EUR"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(withFailureMessage( //
+                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        purchase( //
+                                        hasDate("2024-06-03T09:30:09"), hasShares(4.09855), //
+                                        hasSource("Kauf28.txt"), //
+                                        hasNote("298093049.001"), //
+                                        hasAmount("EUR", 0.00), hasGrossValue("EUR", 0.00), //
+                                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.00)))));
     }
 
     @Test
@@ -4077,13 +4146,13 @@ public class ConsorsbankPDFExtractorTest
     }
 
     @Test
-    public void testDepotauszug01()
+    public void testKontoauszug01()
     {
         ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
 
         List<Exception> errors = new ArrayList<>();
 
-        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Depotauszug01.txt"), errors);
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug01.txt"), errors);
 
         assertThat(errors, empty());
         assertThat(results.size(), is(9));
@@ -4101,7 +4170,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2012-08-21T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(6500.00))));
-        assertThat(transaction.getSource(), is("Depotauszug01.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug01.txt"));
         assertThat(transaction.getNote(), is("Gutschrift"));
 
         item = iter.next();
@@ -4111,7 +4180,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2012-08-22T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(5500.00))));
-        assertThat(transaction.getSource(), is("Depotauszug01.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug01.txt"));
         assertThat(transaction.getNote(), is("Gutschrift"));
 
         item = iter.next();
@@ -4121,7 +4190,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2012-08-22T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(757.00))));
-        assertThat(transaction.getSource(), is("Depotauszug01.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug01.txt"));
         assertThat(transaction.getNote(), is("Gutschrift"));
 
         item = iter.next();
@@ -4131,7 +4200,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2012-08-22T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(10000.00))));
-        assertThat(transaction.getSource(), is("Depotauszug01.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug01.txt"));
         assertThat(transaction.getNote(), is("Gutschrift"));
 
         item = iter.next();
@@ -4141,7 +4210,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2012-08-22T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(2800.00))));
-        assertThat(transaction.getSource(), is("Depotauszug01.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug01.txt"));
         assertThat(transaction.getNote(), is("Gutschrift"));
 
         item = iter.next();
@@ -4151,7 +4220,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2012-08-31T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(2358.20))));
-        assertThat(transaction.getSource(), is("Depotauszug01.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug01.txt"));
         assertThat(transaction.getNote(), is("Gutschrift"));
 
         item = iter.next();
@@ -4161,7 +4230,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2012-09-03T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(4900.00))));
-        assertThat(transaction.getSource(), is("Depotauszug01.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug01.txt"));
         assertThat(transaction.getNote(), is("D-Gutschrift"));
 
         item = iter.next();
@@ -4171,7 +4240,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.REMOVAL));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2012-08-21T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(25308.00))));
-        assertThat(transaction.getSource(), is("Depotauszug01.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug01.txt"));
         assertThat(transaction.getNote(), is("Überweisung"));
 
         item = iter.next();
@@ -4181,18 +4250,18 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.REMOVAL));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2012-08-23T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(12358.00))));
-        assertThat(transaction.getSource(), is("Depotauszug01.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug01.txt"));
         assertThat(transaction.getNote(), is("Überweisung"));
     }
 
     @Test
-    public void testDepotauszug02()
+    public void testKontoauszug02()
     {
         ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
 
         List<Exception> errors = new ArrayList<>();
 
-        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Depotauszug02.txt"), errors);
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug02.txt"), errors);
 
         assertThat(errors, empty());
         assertThat(results.size(), is(2));
@@ -4210,7 +4279,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2020-08-10T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(15000.00))));
-        assertThat(transaction.getSource(), is("Depotauszug02.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug02.txt"));
         assertThat(transaction.getNote(), is("Euro-Überweisung"));
 
         item = iter.next();
@@ -4220,18 +4289,18 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2020-08-11T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(1000.00))));
-        assertThat(transaction.getSource(), is("Depotauszug02.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug02.txt"));
         assertThat(transaction.getNote(), is("Euro-Überweisung"));
     }
 
     @Test
-    public void testDepotauszug03()
+    public void testKontoauszug03()
     {
         ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
 
         List<Exception> errors = new ArrayList<>();
 
-        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Depotauszug03.txt"), errors);
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug03.txt"), errors);
 
         assertThat(errors, empty());
         assertThat(results.size(), is(2));
@@ -4249,28 +4318,28 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.REMOVAL));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2021-12-21T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(6000.00))));
-        assertThat(transaction.getSource(), is("Depotauszug03.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug03.txt"));
         assertThat(transaction.getNote(), is("Euro-Überweisung"));
 
         item = iter.next();
 
         // assert transaction
         transaction = (AccountTransaction) item.getSubject();
-        assertThat(transaction.getType(), is(AccountTransaction.Type.FEES));
+        assertThat(transaction.getType(), is(AccountTransaction.Type.INTEREST_CHARGE));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2021-12-31T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(1.22))));
-        assertThat(transaction.getSource(), is("Depotauszug03.txt"));
-        assertThat(transaction.getNote(), is("Abschluss"));
+        assertThat(transaction.getSource(), is("Kontoauszug03.txt"));
+        assertNull(transaction.getNote());
     }
 
     @Test
-    public void testDepotauszug04()
+    public void testKontoauszug04()
     {
         ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
 
         List<Exception> errors = new ArrayList<>();
 
-        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Depotauszug04.txt"), errors);
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug04.txt"), errors);
 
         assertThat(errors, empty());
         assertThat(results.size(), is(3));
@@ -4288,7 +4357,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2015-05-20T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(3000.00))));
-        assertThat(transaction.getSource(), is("Depotauszug04.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug04.txt"));
         assertThat(transaction.getNote(), is("Euro-Überweisung"));
 
         item = iter.next();
@@ -4298,7 +4367,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2015-05-20T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(10000.00))));
-        assertThat(transaction.getSource(), is("Depotauszug04.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug04.txt"));
         assertThat(transaction.getNote(), is("Euro-Überweisung"));
 
         item = iter.next();
@@ -4308,18 +4377,18 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.REMOVAL));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2015-05-07T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(35000.00))));
-        assertThat(transaction.getSource(), is("Depotauszug04.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug04.txt"));
         assertThat(transaction.getNote(), is("Euro-Überweisung"));
     }
 
     @Test
-    public void testDepotauszug05()
+    public void testKontoauszug05()
     {
         ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
 
         List<Exception> errors = new ArrayList<>();
 
-        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Depotauszug05.txt"), errors);
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug05.txt"), errors);
 
         assertThat(errors, empty());
         assertThat(results.size(), is(2));
@@ -4337,7 +4406,7 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.DEPOSIT));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2016-12-02T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(50.00))));
-        assertThat(transaction.getSource(), is("Depotauszug05.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug05.txt"));
         assertThat(transaction.getNote(), is("D-Gutschrift"));
 
         item = iter.next();
@@ -4347,7 +4416,123 @@ public class ConsorsbankPDFExtractorTest
         assertThat(transaction.getType(), is(AccountTransaction.Type.REMOVAL));
         assertThat(transaction.getDateTime(), is(LocalDateTime.parse("2016-12-12T00:00")));
         assertThat(transaction.getMonetaryAmount(), is(Money.of(CurrencyUnit.EUR, Values.Amount.factorize(50.00))));
-        assertThat(transaction.getSource(), is("Depotauszug05.txt"));
+        assertThat(transaction.getSource(), is("Kontoauszug05.txt"));
         assertThat(transaction.getNote(), is("DAUERAUFTRAG"));
+    }
+
+    @Test
+    public void testKontoauszug06()
+    {
+        ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug06.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(2L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transaction
+        assertThat(results, hasItem(taxes(hasDate("2024-03-31"), hasAmount("EUR", 68.98), //
+                        hasSource("Kontoauszug06.txt"), hasNote(null))));
+
+        // assert transaction
+        assertThat(results, hasItem(interest(hasDate("2024-03-31"), hasAmount("EUR", 261.56), //
+                        hasSource("Kontoauszug06.txt"), hasNote(null))));
+    }
+
+    @Test
+    public void testKontoauszug07()
+    {
+        ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug07.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(6L));
+        assertThat(results.size(), is(6));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-09-06"), hasAmount("EUR", 10000.00), //
+                        hasSource("Kontoauszug07.txt"), hasNote("Euro-Überweisung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-09-14"), hasAmount("EUR", 19850.00), //
+                        hasSource("Kontoauszug07.txt"), hasNote("Euro-Überweisung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-09-27"), hasAmount("EUR", 9500.00), //
+                        hasSource("Kontoauszug07.txt"), hasNote("Euro-Überweisung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-09-28"), hasAmount("EUR", 10000.00), //
+                        hasSource("Kontoauszug07.txt"), hasNote("Euro-Überweisung"))));
+
+        // assert transaction
+        assertThat(results, hasItem(taxes(hasDate("2023-09-30"), hasAmount("EUR", 22.20), //
+                        hasSource("Kontoauszug07.txt"), hasNote(null))));
+
+        // assert transaction
+        assertThat(results, hasItem(interest(hasDate("2023-09-30"), hasAmount("EUR", 84.21), //
+                        hasSource("Kontoauszug07.txt"), hasNote(null))));
+    }
+
+    @Test
+    public void testKontoabschluss01()
+    {
+        ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoabschluss01.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(2L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transaction
+        assertThat(results, hasItem(interest(hasDate("2024-03-31"), hasAmount("EUR", 261.56), //
+                        hasSource("Kontoabschluss01.txt"), hasNote(null))));
+
+        // assert transaction
+        assertThat(results, hasItem(taxes(hasDate("2024-03-31"), hasAmount("EUR", 68.98), //
+                        hasSource("Kontoabschluss01.txt"), hasNote(null))));
+    }
+
+    @Test
+    public void testKontoabschluss02()
+    {
+        ConsorsbankPDFExtractor extractor = new ConsorsbankPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoabschluss02.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(2L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transaction
+        assertThat(results, hasItem(taxes(hasDate("2023-09-30"), hasAmount("EUR", 22.20), //
+                        hasSource("Kontoabschluss02.txt"), hasNote(null))));
+
+        // assert transaction
+        assertThat(results, hasItem(interest(hasDate("2023-09-30"), hasAmount("EUR", 84.21), //
+                        hasSource("Kontoabschluss02.txt"), hasNote(null))));
     }
 }

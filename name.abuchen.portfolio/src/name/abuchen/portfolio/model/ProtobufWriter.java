@@ -1,5 +1,6 @@
 package name.abuchen.portfolio.model;
 
+import static name.abuchen.portfolio.util.CollectorsUtil.toMutableList;
 import static name.abuchen.portfolio.util.ProtobufUtil.asDecimalValue;
 import static name.abuchen.portfolio.util.ProtobufUtil.asTimestamp;
 import static name.abuchen.portfolio.util.ProtobufUtil.asUpdatedAtTimestamp;
@@ -36,6 +37,7 @@ import name.abuchen.portfolio.model.proto.v1.PDashboard;
 import name.abuchen.portfolio.model.proto.v1.PFullHistoricalPrice;
 import name.abuchen.portfolio.model.proto.v1.PHistoricalPrice;
 import name.abuchen.portfolio.model.proto.v1.PInvestmentPlan;
+import name.abuchen.portfolio.model.proto.v1.PInvestmentPlan.Type;
 import name.abuchen.portfolio.model.proto.v1.PKeyValue;
 import name.abuchen.portfolio.model.proto.v1.PMap;
 import name.abuchen.portfolio.model.proto.v1.PPortfolio;
@@ -167,9 +169,9 @@ import name.abuchen.portfolio.money.Money;
             if (newSecurity.hasFeedURL())
                 security.setFeedURL(newSecurity.getFeedURL());
 
-            security.addAllPrices(newSecurity.getPricesList().stream()
+            security.protobufSetPrices(newSecurity.getPricesList().stream()
                             .map(p -> new SecurityPrice(LocalDate.ofEpochDay(p.getDate()), p.getClose()))
-                            .collect(Collectors.toList()));
+                            .collect(toMutableList()));
 
             if (newSecurity.hasLatestFeed())
                 security.setLatestFeed(newSecurity.getLatestFeed());
@@ -752,6 +754,25 @@ import name.abuchen.portfolio.money.Money;
             plan.setInterval(newPlan.getInterval());
             plan.setAmount(newPlan.getAmount());
             plan.setFees(newPlan.getFees());
+            plan.setTaxes(newPlan.getTaxes());
+
+            switch (newPlan.getType())
+            {
+                case PURCHASE_OR_DELIVERY:
+                    plan.setType(InvestmentPlan.Type.PURCHASE_OR_DELIVERY);
+                    break;
+                case DEPOSIT:
+                    plan.setType(InvestmentPlan.Type.DEPOSIT);
+                    break;
+                case INTEREST:
+                    plan.setType(InvestmentPlan.Type.INTEREST);
+                    break;
+                case REMOVAL:
+                    plan.setType(InvestmentPlan.Type.REMOVAL);
+                    break;
+                default:
+                    throw new UnsupportedOperationException();
+            }
 
             for (String uuid : newPlan.getTransactionsList())
             {
@@ -1291,6 +1312,25 @@ import name.abuchen.portfolio.money.Money;
             newPlan.setInterval(plan.getInterval());
             newPlan.setAmount(plan.getAmount());
             newPlan.setFees(plan.getFees());
+            newPlan.setTaxes(plan.getTaxes());
+
+            switch (plan.getPlanType())
+            {
+                case PURCHASE_OR_DELIVERY:
+                    newPlan.setType(Type.PURCHASE_OR_DELIVERY);
+                    break;
+                case DEPOSIT:
+                    newPlan.setType(Type.DEPOSIT);
+                    break;
+                case INTEREST:
+                    newPlan.setType(Type.INTEREST);
+                    break;
+                case REMOVAL:
+                    newPlan.setType(Type.REMOVAL);
+                    break;
+                default:
+                    throw new UnsupportedOperationException();
+            }
 
             plan.getTransactions().forEach(t -> newPlan.addTransactions(t.getUUID()));
 

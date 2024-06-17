@@ -18,7 +18,7 @@ public class InvestmentPlanModel extends AbstractModel
 {
     public enum Properties
     {
-        calculationStatus, name, security, securityCurrencyCode, portfolio, account, accountCurrencyCode, start, interval, amount, fees, transactionCurrencyCode, autoGenerate; // NOSONAR
+        calculationStatus, name, security, securityCurrencyCode, portfolio, account, accountCurrencyCode, start, interval, amount, grossAmount, fees, taxes, transactionCurrencyCode, autoGenerate; // NOSONAR
     }
 
     public static final Account DELIVERY = new Account(Messages.InvestmentPlanOptionDelivery);
@@ -38,8 +38,10 @@ public class InvestmentPlanModel extends AbstractModel
     private LocalDate start = LocalDate.now();
 
     private int interval = 1;
+    private long grossAmount;
     private long amount;
     private long fees;
+    private long taxes;
 
     private IStatus calculationStatus = ValidationStatus.ok();
 
@@ -51,7 +53,8 @@ public class InvestmentPlanModel extends AbstractModel
 
     private boolean isAccountPlan()
     {
-        return planType == InvestmentPlan.Type.DEPOSIT || planType == InvestmentPlan.Type.REMOVAL;
+        return planType == InvestmentPlan.Type.DEPOSIT || planType == InvestmentPlan.Type.REMOVAL
+                        || planType == InvestmentPlan.Type.INTEREST;
     }
 
     @Override
@@ -62,15 +65,18 @@ public class InvestmentPlanModel extends AbstractModel
             additionalText = ": " + Messages.InvestmentPlanTypeDeposit; //$NON-NLS-1$
         else if (planType == InvestmentPlan.Type.REMOVAL)
             additionalText = ": " + Messages.InvestmentPlanTypeRemoval; //$NON-NLS-1$
-        return (source != null ? Messages.InvestmentPlanTitleEditPlan : Messages.InvestmentPlanTitleNewPlan) + additionalText;
+        else if (planType == InvestmentPlan.Type.INTEREST)
+            additionalText = ": " + Messages.InvestmentPlanTypeInterest; //$NON-NLS-1$
+        return (source != null ? Messages.InvestmentPlanTitleEditPlan : Messages.InvestmentPlanTitleNewPlan)
+                        + additionalText;
     }
 
     @Override
     public void applyChanges()
     {
-        if (security == null && planType == InvestmentPlan.Type.BUY_OR_DELIVERY)
+        if (security == null && planType == InvestmentPlan.Type.PURCHASE_OR_DELIVERY)
             throw new UnsupportedOperationException(Messages.MsgMissingSecurity);
-        if (portfolio == null && planType == InvestmentPlan.Type.BUY_OR_DELIVERY)
+        if (portfolio == null && planType == InvestmentPlan.Type.PURCHASE_OR_DELIVERY)
             throw new UnsupportedOperationException(Messages.MsgMissingPortfolio);
         if (account == null)
             throw new UnsupportedOperationException(Messages.MsgMissingAccount);
@@ -84,14 +90,16 @@ public class InvestmentPlanModel extends AbstractModel
         }
 
         plan.setName(name);
+        plan.setType(planType);
         plan.setSecurity(isAccountPlan() ? null : security);
         plan.setPortfolio(isAccountPlan() ? null : portfolio);
         plan.setAccount(account.equals(DELIVERY) ? null : account);
         plan.setAutoGenerate(autoGenerate);
         plan.setStart(start);
         plan.setInterval(interval);
-        plan.setAmount((planType == Type.REMOVAL) ? -amount : amount);
+        plan.setAmount(amount);
         plan.setFees(fees);
+        plan.setTaxes(taxes);
     }
 
     @Override
@@ -111,7 +119,7 @@ public class InvestmentPlanModel extends AbstractModel
 
         this.name = plan.getName();
         this.planType = plan.getPlanType();
-        if (planType == Type.BUY_OR_DELIVERY)
+        if (planType == Type.PURCHASE_OR_DELIVERY)
         {
             this.account = plan.getAccount() != null ? plan.getAccount() : DELIVERY;
             this.portfolio = plan.getPortfolio();
@@ -127,11 +135,9 @@ public class InvestmentPlanModel extends AbstractModel
         this.start = plan.getStart();
         this.interval = plan.getInterval();
         this.amount = plan.getAmount();
-        if (planType == Type.REMOVAL)
-        {
-            this.amount = -this.amount;
-        }
+        this.grossAmount = plan.getAmount() - plan.getFees() + plan.getTaxes();
         this.fees = plan.getFees();
+        this.taxes = plan.getTaxes();
     }
 
     @Override
@@ -142,18 +148,25 @@ public class InvestmentPlanModel extends AbstractModel
 
     private IStatus calculateStatus()
     {
-        if ((account == null || portfolio == null) && planType == Type.BUY_OR_DELIVERY)
+        if ((account == null || portfolio == null) && planType == Type.PURCHASE_OR_DELIVERY)
             return ValidationStatus.error(MessageFormat.format(Messages.MsgDialogInputRequired, Messages.ColumnPeer));
 
         if (name == null || name.trim().length() == 0)
             return ValidationStatus.error(MessageFormat.format(Messages.MsgDialogInputRequired, Messages.ColumnName));
 
-        if (security == null && planType == Type.BUY_OR_DELIVERY)
+        if (security == null && planType == Type.PURCHASE_OR_DELIVERY)
             return ValidationStatus
                             .error(MessageFormat.format(Messages.MsgDialogInputRequired, Messages.MsgMissingSecurity));
 
         if (amount == 0L)
             return ValidationStatus.error(MessageFormat.format(Messages.MsgDialogInputRequired, Messages.ColumnAmount));
+
+        if (grossAmount == 0L)
+            return ValidationStatus
+                            .error(MessageFormat.format(Messages.MsgDialogInputRequired, Messages.ColumnGrossValue));
+
+        if (grossAmount + fees - taxes != amount)
+            return ValidationStatus.error(Messages.MsgIncorrectSubTotal);
 
         return ValidationStatus.ok();
     }
@@ -259,6 +272,25 @@ public class InvestmentPlanModel extends AbstractModel
     public void setAmount(long amount)
     {
         firePropertyChange(Properties.amount.name(), this.amount, this.amount = amount); // NOSONAR
+
+        var newGrossAmount = Math.abs(amount - fees + taxes);
+        firePropertyChange(Properties.grossAmount.name(), this.grossAmount, this.grossAmount = newGrossAmount); // NOSONAR
+
+        firePropertyChange(Properties.calculationStatus.name(), this.calculationStatus,
+                        this.calculationStatus = calculateStatus()); // NOSONAR
+    }
+
+    public long getGrossAmount()
+    {
+        return grossAmount;
+    }
+
+    public void setGrossAmount(long grossAmount)
+    {
+        firePropertyChange(Properties.grossAmount.name(), this.grossAmount, this.grossAmount = grossAmount); // NOSONAR
+
+        var newAmount = grossAmount + fees - taxes;
+        firePropertyChange(Properties.amount.name(), this.amount, this.amount = newAmount); // NOSONAR
         firePropertyChange(Properties.calculationStatus.name(), this.calculationStatus,
                         this.calculationStatus = calculateStatus()); // NOSONAR
     }
@@ -271,6 +303,26 @@ public class InvestmentPlanModel extends AbstractModel
     public void setFees(long fees)
     {
         firePropertyChange(Properties.fees.name(), this.fees, this.fees = fees); // NOSONAR
+
+        var newAmount = grossAmount + fees - taxes;
+        firePropertyChange(Properties.amount.name(), this.amount, this.amount = newAmount); // NOSONAR
+        firePropertyChange(Properties.calculationStatus.name(), this.calculationStatus,
+                        this.calculationStatus = calculateStatus()); // NOSONAR
+    }
+
+    public long getTaxes()
+    {
+        return taxes;
+    }
+
+    public void setTaxes(long taxes)
+    {
+        firePropertyChange(Properties.taxes.name(), this.taxes, this.taxes = taxes); // NOSONAR
+
+        var newAmount = grossAmount + fees - taxes;
+        firePropertyChange(Properties.amount.name(), this.amount, this.amount = newAmount); // NOSONAR
+        firePropertyChange(Properties.calculationStatus.name(), this.calculationStatus,
+                        this.calculationStatus = calculateStatus()); // NOSONAR
     }
 
     public String getSecurityCurrencyCode()
@@ -285,7 +337,8 @@ public class InvestmentPlanModel extends AbstractModel
 
     public String getReferenceAccountCurrencyCode()
     {
-        return portfolio != null && planType == Type.BUY_OR_DELIVERY ? portfolio.getReferenceAccount().getCurrencyCode()
+        return portfolio != null && planType == Type.PURCHASE_OR_DELIVERY
+                        ? portfolio.getReferenceAccount().getCurrencyCode()
                         : ""; //$NON-NLS-1$
     }
 

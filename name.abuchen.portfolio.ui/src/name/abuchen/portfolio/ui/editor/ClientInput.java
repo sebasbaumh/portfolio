@@ -100,6 +100,9 @@ public class ClientInput
      */
     public void dispose()
     {
+        // list of listeners might be modified during onDisposed callback
+        new ArrayList<>(this.listeners).forEach(ClientInputListener::onDisposed);
+
         for (Job job : regularJobs)
             job.cancel();
 
@@ -595,7 +598,7 @@ public class ClientInput
             regularJobs.add(job);
 
             new SyncOnlineSecuritiesJob(client).schedule(5000);
-            new UpdateDividendsJob(getClient()).schedule(7000);
+            new UpdateDividendsJob(getClient(), onlyActive).schedule(7000);
         }
     }
 

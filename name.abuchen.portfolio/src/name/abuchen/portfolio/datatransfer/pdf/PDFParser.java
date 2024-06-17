@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -209,6 +210,9 @@ import name.abuchen.portfolio.model.TypedMap;
 
         public void set(Transaction<?> transaction)
         {
+            // validate transaction only after it has been constructed
+            transaction.validate();
+
             this.transaction = transaction;
         }
 
@@ -342,6 +346,12 @@ import name.abuchen.portfolio.model.TypedMap;
             sections.add(new Section<T>(this, null)
             {
                 @Override
+                /* package */ List<String> getIds()
+                {
+                    return subSections.stream().filter(s -> s.id != null).map(s -> s.id).toList();
+                }
+
+                @Override
                 public void parse(String filename, DocumentContext documentContext, String[] lines, int lineNo,
                                 int lineNoEnd, TypedMap ctx, T target)
                 {
@@ -366,7 +376,7 @@ import name.abuchen.portfolio.model.TypedMap;
                     if (!isOptional)
                         throw new IllegalArgumentException(MessageFormat.format(
                                         Messages.MsgErrorNoneOfSubSectionsMatched, String.valueOf(subSections.size()),
-                                        String.join("; ", errors), lineNo + 1, //$NON-NLS-1$
+                                        String.join(";\n", errors), lineNo + 1, //$NON-NLS-1$
                                         lineNoEnd + 1));
                 }
             });
@@ -388,6 +398,20 @@ import name.abuchen.portfolio.model.TypedMap;
         {
             this.wrapper = wrapper;
             return this;
+        }
+
+        /* package */ void validate()
+        {
+            var sectionIds = new HashSet<String>();
+
+            for (Section<T> section : this.sections)
+            {
+                for (String id : section.getIds())
+                {
+                    if (!sectionIds.add(id))
+                        throw new IllegalArgumentException("duplicate section id " + id); //$NON-NLS-1$
+                }
+            }
         }
 
         public void parse(String filename, DocumentContext documentContext, List<Item> items, String[] lines,
@@ -530,6 +554,7 @@ import name.abuchen.portfolio.model.TypedMap;
 
     /* package */static class Section<T>
     {
+        private String id;
         private boolean isOptional = false;
         private boolean isMultipleTimes = false;
         private Transaction<T> transaction;
@@ -547,6 +572,17 @@ import name.abuchen.portfolio.model.TypedMap;
         {
             this.transaction = transaction;
             this.attributes = attributes;
+        }
+
+        public Section<T> id(String id)
+        {
+            this.id = id;
+            return this;
+        }
+
+        /* package */ List<String> getIds()
+        {
+            return id != null ? List.of(id) : Collections.emptyList();
         }
 
         public Section<T> attributes(String... attributes)
@@ -685,9 +721,9 @@ import name.abuchen.portfolio.model.TypedMap;
 
             if (patternNo < pattern.size() && !sectionFoundAtLeastOnce && !isOptional) //
                 throw new IllegalArgumentException( //
-                                Arrays.toString(attributes) + MessageFormat.format( //
+                                Arrays.toString(attributes) + " " + MessageFormat.format( //$NON-NLS-1$
                                                 Messages.MsgErrorNotAllPatternMatched, //
-                                                patternNo, pattern.size(), pattern.toString(), //
+                                                patternNo, pattern.size(), id != null ? id : pattern.toString(), //
                                                 filename, //
                                                 lineNo + 1, lineNoEnd + 1));
         }

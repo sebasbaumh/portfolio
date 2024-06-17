@@ -1,6 +1,7 @@
 package name.abuchen.portfolio.online;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,10 @@ public interface SecuritySearchProvider
 
     public enum Type
     {
-        ALL(Messages.LabelSearchAll), SHARE(Messages.LabelSearchShare), BOND(Messages.LabelSearchBond);
+        ALL(Messages.LabelSearchAll), //
+        SHARE(Messages.LabelSearchShare), //
+        BOND(Messages.LabelSearchBond), //
+        CRYPTO(Messages.LabelSearchCryptoCurrency);
 
         private final String label;
 
@@ -69,9 +73,20 @@ public interface SecuritySearchProvider
         }
     }
 
-    String getName();
+    default String getName()
+    {
+        return getClass().getSimpleName();
+    }
 
-    List<ResultItem> search(String query, Type type) throws IOException;
+    default List<ResultItem> search(String query, Type type) throws IOException
+    {
+        return Collections.emptyList();
+    }
+
+    default List<ResultItem> getCoins() throws IOException
+    {
+        return Collections.emptyList();
+    }
 
     @SuppressWarnings("nls")
     static String convertType(String type)
