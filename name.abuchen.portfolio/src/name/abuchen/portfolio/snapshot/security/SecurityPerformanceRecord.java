@@ -1,15 +1,14 @@
 package name.abuchen.portfolio.snapshot.security;
 
+import static name.abuchen.portfolio.util.CollectorsUtil.toMutableList;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import name.abuchen.portfolio.math.Risk;
 import name.abuchen.portfolio.model.AccountTransaction;
@@ -35,64 +34,9 @@ import name.abuchen.portfolio.snapshot.trail.TrailProvider;
 import name.abuchen.portfolio.snapshot.trail.TrailRecord;
 import name.abuchen.portfolio.util.Interval;
 
-public final class SecurityPerformanceRecord implements Adaptable, TrailProvider, SecurityPerformanceIndicator.Costs
+public final class SecurityPerformanceRecord extends BaseSecurityPerformanceRecord
+                implements Adaptable, TrailProvider, SecurityPerformanceIndicator.Costs
 {
-    public enum Periodicity
-    {
-        UNKNOWN, NONE, INDEFINITE, ANNUAL, SEMIANNUAL, QUARTERLY, MONTHLY, IRREGULAR;
-
-        private static final ResourceBundle RESOURCES = ResourceBundle
-                        .getBundle("name.abuchen.portfolio.snapshot.labels"); //$NON-NLS-1$
-
-        @Override
-        public String toString()
-        {
-            return RESOURCES.getString("dividends." + name()); //$NON-NLS-1$
-        }
-    }
-
-    public interface Trails // NOSONAR
-    {
-        String FIFO_COST = "fifoCost"; //$NON-NLS-1$
-        String REALIZED_CAPITAL_GAINS = "realizedCapitalGains"; //$NON-NLS-1$
-        String REALIZED_CAPITAL_GAINS_FOREX = "realizedCapitalGainsForex"; //$NON-NLS-1$
-        String UNREALIZED_CAPITAL_GAINS = "unrealizedCapitalGains"; //$NON-NLS-1$
-        String UNREALIZED_CAPITAL_GAINS_FOREX = "unrealizedCapitalGainsForex"; //$NON-NLS-1$
-    }
-
-    /* package */ static final class Builder
-    {
-        private final Security security;
-        private final List<CalculationLineItem> lineItems = new ArrayList<>();
-
-        public Builder(Security security)
-        {
-            this.security = security;
-        }
-
-        public void addLineItem(CalculationLineItem item)
-        {
-            this.lineItems.add(item);
-        }
-
-        public boolean isEmpty()
-        {
-            return this.lineItems.isEmpty();
-        }
-
-        @SafeVarargs
-        public final SecurityPerformanceRecord build(Client client, CurrencyConverter converter, Interval interval,
-                        Class<? extends SecurityPerformanceIndicator>... indicators)
-        {
-            SecurityPerformanceRecord record = new SecurityPerformanceRecord(security, lineItems);
-            record.calculate(client, converter, interval, indicators);
-            return record;
-        }
-    }
-
-    private final Security security;
-    private final List<CalculationLineItem> lineItems;
-
     /**
      * internal rate of return of security {@link #calculateIRR()}
      */
@@ -232,20 +176,10 @@ public final class SecurityPerformanceRecord implements Adaptable, TrailProvider
     private CapitalGainsRecord realizedCapitalGains;
     private CapitalGainsRecord unrealizedCapitalGains;
 
-    private SecurityPerformanceRecord(Security security, List<CalculationLineItem> lineItems)
+    /* package */ SecurityPerformanceRecord(Client client, Security security, CurrencyConverter converter,
+                    Interval interval)
     {
-        this.security = security;
-        this.lineItems = lineItems;
-    }
-
-    public Security getSecurity()
-    {
-        return security;
-    }
-
-    public String getSecurityName()
-    {
-        return getSecurity().getName();
+        super(client, security, converter, interval);
     }
 
     public String getNote()
@@ -428,11 +362,6 @@ public final class SecurityPerformanceRecord implements Adaptable, TrailProvider
         return unrealizedCapitalGains;
     }
 
-    public List<CalculationLineItem> getLineItems()
-    {
-        return lineItems;
-    }
-
     @Override
     public <T> T adapt(Class<T> type)
     {
@@ -471,11 +400,8 @@ public final class SecurityPerformanceRecord implements Adaptable, TrailProvider
     }
 
     @SafeVarargs
-    /* package */ final void calculate(Client client, CurrencyConverter converter, Interval interval,
-                    Class<? extends SecurityPerformanceIndicator>... indicators)
+    /* package */ final void calculate(Class<? extends SecurityPerformanceIndicator>... indicators)
     {
-        Collections.sort(lineItems, new CalculationLineItemComparator());
-
         Set<Class<? extends SecurityPerformanceIndicator>> flags = new HashSet<>();
         Arrays.stream(indicators).forEach(flags::add);
 
@@ -540,7 +466,7 @@ public final class SecurityPerformanceRecord implements Adaptable, TrailProvider
     private void calculateTTWROR(Client client, CurrencyConverter converter, Interval interval)
     {
         PerformanceIndex index = PerformanceIndex.forInvestment(client, converter, security, interval,
-                        new ArrayList<Exception>());
+                        new ArrayList<>());
         this.twror = index.getFinalAccumulatedPercentage();
         this.twrorpa = index.getFinalAccumulatedAnnualizedPercentage();
         this.drawdown = index.getDrawdown();
@@ -609,7 +535,7 @@ public final class SecurityPerformanceRecord implements Adaptable, TrailProvider
                             return type == Type.DIVIDENDS;
                         }) //
                         .map(CalculationLineItem::of) //
-                        .collect(Collectors.toList());
+                        .collect(toMutableList());
 
         DividendCalculation allDividends = Calculation.perform(DividendCalculation.class, converter, security,
                         allDividendPayments);
