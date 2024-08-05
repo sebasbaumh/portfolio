@@ -21,6 +21,7 @@ import name.abuchen.portfolio.model.AccountTransaction;
 import name.abuchen.portfolio.model.BuySellEntry;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.PortfolioTransaction;
+import name.abuchen.portfolio.model.Transaction.Unit;
 import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
 
@@ -61,14 +62,16 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         + "|WERTPAPIERABRECHNUNG ROUND UP" //
                         + "|WERTPAPIERABRECHNUNG SAVEBACK" //
                         + "|SECURITIES SETTLEMENT SAVINGS PLAN" //
-                        + "|SECURITIES SETTLEMENT" //
+                        + "|SECURITIES SETTLEMENT"
+                        + "|LIQUIDACI.N DE VALORES" //
                         + "|REINVESTIERUNG" //
                         + "|CONFIRMATION DE L.INVESTISSEMENT PROGRAMM."
                         + "|RELEV. DE TRANSACTION"
                         + "|REGOLAMENTO TITOLI"
                         + "|ZWANGS.BERNAHME"
                         + "|TILGUNG"
-                        + "|REPAYMENT)", //
+                        + "|REPAYMENT"
+                        + "|AUSÜBUNG VON OPTIONSSCHEINEN)", //
                         "(ABRECHNUNG CRYPTOGESCH.FT|CRYPTO SPARPLAN)");
         this.addDocumentTyp(type);
 
@@ -94,7 +97,9 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         + "|Achat" //
                                         + "|Acquisto" //
                                         + "|Verkauf"
-                                        + "|Sell" //
+                                        + "|Sell"
+                                        + "|Compra"
+                                        + "|Venta" //
                                         + "|Sparplanausf.hrung" //
                                         + "|SAVINGS PLAN" //
                                         + "|Ex.cution de l.investissement programm." //
@@ -106,13 +111,29 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         .assign((t, v) -> {
                             if ("Verkauf".equalsIgnoreCase(v.get("type")) //
                                             || "Sell".equalsIgnoreCase(v.get("type")) //
+                                            || "Venta".equalsIgnoreCase(v.get("type")) //
                                             || "ZWANGSÜBERNAHME".equalsIgnoreCase(v.get("type")) //
                                             || "TILGUNG".equalsIgnoreCase(v.get("type")) //
                                             || "REPAYMENT".equalsIgnoreCase(v.get("type")))
                                 t.setType(PortfolioTransaction.Type.SELL);
                         })
 
+                        // Is type --> "Ausbuchung" change from BUY to SELL
+                        .section("type").optional() //
+                        .match("^[\\d] (?<type>Ausbuchung) .*[A-Z]{2}[A-Z0-9]{9}[0-9].*$") //
+                        .assign((t, v) -> {
+                            if ("Ausbuchung".equalsIgnoreCase(v.get("type")))
+                                t.setType(PortfolioTransaction.Type.SELL);
+                        })
+
                         .oneOf( //
+                                        // @formatter:off
+                                        // 1 Ausbuchung Long @6.07 € TUI AG Best TurboDE000SU34220 2053 Stücke
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("currency", "name", "isin") //
+                                                        .match("^[\\d] Ausbuchung .*(?<currency>\\p{Sc}) (?<name>.*)(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) [\\.,\\d]+ St.cke$")
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
                                         // @formatter:off
                                         // 1 Repayment Société Générale Effekten GmbH 500 Pcs.
                                         // MiniL O.End CBOE VIX 14,94
@@ -180,7 +201,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("name", "currency", "isin", "nameContinued") //
-                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
+                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.|t.t\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
                                                         .match("^(?<nameContinued>.*) [\\w]{4} [\\w]{3,4} [\\.,\\d]+$")
                                                         .match("^(ISIN([\\s])?:([\\s])?)?(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
@@ -195,7 +216,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("name", "currency", "isin", "nameContinued") //
-                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
+                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.|t.t\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
                                                         .match("^(?<nameContinued>.*)$") //
                                                         .match("^(ISIN([\\s])?:([\\s])?)?(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
@@ -205,19 +226,27 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("name", "currency", "isin") //
-                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
+                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.|t.t\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
                                                         .match("^(ISIN([\\s])?:([\\s])?)?(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))))
 
                         .oneOf( //
                                         // @formatter:off
-                                        // Clinuvel Pharmaceuticals Ltd. 80 Stk. 22,82 EUR 1.825,60 EUR
-                                        // Tencent Holdings Ltd. 0,3773 titre(s) 53,00 EUR 20,00 EUR
-                                        // zjBAM Corp. 125 Pz. 29,75 EUR 3.718,75 EUR
+                                        // 1 Ausbuchung Long @6.07 € TUI AG Best TurboDE000SU34220 2053 Stücke
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("shares") //
-                                                        .match("^.* (?<shares>[\\.,\\d]+) (Stk\\.|titre\\(s\\)|Pz\\.) .*$") //
+                                                        .match("^[\\d] Ausbuchung .*\\p{Sc} .*[A-Z]{2}[A-Z0-9]{9}[0-9] (?<shares>[\\.,\\d]+) St.cke$") //
+                                                        .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
+                                        // @formatter:off
+                                        // Clinuvel Pharmaceuticals Ltd. 80 Stk. 22,82 EUR 1.825,60 EUR
+                                        // Tencent Holdings Ltd. 0,3773 titre(s) 53,00 EUR 20,00 EUR
+                                        // zjBAM Corp. 125 Pz. 29,75 EUR 3.718,75 EUR
+                                        // Vonovia SE 0,781379 tít. 24,06 EUR 18,80 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^.* (?<shares>[\\.,\\d]+) (Stk\\.|titre\\(s\\)|Pz\\.|t.t\\.) .*$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
                                         // @formatter:off
                                         // Berkshire Hathaway Inc. 0.3367 Pcs. 297.00 EUR 100.00 EUR
@@ -274,14 +303,16 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // Market-OrderAcquisto il 01.06.2023 alle 10:46 (Europe/Berlin) su Lang & Schwarz Exchange.
                                         // Market-Order Sell on 02.05.2023 at 18:18 (Europe/Berlin).
                                         // Market-Order Achat le 10/04/2024 à 17:33 (Europe/Berlin).
+                                        // Market-OrderCompra el día 01.12.2022 a las 11:56 (Europe/Berlin).
+                                        // Market-OrderVenta a día 15.02.2024, a las 16:15 (Europe/Berlin) en Lang & Schwarz Exchange.
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date", "time") //
-                                                        .match("^(?i)((Limit|Stop\\-Market|Market)\\-Order(\\s)?)?(Buy|Achat|Acquisto|Kauf|Verkauf|Sell) .*" //
+                                                        .match("^(?i)((Limit|Stop\\-Market|Market)\\-Order(\\s)?)?(Buy|Achat|Acquisto|Kauf|Verkauf|Sell|Compra|Venta) .*" //
                                                                         + "(?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}" //
                                                                         + "|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2}" //
                                                                         + "|[\\d]{2}\\/[\\d]{2}\\/[\\d]{4}))" //
-                                                                        + "(,)? (um|at|alle|.) (?<time>[\\d]{2}:[\\d]{2}).*$") //
+                                                                        + "(,)? (um|at|alle|.|a las) (?<time>[\\d]{2}:[\\d]{2}).*$") //
                                                         .assign((t, v) -> t.setDate(asDate(v.get("date"), v.get("time")))),
                                         // @formatter:off
                                         // Exécution de l'investissement programmé le 17/01/2022 sur le Lang & Schwarz Exchange.
@@ -294,10 +325,15 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // Sparplanausführung am 18.11.2019 an der Lang & Schwarz Exchange.
                                         // Savings plan execution on 16.05.2023 on the Lang & Schwarz Exchange.
                                         // Saveback execution on 02.05.2024 on the Lang & Schwarz Exchange.
+                                        // Ejecución del plan de inversión el día 02.05.2024 en Lang & Schwarz Exchange.
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date") //
-                                                        .match("^(Sparplanausf.hrung|(Savings plan|Saveback) execution) .* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$") //
+                                                        .match("^(Sparplanausf.hrung"
+                                                                        + "|Ejecuci.n del plan de inversi.n"
+                                                                        + "|(Savings plan|Saveback) execution) .* "
+                                                                        + "(?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}"
+                                                                        + "|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$") //
                                                         .assign((t, v) -> t.setDate(asDate(v.get("date")))),
                                         // @formatter:off
                                         // Ausführung von Round up am 09.02.2024 an der Lang & Schwarz Exchange.
@@ -305,12 +341,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date") //
-                                                        .match("^Ausf.hrung von (Round up|Saveback) .* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$") //
+                                                        .match("^Ausf.hrung von (Round up|Saveback) .* "
+                                                                        + "(?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}"
+                                                                        + "|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$") //
                                                         .assign((t, v) -> t.setDate(asDate(v.get("date")))),
                                         // @formatter:off
-                                        // This is for the reinvestment of dividends
-                                        //
                                         // DE40110101001234567890 06.08.2021 0,44 GBP
+                                        // DE71100123450999999601 30.07.2024 2.05 EUR
                                         // @formatter:on
                                         section -> section.attributes("date") //
                                                         .match("^[\\w]+ (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) [\\.,\\d]+ [\\w]{3}$") //
@@ -382,7 +419,19 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("amount", "currency") //
-                                                        .match("^(GESAMT|TOTAL|TOTALE|) (\\-)?(?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
+                                                        .match("^(GESAMT|TOTAL|TOTALE) (\\-)?(?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
+                                                        .assign((t, v) -> {
+                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                        }),
+                                        // @formatter:off
+                                        // VERRECHNUNGSKONTO DATUM DER ZAHLUNG
+                                        // DE71100123450999999601 30.07.2024 2.05 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("amount", "currency") //
+                                                        .find("VERRECHNUNGSKONTO DATUM DER ZAHLUNG")
+                                                        .match("^[\\w]+ ([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2}) (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
                                                         .assign((t, v) -> {
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                             t.setAmount(asAmount(v.get("amount")));
@@ -482,6 +531,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .match("^.*ORDER (?<note>.*\\-.*)$") //
                                                         .assign((t, v) -> t.setNote("Order: " + trim(v.get("note")))),
                                         // @formatter:off
+                                        // 12345 CIudad ORDEN 1b03-784c
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("note") //
+                                                        .match("^.*ORDEN (?<note>.*\\-.*)$") //
+                                                        .assign((t, v) -> t.setNote("Orden: " + trim(v.get("note")))),
+                                        // @formatter:off
                                         // 75000 Paris ORDRE 69da-1c6f
                                         // @formatter:on
                                         section -> section //
@@ -509,6 +565,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .attributes("note") //
                                                         .match("^.*EXECUTION (?<note>.*\\-.*)$") //
                                                         .assign((t, v) -> t.setNote("Execution: " + trim(v.get("note")))),
+                                        // @formatter:off
+                                        // 12345 CIudad EJECUCIÓN ff4d-982a
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("note") //
+                                                        .match("^.*EJECUCI.N (?<note>.*\\-.*)$") //
+                                                        .assign((t, v) -> t.setNote("Ejecución: " + trim(v.get("note")))),
                                         // @formatter:off
                                         // 51670 cyuzKxpHr ORDINE cY43-6m6l
                                         // @formatter:on
@@ -540,6 +603,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .match("^SAVINGS PLAN (?<note>.*\\-.*)$") //
                                                         .assign((t, v) -> t.setNote(concatenate(t.getNote(), trim(v.get("note")), " | Savings plan: "))),
                                         // @formatter:off
+                                        // PLAN DE INVERSIÓN 21ef-595a
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("note") //
+                                                        .match("^PLAN DE INVERSIÓN (?<note>.*\\-.*)$") //
+                                                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), trim(v.get("note")), " | Plan de Invesión: "))),
+                                        // @formatter:off
                                         // ROUND UP 42c2-50a7
                                         // @formatter:on
                                         section -> section //
@@ -567,6 +637,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .attributes("note") //
                                                         .match("^EXECUTION (?<note>.*\\-.*)$") //
                                                         .assign((t, v) -> t.setNote(concatenate(t.getNote(), trim(v.get("note")), " | Execution: "))),
+                                        // @formatter:off
+                                        // EJECUCIÓN d4e7-9ecc
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("note") //
+                                                        .match("^EJECUCI.N (?<note>.*\\-.*)$") //
+                                                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), trim(v.get("note")), " | Ejecución: "))),
                                         // @formatter:off
                                         // ESECUZIONE V711-7789
                                         // @formatter:on
@@ -599,7 +676,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
     {
         DocumentType type = new DocumentType("(WERTPAPIERABRECHNUNG" //
                         + "|SECURITIES SETTLEMENT" //
-                        + "|REGOLAMENTO TITOLI)", //
+                        + "|REGOLAMENTO TITOLI"
+                        + "|LIQUIDACI.N DE VALORES)", //
                         "(ABRECHNUNG CRYPTOGESCH.FT|CRYPTO SPARPLAN)");
         this.addDocumentTyp(type);
 
@@ -626,7 +704,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("name", "currency", "isin", "nameContinued") //
-                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
+                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.|t.t\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
                                                         .match("^(?<nameContinued>.*)$") //
                                                         .match("^(ISIN([\\s])?:([\\s])?)?(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
@@ -656,10 +734,11 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // Clinuvel Pharmaceuticals Ltd. 80 Stk. 22,82 EUR 1.825,60 EUR
                                         // Tencent Holdings Ltd. 0,3773 titre(s) 53,00 EUR 20,00 EUR
                                         // zjBAM Corp. 125 Pz. 29,75 EUR 3.718,75 EUR
+                                        // Vonovia SE 0,781379 tít. 24,06 EUR 18,80 EUR
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("shares") //
-                                                        .match("^.* (?<shares>[\\.,\\d]+) (Stk\\.|titre\\(s\\)|Pz\\.) .*$") //
+                                                        .match("^.* (?<shares>[\\.,\\d]+) (Stk\\.|titre\\(s\\)|Pz\\.|t.t\\.) .*$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
                                         // @formatter:off
                                         // Berkshire Hathaway Inc. 0.3367 Pcs. 297.00 EUR 100.00 EUR
@@ -688,9 +767,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         // Limit-Order Verkauf am 21.07.2020, um 09:30 Uhr an der Lang & Schwarz Exchange.
                         // Verkauf am 26.02.2021, um 11:44 Uhr.
                         // Market-Order Sell on 02.05.2023 at 18:18 (Europe/Berlin).
+                        // Market-OrderVenta a día 15.02.2024, a las 16:15 (Europe/Berlin) en Lang & Schwarz Exchange.
                         // @formatter:on
                         .section("date", "time") //
-                        .match("^((Limit|Stop\\-Market|Market)\\-Order(\\s)?)?(Verkauf|Sell) .* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2}))(,)? (um|at|alle|.) (?<time>[\\d]{2}:[\\d]{2}).*$") //
+                        .match("^((Limit|Stop\\-Market|Market)\\-Order(\\s)?)?(Verkauf|Sell|Venta) .* "
+                                        + "(?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}"
+                                        + "|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2}))(,)?"
+                                        + " (um|at|alle|.) (?<time>[\\d]{2}:[\\d]{2}).*$") //
                         .assign((t, v) -> t.setDateTime(asDate(v.get("date"), v.get("time"))))
 
                         // @formatter:off
@@ -942,6 +1025,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         + "|DIVIDEND" //
                         + "|DIVIDENDO" //
                         + "|DISTRIBUZIONE"
+                        + "|Distribution"
                         + "|KAPITALREDUKTION)",
                         "ABRECHNUNG ZINSEN");
         this.addDocumentTyp(type);
@@ -1035,6 +1119,17 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) [\\.,\\d]+ St.cke [\\.,\\d]+ (?<currency>[\\w]{3})$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
                                         // @formatter:off
+                                        // POSITION QUANTITY YIELD AMOUNT
+                                        // Mondelez
+                                        // US6092071058 2.000000 Pcs. 0.425 USD
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "isin", "currency") //
+                                                        .find("POSITION QUANTITY YIELD AMOUNT")
+                                                        .match("^(?<name>.*)")
+                                                        .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) [\\.,\\d]+ Pcs\\. [\\.,\\d]+ (?<currency>[\\w]{3})$") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
                                         // 1 Reinvestierung Vodafone Group PLC 699 Stk.
                                         // Registered Shares DL 0,2095238
                                         // GB00BH4HKS39
@@ -1074,6 +1169,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         section -> section //
                                                         .attributes("shares") //
                                                         .match("^.* (?<shares>[\\.,\\d]+) Pcs\\. [\\.,\\d]+ [\\w]{3} [\\.,\\d]+ [\\w]{3}$") //
+                                                        .assign((t, v) -> t.setShares(asShares(v.get("shares"), "en", "US"))),
+                                        // @formatter:off
+                                        // US6092071058 2.000000 Pcs. 0.425 USD
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^.* (?<shares>[\\.,\\d]+) Pcs\\. [\\.,\\d]+ [\\w]{3}$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares"), "en", "US"))),
                                         // @formatter:off
                                         // 1 Reinvestierung Vodafone Group PLC 699 Stk.
@@ -1206,11 +1308,14 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         //
                                         // Zwischensumme 21.42 USD
                                         // Zwischensumme 1.073 USD/EUR 19.97 EUR
+                                        //
+                                        // Sub Total 0.72 USD
+                                        // Sub Total 1.0855 USD/EUR 0.66 EUR
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("fxGross", "fxCurrency", "exchangeRate", "baseCurrency", "termCurrency", "gross", "currency") //
-                                                        .match("^(Zwischensumme|GESAMT|TOTALE|TOTAL) (\\-)?(?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$") //
-                                                        .match("^(Zwischensumme|Subtotale|Subtotal|Sous\\-total) (?<exchangeRate>[\\.,\\d]+) (?<baseCurrency>[\\w]{3})\\/(?<termCurrency>[\\w]{3}) (\\-)?(?<gross>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
+                                                        .match("^(Zwischensumme|GESAMT|TOTALE|TOTAL|Sub Total) (\\-)?(?<fxGross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$") //
+                                                        .match("^(Zwischensumme|Subtotale|Subtotal|Sous\\-total|Sub Total) (?<exchangeRate>[\\.,\\d]+) (?<baseCurrency>[\\w]{3})\\/(?<termCurrency>[\\w]{3}) (\\-)?(?<gross>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
                                                         .assign((t, v) -> {
                                                             if (!asCurrencyCode(v.get("currency")).equals(asCurrencyCode(v.get("baseCurrency"))))
                                                             {
@@ -1512,9 +1617,9 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
     private void addAccountStatementTransaction_Format02()
     {
-        final DocumentType type = new DocumentType("KONTO.BERSICHT", (context, lines) -> {
-            Pattern pAccountAmountTransaction = Pattern.compile("^.* [\\.,\\d]+ \\p{Sc} (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}).*$");
-            Pattern pAccountInitialSaldoTransaction = Pattern.compile("^Depotkonto (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) [\\.,\\d]+ \\p{Sc} [\\.,\\d]+ \\p{Sc} [\\.,\\d]+ \\p{Sc}$");
+        final DocumentType type = new DocumentType("(KONTO.BERSICHT|RESUMEN DE ESTADO DE CUENTA)", (context, lines) -> {
+            Pattern pAccountAmountTransaction = Pattern.compile("^(?!(Depotkonto|Cuenta de valores)).* [\\.,\\d]+ \\p{Sc} (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}).*$");
+            Pattern pAccountInitialSaldoTransaction = Pattern.compile("^(Depotkonto|Cuenta de valores) (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) [\\.,\\d]+ \\p{Sc} [\\.,\\d]+ \\p{Sc} [\\.,\\d]+ \\p{Sc}$");
 
             AccountAmountTransactionHelper accountAmountTransactionHelper = new AccountAmountTransactionHelper();
             context.putType(accountAmountTransactionHelper);
@@ -1578,6 +1683,17 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                         }),
                                         // @formatter:off
+                                        // 16 Apr. 2024 Überweisung Einzahlung akzeptiert: DE5987654321 auf DE12334567658 3.500,00 € 16.347,54 €
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("date", "amount", "currency") //
+                                                        .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})? [\\d]{4}) .berweisung Einzahlung .* (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) [\\.,\\d]+ \\p{Sc}$") //
+                                                        .assign((t, v) -> {
+                                                            t.setDateTime(asDate(v.get("date")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                        }),
+                                        // @formatter:off
                                         // 01 Apr. 2024 Überweisung PayOut to transit 172,23 € 50.000,00 €
                                         // @formatter:on
                                         section -> section //
@@ -1589,22 +1705,11 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setAmount(asAmount(v.get("amount")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
-                                                        }),
-                                        // @formatter:off
-                                        // 16 Apr. 2024 Überweisung Einzahlung akzeptiert: DE5987654321 auf DE12334567658 3.500,00 € 16.347,54 €
-                                        // @formatter:on
-                                        section -> section //
-                                                        .attributes("date", "amount", "currency") //
-                                                        .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})? [\\d]{4}) .berweisung Einzahlung .* (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) [\\.,\\d]+ \\p{Sc}$") //
-                                                        .assign((t, v) -> {
-                                                            t.setDateTime(asDate(v.get("date")));
-                                                            t.setAmount(asAmount(v.get("amount")));
-                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                         }))
 
                         .wrap(TransactionItem::new));
 
-        Block depositRemovalBlock_Format02 = new Block("^[\\d]{2} [\\wä]{3,4}([\\.]{1})?[\\s]$");
+        Block depositRemovalBlock_Format02 = new Block("^[\\d]{2} [\\wä]{3,4}([\\.]{1})?[\\s](Transacci.n.*)?$");
         type.addBlock(depositRemovalBlock_Format02);
         depositRemovalBlock_Format02.setMaxSize(4);
         depositRemovalBlock_Format02.set(new Transaction<AccountTransaction>()
@@ -1617,16 +1722,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
                         .optionalOneOf( //
                                         // @formatter:off
-                                        // 07 Apr.
-                                        // 2024 Kartentransaktion Backerei XAXRs 798 2,50 € 51.194,91 €
-                                        //
-                                        // 16 Apr.
-                                        // 2024 Kartentransaktion Visa Geld zurueck Aktion 0,08 € 18.584,55 €
+                                        // 20 may Transacción BACKBLAZE INC, 7,38 $, exchange rate: 0,9227642, ECB rate: 0,9221689414, markup:
+                                        // 2024 con tarjeta 0,06454984 % 6,81 € 8.204,96 €
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date", "year", "note", "amount", "currency", "amountAfter", "currencyAfter") //
-                                                        .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})?)[\\s]$") //
-                                                        .match("^(?<year>[\\d]{4}) Kartentransaktion (?<note>.*) (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) (?<amountAfter>[\\.,\\d]+) (?<currencyAfter>\\p{Sc})$") //
+                                                        .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})?)[\\s]Transacci.n (?<note>.*), [\\.,\\d]+ \\p{Sc}.*$") //
+                                                        .match("^(?<year>[\\d]{4}) con tarjeta .* (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) (?<amountAfter>[\\.,\\d]+) (?<currencyAfter>\\p{Sc})$") //
                                                         .assign((t, v) -> {
                                                             DocumentContext context = type.getCurrentContext();
                                                             Money amountAfter = Money.of(asCurrencyCode(v.get("currencyAfter")), asAmount(v.get("amountAfter")));
@@ -1648,19 +1750,38 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setNote(trim(v.get("note")));
                                                         }),
                                         // @formatter:off
-                                        // 20 Mai
-                                        // 2024 Überweisung PayOut to transit 18.085,60 € 18.939,80 €
+                                        // 07 Apr.
+                                        // 2024 Kartentransaktion Backerei XAXRs 798 2,50 € 51.194,91 €
+                                        //
+                                        // 16 Apr.
+                                        // 2024 Kartentransaktion Visa Geld zurueck Aktion 0,08 € 18.584,55 €
+                                        //
+                                        // 02 may Transacción
+                                        // 2024 con tarjeta WATSON RESTAURANTS 30,99 € 18.261,16 €
                                         // @formatter:on
                                         section -> section //
-                                                        .attributes("date", "year", "amount", "currency") //
-                                                        .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})?)[\\s]$") //
-                                                        .match("^(?<year>[\\d]{4}) .berweisung PayOut .* (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) [\\.,\\d]+ \\p{Sc}$") //
+                                                        .attributes("date", "year", "note", "amount", "currency", "amountAfter", "currencyAfter") //
+                                                        .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})?)[\\s](Transacci.n.*)?$") //
+                                                        .match("^(?<year>[\\d]{4}) (Kartentransaktion|con tarjeta) (?<note>.*) (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) (?<amountAfter>[\\.,\\d]+) (?<currencyAfter>\\p{Sc})$") //
                                                         .assign((t, v) -> {
-                                                            t.setType(AccountTransaction.Type.REMOVAL);
+                                                            DocumentContext context = type.getCurrentContext();
+                                                            Money amountAfter = Money.of(asCurrencyCode(v.get("currencyAfter")), asAmount(v.get("amountAfter")));
+
+                                                            AccountAmountTransactionHelper accountAmountTransactionHelper = context.getType(AccountAmountTransactionHelper.class).orElseGet(AccountAmountTransactionHelper::new);
+                                                            Optional<AccountAmountTransactionItem> item = accountAmountTransactionHelper.findItem(v.getStartLineNumber(), amountAfter);
+
+                                                            if (item.isPresent())
+                                                            {
+                                                                Money amountBefore = Money.of(item.get().currency, item.get().amount);
+
+                                                                if (amountBefore.isGreaterThan(amountAfter))
+                                                                    t.setType(AccountTransaction.Type.REMOVAL);
+                                                            }
 
                                                             t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
                                                             t.setAmount(asAmount(v.get("amount")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                            t.setNote(trim(v.get("note")));
                                                         }),
                                         // @formatter:off
                                         // 30 Apr.
@@ -1685,15 +1806,58 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         //
                                         // 02 Mai
                                         // 2024 Prämie Your Saveback payment 4,94 € 18.524,98 €
+                                        //
+                                        // 02 may
+                                        // 2024 Transferencia Ingreso aceptado: ES00000000000000000000000 a DE00000000000000000000000 2.600,00 € 18.292,15 €
+                                        //
+                                        // 02 may
+                                        // 2024 Recompensa Your Saveback payment 3,89 € 18.265,05 €
+                                        //
+                                        // 30 Juli
+                                        // 2024 Überweisung Incoming transfer from Vorname Nachname 2.000,00 € 17.796,12 €
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date", "year", "amount", "currency") //
                                                         .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})?)[\\s]$") //
                                                         .match("^(?<year>[\\d]{4}) " //
-                                                                        + "(.berweisung Einzahlung akzeptiert:"
-                                                                        + "|Pr.mie Your Saveback)" //
+                                                                        + "(.berweisung"
+                                                                        + "|Pr.mie"
+                                                                        + "|Transferencia"
+                                                                        + "|Recompensa) "
+                                                                        + "(Einzahlung akzeptiert:"
+                                                                        + "|Ingreso aceptado:"
+                                                                        + "|Your Saveback"
+                                                                        + "|Your Saveback payment"
+                                                                        + "|Incoming transfer from)" //
                                                                         + ".* (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) [\\.,\\d]+ \\p{Sc}$") //
                                                         .assign((t, v) -> {
+                                                            t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                        }),
+                                        // @formatter:off
+                                        // 20 Mai
+                                        // 2024 Überweisung PayOut to transit 18.085,60 € 18.939,80 €
+                                        //
+                                        // 03 may
+                                        // 2024 Transferencia PayOut to transit 8.000,00 € 10.265,05 €
+                                        //
+                                        // 26 Juli
+                                        // 2024 Überweisung Outgoing transfer for Vorname Nachname 22.000,00 € 15.825,42 €
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("date", "year", "amount", "currency") //
+                                                        .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})?)[\\s]$") //
+                                                        .match("^(?<year>[\\d]{4}) "
+                                                                        + "(.berweisung"
+                                                                        + "|Transferencia) "
+                                                                        + "(PayOut to transit"
+                                                                        + "|Outgoing transfer for.*) "
+                                                                        + "(?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) "
+                                                                        + "[\\.,\\d]+ \\p{Sc}$") //
+                                                        .assign((t, v) -> {
+                                                            t.setType(AccountTransaction.Type.REMOVAL);
+
                                                             t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
                                                             t.setAmount(asAmount(v.get("amount")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
@@ -1850,8 +2014,11 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
         // @formatter:off
         // 01 Apr.
         // 2024 Zinszahlung Your interest payment 147,34 € 50.152,41 €
+        //
+        // 01 may Pago de
+        // 2024 intereses Your interest payment 26,13 € 15.692,15 €
         // @formatter:on
-        Block interestBlock_Format02 = new Block("^[\\d]{2} [\\wä]{3,4}([\\.]{1})?[\\s]$");
+        Block interestBlock_Format02 = new Block("^[\\d]{2} [\\wä]{3,4}([\\.]{1})?[\\s](Pago.*)?$");
         type.addBlock(interestBlock_Format02);
         interestBlock_Format02.setMaxSize(2);
         interestBlock_Format02.set(new Transaction<AccountTransaction>()
@@ -1863,8 +2030,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         })
 
                         .section("date", "year", "amount", "currency").optional() //
-                        .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})?)[\\s]$")
-                        .match("^(?<year>[\\d]{4}) Zinszahlung Your interest payment (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) [\\.,\\d]+ \\p{Sc}$") //
+                        .match("^(?<date>[\\d]{2} [\\wä]{3,4}([\\.]{1})?)[\\s](Pago.*)?$")
+                        .match("^(?<year>[\\d]{4}) (Zinszahlung|intereses) Your interest payment (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) [\\.,\\d]+ \\p{Sc}$") //
                         .assign((t, v) -> {
                             t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
                             t.setAmount(asAmount(v.get("amount")));
@@ -1967,7 +2134,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
     private void addTaxesStatementTransaction()
     {
         final DocumentType type = new DocumentType("(STEUERABRECHNUNG" //
-                        + "|ABRECHNUNG (ZINSEN|DIVIDENDE))", //
+                        + "|STEUERLICHE OPTIMIERUNG"
+                        + "|ABRECHNUNG ZINSEN)", //
                         documentContext -> documentContext //
                                         // @formatter:off
                                         // IBAN BUCHUNGSDATUM GUTSCHRIFT NACH STEUERN
@@ -1980,9 +2148,21 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // DE30501108019081234567 11.04.2024 2,21 EUR
                                         // @formatter:on
                                         .section("date") //
-                                        .find("(IBAN BUCHUNGSDATUM GUTSCHRIFT NACH STEUERN|VERRECHNUNGSKONTO (VALUTA|WERTSTELLUNG) BETRAG)") //
+                                        .find("(IBAN BUCHUNGSDATUM GUTSCHRIFT NACH STEUERN|VERRECHNUNGSKONTO (VALUTA|WERTSTELLUNG|DATUM DER ZAHLUNG) BETRAG)") //
                                         .match("^.* (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) [\\.,\\d]+( [\\w]{3})?$") //
-                                        .assign((ctx, v) -> ctx.put("date", v.get("date")))
+                                        .assign((ctx, v) -> {
+                                            ctx.put("date", v.get("date"));
+                                            ctx.putBoolean("multipleTransaction", false);
+                                        })
+
+                                        // @formatter:off
+                                        // Cash Zinsen 4,00% 01.06.2024 - 11.06.2024 61,11 EUR
+                                        // Cash Zinsen 3,75% 12.06.2024 - 30.06.2024 99,39 EUR
+                                        // @formatter:on
+                                        .section("multipleTransaction").optional() //
+                                        .match("^(?<multipleTransaction>Cash) Zinsen [\\.,\\d]+% .*[\\d]{4} [\\.,\\d]+ [\\w]{3}$") //
+                                        .match("^Cash Zinsen [\\.,\\d]+% .*[\\d]{4} [\\.,\\d]+ [\\w]{3}$") //
+                                        .assign((ctx, v) -> ctx.putBoolean("multipleTransaction", true))
 
                                         // @formatter:off
                                         // HSBC Trinkaus & Burkhardt GmbH 400 Stk. 2,21 EUR
@@ -2004,7 +2184,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
         Transaction<AccountTransaction> pdfTransaction = new Transaction<>();
 
-        Block firstRelevantLine = new Block("^POSITION BETRAG$");
+        Block firstRelevantLine = new Block("^ABRECHNUNG( \\- (ZINSEN))?$", "^(Gesamt|GESAMT) [\\.,\\d]+( [\\w]{3})?$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
@@ -2018,6 +2198,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
                         .oneOf( //
                                         // @formatter:off
+                                        // ABRECHNUNG - ZINSEN
+                                        // POSITION BETRAG
                                         // Besteuerungsgrundlage 160,50 EUR
                                         // Kapitalertragssteuer -40,13 EUR
                                         // Solidaritätszuschlag -2,20 EUR
@@ -2025,7 +2207,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("gross", "amount", "currency") //
-                                                        .documentContext("date")
+                                                        .documentContext("date", "multipleTransaction")
+                                                        .find("ABRECHNUNG( \\- ZINSEN)?")
                                                         .match("^Besteuerungsgrundlage (?<gross>[\\.,\\d]+) [\\w]{3}$") //
                                                         .match("^Gesamt (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
                                                         .assign((t, v) -> {
@@ -2036,27 +2219,44 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setMonetaryAmount(gross.subtract(amount));
                                                         }),
                                         // @formatter:off
+                                        // Steuerliche Optimierung am 18.07.2024
+                                        // ABRECHNUNG
+                                        // POSITION BETRAG
+                                        // Kapitalertragssteuer 735.67 EUR
+                                        // Solidaritätszuschlag 40.46 EUR
+                                        // GESAMT 776.13 EUR
+                                        //
+                                        // STEUERABRECHNUNG
+                                        // ABRECHNUNG
+                                        // POSITION BETRAG
                                         // Kapitalertragsteuer Optimierung 3,75 EUR
+                                        // Solidaritätszuschlag Optimierung 0,21 EUR
+                                        // Kirchensteuer Optimierung 0,30 EUR
                                         // GESAMT 4,26
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("currency", "amount") //
-                                                        .documentContext("date")
-                                                        .match("^Kapitalertrags(s)?teuer Optimierung [\\.,\\d]+ (?<currency>[\\w]{3})$") //
-                                                        .match("^GESAMT (?<amount>[\\.,\\d]+)$") //
+                                                        .documentContext("date", "multipleTransaction")
+                                                        .match("^Kapitalertrags(s)?teuer( Optimierung)? [\\.,\\d]+ (?<currency>[\\w]{3})$") //
+                                                        .match("^(Gesamt|GESAMT) (?<amount>[\\.,\\d]+)( [\\w]{3})?$") //
                                                         .assign((t, v) -> {
                                                             t.setType(AccountTransaction.Type.TAX_REFUND);
 
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setAmount(asAmount(v.get("amount")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+
+                                                            type.getCurrentContext().putBoolean("multipleTransaction", true);
                                                         }),
                                         // @formatter:off
+                                        // ABRECHNUNG
+                                        // POSITION BETRAG
+                                        // Erstattung US-Quellensteuer 2,21 EUR
                                         // GESAMT 2,21 EUR
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("amount", "currency") //
-                                                        .documentContext("date", "name", "shares", "nameContinued", "isin")
+                                                        .documentContext("date", "name", "shares", "nameContinued", "isin", "multipleTransaction")
                                                         .match("^GESAMT (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
                                                         .assign((t, v) -> {
                                                             t.setType(AccountTransaction.Type.TAX_REFUND);
@@ -2067,13 +2267,18 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setAmount(asAmount(v.get("amount")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+
+                                                            type.getCurrentContext().putBoolean("multipleTransaction", true);
                                                         }))
 
                         .wrap(t -> {
                             TransactionItem item = new TransactionItem(t);
 
                             if (t.getCurrencyCode() != null && t.getAmount() == 0)
-                                item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
+                                return null;
+
+                            if (!type.getCurrentContext().getBoolean("multipleTransaction"))
+                                return null;
 
                             return item;
                         });
@@ -2186,7 +2391,55 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         .section("date") //
                                         .find("IBAN (BUCHUNGSDATUM|DATA EMISSIONE|BOOKING DATE) (GUTSCHRIFT NACH STEUERN|TOTALE|TOTAL)") //
                                         .match("^.* (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) [\\.,\\d]+ [\\w]{3}$") //
-                                        .assign((ctx, v) -> ctx.put("date", v.get("date"))));
+                                        .assign((ctx, v) -> {
+                                            ctx.put("date", v.get("date"));
+                                            ctx.putBoolean("multipleTransaction", false);
+                                        })
+
+                                        // @formatter:off
+                                        // Cash Zinsen 4,00% 01.06.2024 - 11.06.2024 61,11 EUR
+                                        // Cash Zinsen 3,75% 12.06.2024 - 30.06.2024 99,39 EUR
+                                        // @formatter:on
+                                        .section("multipleTransaction").optional() //
+                                        .match("^(?<multipleTransaction>(Cash|Liquidit.)) (Zinsen|Interessi|Interest) [\\.,\\d]+% .*[\\d]{4} [\\.,\\d]+ [\\w]{3}$") //
+                                        .match("^(Cash|Liquidit.) (Zinsen|Interessi|Interest) [\\.,\\d]+% .*[\\d]{4} [\\.,\\d]+ [\\w]{3}$") //
+                                        .assign((ctx, v) -> ctx.putBoolean("multipleTransaction", true))
+
+                                        // @formatter:off
+                                        // ABRECHNUNG - ZINSEN
+                                        // POSITION BETRAG
+                                        // Besteuerungsgrundlage 160,50 EUR
+                                        // Kapitalertragssteuer -40,13 EUR
+                                        // Solidaritätszuschlag -2,20 EUR
+                                        // Gesamt 118,17 EUR
+                                        // ABRECHNUNG - DIVIDENDE
+                                        // @formatter:on
+                                        .section("amountInterest", "currencyInterest").optional() //
+                                        .find("ABRECHNUNG( \\- ZINSEN)?")
+                                        .match("^Gesamt (?<amountInterest>[\\.,\\d]+) (?<currencyInterest>[\\w]{3})$") //
+                                        .match("^(ABRECHNUNG \\- DIVIDENDE|BUCHUNG)$")
+                                        .assign((ctx, v) -> {
+                                            ctx.put("amountInterest", v.get("amountInterest"));
+                                            ctx.put("currencyInterest", asCurrencyCode(v.get("currencyInterest")));
+                                        })
+
+                                        // @formatter:off
+                                        // ABRECHNUNG - DIVIDENDE
+                                        // POSITION BETRAG
+                                        // Besteuerungsgrundlage 3,76 EUR
+                                        // Kapitalertragssteuer -0,94 EUR
+                                        // Solidaritätszuschlag -0,05 EUR
+                                        // Gesamt 2,77 EUR
+                                        // BUCHUNG
+                                        // @formatter:on
+                                        .section("amountDividende", "currencyDividende").optional() //
+                                        .find("ABRECHNUNG \\- DIVIDENDE")
+                                        .match("^Gesamt (?<amountDividende>[\\.,\\d]+) (?<currencyDividende>[\\w]{3})$") //
+                                        .match("^BUCHUNG$")
+                                        .assign((ctx, v) -> {
+                                            ctx.put("amountDividende", v.get("amountDividende"));
+                                            ctx.put("currencyDividende", asCurrencyCode(v.get("currencyDividende")));
+                                        }));
 
         this.addDocumentTyp(type);
 
@@ -2206,31 +2459,102 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
                         .oneOf( //
                                         // @formatter:off
-                                        // Cash Zinsen 4,00% 01.06.2024 - 11.06.2024 61,11 EUR
                                         // Geldmarkt Dividende 3,75% 26.06.2024 - 30.06.2024 3,76 EUR
                                         // @formatter:on
                                         section -> section //
-                                                        .attributes("note1", "note2", "note3", "amount", "currency") //
-                                                        .documentContext("date") //
-                                                        .match("^(Geldmarkt|Cash|Liquidit.) (?<note1>(Zinsen|Interessi|Interest|Dividende)) (?<note2>[\\.,\\d]+%) (?<note3>.*[\\d]{4}) (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
+                                                        .attributes("note1", "note2", "note3", "gross", "fxCurrency") //
+                                                        .documentContext("date", "amountDividende", "currencyDividende", "multipleTransaction") //
+                                                        .match("^Geldmarkt (?<note1>Dividende) (?<note2>[\\.,\\d]+%) (?<note3>.*[\\d]{4}) (?<gross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$") //
                                                         .assign((t, v) -> {
+                                                            Money amount = Money.of(asCurrencyCode(v.get("currencyDividende")), asAmount(v.get("amountDividende")));
+                                                            Money gross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("gross")));
+
                                                             t.setDateTime(asDate(v.get("date")));
-                                                            t.setAmount(asAmount(v.get("amount")));
-                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                            t.setMonetaryAmount(amount);
+                                                            t.setNote(trim(v.get("note1")) + " " + trim(v.get("note3")) + " (" + v.get("note2") + ")");
+                                                            t.addUnit(new Unit(Unit.Type.TAX, gross.subtract(amount)));
+                                                        }),
+                                        // @formatter:off
+                                        // Cash Zinsen 4,00% 01.06.2024 - 11.06.2024 61,11 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("note1", "note2", "note3", "gross", "fxCurrency") //
+                                                        .documentContext("date", "amountInterest", "currencyInterest", "multipleTransaction") //
+                                                        .match("^(Cash|Liquidit.) (?<note1>(Zinsen|Interessi|Interest)) (?<note2>[\\.,\\d]+%) (?<note3>.*[\\d]{4}) (?<gross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$") //
+                                                        .assign((t, v) -> {
+                                                            Money gross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("gross")));
+
+                                                            t.setDateTime(asDate(v.get("date")));
+
+                                                            if (type.getCurrentContext().getBoolean("multipleTransaction"))
+                                                            {
+                                                                t.setMonetaryAmount(gross);
+                                                            }
+                                                            else
+                                                            {
+                                                                Money amount = Money.of(asCurrencyCode(v.get("currencyInterest")), asAmount(v.get("amountInterest")));
+                                                                t.setMonetaryAmount(amount);
+                                                                t.addUnit(new Unit(Unit.Type.TAX, gross.subtract(amount)));
+                                                            }
+
                                                             t.setNote(trim(v.get("note1")) + " " + trim(v.get("note3")) + " (" + v.get("note2") + ")");
                                                         }),
                                         // @formatter:off
                                         // Cash Zinsen 2,00% 2,58 EUR
                                         // Liquidità Interessi 2,00% 0,12 EUR
+                                        // Cash Interest 2,00% 1,47 EUR
                                         // @formatter:on
                                         section -> section //
-                                                        .attributes("note1", "note2", "amount", "currency") //
-                                                        .documentContext("date") //
-                                                        .match("^(Geldmarkt|Cash|Liquidit.) (?<note1>(Zinsen|Interessi|Interest|Dividende)) (?<note2>[\\.,\\d]+%) (?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
+                                                        .attributes("note1", "note2", "gross", "fxCurrency") //
+                                                        .documentContext("date", "amountInterest", "currencyInterest", "multipleTransaction") //
+                                                        .match("^(Cash|Liquidit.) (?<note1>(Zinsen|Interessi|Interest)) (?<note2>[\\.,\\d]+%) (?<gross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$") //
                                                         .assign((t, v) -> {
+                                                            Money gross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("gross")));
+
                                                             t.setDateTime(asDate(v.get("date")));
-                                                            t.setAmount(asAmount(v.get("amount")));
-                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+
+                                                            if (type.getCurrentContext().getBoolean("multipleTransaction"))
+                                                            {
+                                                                t.setMonetaryAmount(gross);
+                                                            }
+                                                            else
+                                                            {
+                                                                Money amount = Money.of(asCurrencyCode(v.get("currencyInterest")), asAmount(v.get("amountInterest")));
+                                                                t.setMonetaryAmount(amount);
+                                                                t.addUnit(new Unit(Unit.Type.TAX, gross.subtract(amount)));
+                                                            }
+
+                                                            t.setNote(v.get("note1") + " (" + v.get("note2") + ")");
+                                                        }),
+                                        // @formatter:off
+                                        // Cash Interest 4,00% 01.06.2024 - 11.06.2024 7,10 EUR
+                                        // Cash Interest 3,75% 12.06.2024 - 30.06.2024 11,56 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("note1", "note2", "note3", "gross", "fxCurrency") //
+                                                        .documentContext("date", "multipleTransaction") //
+                                                        .match("^(Cash|Liquidit.) (?<note1>(Zinsen|Interessi|Interest)) (?<note2>[\\.,\\d]+%) (?<note3>.*[\\d]{4}) (?<gross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$") //
+                                                        .assign((t, v) -> {
+                                                            Money gross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("gross")));
+
+                                                            t.setDateTime(asDate(v.get("date")));
+                                                            t.setMonetaryAmount(gross);
+                                                            t.setNote(trim(v.get("note1")) + " " + trim(v.get("note3")) + " (" + v.get("note2") + ")");
+                                                        }),
+                                        // @formatter:off
+                                        // Cash Zinsen 2,00% 2,58 EUR
+                                        // Liquidità Interessi 2,00% 0,12 EUR
+                                        // Cash Interest 2,00% 1,47 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("note1", "note2", "gross", "fxCurrency") //
+                                                        .documentContext("date", "multipleTransaction") //
+                                                        .match("^(Cash|Liquidit.) (?<note1>(Zinsen|Interessi|Interest)) (?<note2>[\\.,\\d]+%) (?<gross>[\\.,\\d]+) (?<fxCurrency>[\\w]{3})$") //
+                                                        .assign((t, v) -> {
+                                                            Money gross = Money.of(asCurrencyCode(v.get("fxCurrency")), asAmount(v.get("gross")));
+
+                                                            t.setDateTime(asDate(v.get("date")));
+                                                            t.setMonetaryAmount(gross);
                                                             t.setNote(v.get("note1") + " (" + v.get("note2") + ")");
                                                         }))
 
@@ -2383,6 +2707,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
                         .oneOf( //
                                         // @formatter:off
+                                        // 1 Ausbuchung Long @6.07 € TUI AG Best TurboDE000SU34220 2053 Stücke
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("currency", "name", "isin") //
+                                                        .match("^[\\d] Ausbuchung .*(?<currency>\\p{Sc}) (?<name>.*)(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) [\\.,\\d]+ St.cke$")
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
                                         // 1 Repayment Société Générale Effekten GmbH 500 Pcs.
                                         // MiniL O.End CBOE VIX 14,94
                                         // DE000SQ728J8
@@ -2449,7 +2780,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("name", "currency", "isin", "nameContinued") //
-                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
+                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.|t.t\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
                                                         .match("^(?<nameContinued>.*) [\\w]{4} [\\w]{3,4} [\\.,\\d]+$")
                                                         .match("^(ISIN([\\s])?:([\\s])?)?(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
@@ -2464,7 +2795,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("name", "currency", "isin", "nameContinued") //
-                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
+                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.|t.t\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
                                                         .match("^(?<nameContinued>.*)$") //
                                                         .match("^(ISIN([\\s])?:([\\s])?)?(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
@@ -2474,19 +2805,27 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("name", "currency", "isin") //
-                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
+                                                        .match("^(?<name>.*) [\\.,\\d]+ (Stk\\.|titre\\(s\\)|Pcs\\.|Pz\\.|t.t\\.) [\\.,\\d]+ (?<currency>[\\w]{3}) [\\.,\\d]+ [\\w]{3}$") //
                                                         .match("^(ISIN([\\s])?:([\\s])?)?(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))))
 
                         .oneOf( //
                                         // @formatter:off
-                                        // Clinuvel Pharmaceuticals Ltd. 80 Stk. 22,82 EUR 1.825,60 EUR
-                                        // Tencent Holdings Ltd. 0,3773 titre(s) 53,00 EUR 20,00 EUR
-                                        // zjBAM Corp. 125 Pz. 29,75 EUR 3.718,75 EUR
+                                        // 1 Ausbuchung Long @6.07 € TUI AG Best TurboDE000SU34220 2053 Stücke
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("shares") //
-                                                        .match("^.* (?<shares>[\\.,\\d]+) (Stk\\.|titre\\(s\\)|Pz\\.) .*$") //
+                                                        .match("^[\\d] Ausbuchung .*\\p{Sc} .*[A-Z]{2}[A-Z0-9]{9}[0-9] (?<shares>[\\.,\\d]+) St.cke$") //
+                                                        .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
+                                        // @formatter:off
+                                        // Clinuvel Pharmaceuticals Ltd. 80 Stk. 22,82 EUR 1.825,60 EUR
+                                        // Tencent Holdings Ltd. 0,3773 titre(s) 53,00 EUR 20,00 EUR
+                                        // zjBAM Corp. 125 Pz. 29,75 EUR 3.718,75 EUR
+                                        // Vonovia SE 0,781379 tít. 24,06 EUR 18,80 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^.* (?<shares>[\\.,\\d]+) (Stk\\.|titre\\(s\\)|Pz\\.|t.t\\.) .*$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
                                         // @formatter:off
                                         // Berkshire Hathaway Inc. 0.3367 Pcs. 297.00 EUR 100.00 EUR
@@ -2542,14 +2881,16 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // Verkauf am 26.02.2021, um 11:44 Uhr.
                                         // Market-OrderAcquisto il 01.06.2023 alle 10:46 (Europe/Berlin) su Lang & Schwarz Exchange.
                                         // Market-Order Achat le 10/04/2024 à 17:33 (Europe/Berlin).
+                                        // Market-OrderCompra el día 01.12.2022 a las 11:56 (Europe/Berlin).
+                                        // Market-OrderVenta a día 15.02.2024, a las 16:15 (Europe/Berlin) en Lang & Schwarz Exchange.
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date", "time") //
-                                                        .match("^(?i)((Limit|Stop\\-Market|Market)\\-Order(\\s)?)?(Buy|Achat|Acquisto|Kauf|Verkauf|Sell) .* " //
+                                                        .match("^(?i)((Limit|Stop\\-Market|Market)\\-Order(\\s)?)?(Buy|Achat|Acquisto|Kauf|Verkauf|Sell|Compra|Venta) .* " //
                                                                         + "(?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}" //
                                                                         + "|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2}" //
                                                                         + "|[\\d]{2}\\/[\\d]{2}\\/[\\d]{4}))" //
-                                                                        + "(,)? (um|at|alle|.) (?<time>[\\d]{2}:[\\d]{2}).*$") //
+                                                                        + "(,)? (um|at|alle|.|a las) (?<time>[\\d]{2}:[\\d]{2}).*$") //
                                                         .assign((t, v) -> t.setDateTime(asDate(v.get("date"), v.get("time")))),
                                         // @formatter:off
                                         // Exécution de l'investissement programmé le 17/01/2022 sur le Lang & Schwarz Exchange.
@@ -2562,10 +2903,15 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // Sparplanausführung am 18.11.2019 an der Lang & Schwarz Exchange.
                                         // Savings plan execution on 16.05.2023 on the Lang & Schwarz Exchange.
                                         // Saveback execution on 02.05.2024 on the Lang & Schwarz Exchange.
+                                        // Ejecución del plan de inversión el día 02.05.2024 en Lang & Schwarz Exchange.
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date") //
-                                                        .match("^(Sparplanausf.hrung|(Savings plan|Saveback) execution) .* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$") //
+                                                        .match("^(Sparplanausf.hrung"
+                                                                        + "|Ejecuci.n del plan de inversi.n"
+                                                                        + "|(Savings plan|Saveback) execution) .* "
+                                                                        + "(?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}"
+                                                                        + "|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$") //
                                                         .assign((t, v) -> t.setDateTime(asDate(v.get("date")))),
                                         // @formatter:off
                                         // Ausführung von Round up am 09.02.2024 an der Lang & Schwarz Exchange.
@@ -2573,12 +2919,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date") //
-                                                        .match("^Ausf.hrung von (Round up|Saveback) .* (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$") //
+                                                        .match("^Ausf.hrung von (Round up|Saveback) .* "
+                                                                        + "(?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}"
+                                                                        + "|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) .*$") //
                                                         .assign((t, v) -> t.setDateTime(asDate(v.get("date")))),
                                         // @formatter:off
-                                        // This is for the reinvestment of dividends
-                                        //
                                         // DE40110101001234567890 06.08.2021 0,44 GBP
+                                        // DE71100123450999999601 30.07.2024 2.05 EUR
                                         // @formatter:on
                                         section -> section.attributes("date") //
                                                         .match("^[\\w]+ (?<date>([\\d]{2}\\.[\\d]{2}\\.[\\d]{4}|[\\d]{4}\\-[\\d]{2}\\-[\\d]{2})) [\\.,\\d]+ [\\w]{3}$") //
@@ -2587,7 +2934,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         // @formatter:off
                         // GESAMT 3.615,63 EUR
                         // @formatter:on
-                        .section("amount", "currency") //
+                        .section("amount", "currency").optional() //
                         .match("^(GESAMT|TOTAL|TOTALE|SUMME) (\\-)?(?<amount>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
                         .assign((t, v) -> {
                             // @formatter:off
@@ -2729,6 +3076,17 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) [\\.,\\d]+ St.cke [\\.,\\d]+ (?<currency>[\\w]{3})$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
                                         // @formatter:off
+                                        // POSITION QUANTITY YIELD AMOUNT
+                                        // Mondelez
+                                        // US6092071058 2.000000 Pcs. 0.425 USD
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "isin", "currency") //
+                                                        .find("POSITION QUANTITY YIELD AMOUNT")
+                                                        .match("^(?<name>.*)")
+                                                        .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) [\\.,\\d]+ Pcs\\. [\\.,\\d]+ (?<currency>[\\w]{3})$") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
                                         // 1 Reinvestierung Vodafone Group PLC 699 Stk.
                                         // Registered Shares DL 0,2095238
                                         // GB00BH4HKS39
@@ -2769,6 +3127,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         section -> section //
                                                         .attributes("shares") //
                                                         .match("^.* (?<shares>[\\.,\\d]+) Pcs\\. [\\.,\\d]+ [\\w]{3} [\\.,\\d]+ [\\w]{3}$") //
+                                                        .assign((t, v) -> t.setShares(asShares(v.get("shares"), "en", "US"))),
+                                        // @formatter:off
+                                        // US6092071058 2.000000 Pcs. 0.425 USD
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^.* (?<shares>[\\.,\\d]+) Pcs\\. [\\.,\\d]+ [\\w]{3}$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares"), "en", "US"))),
                                         // @formatter:off
                                         // 1 Reinvestierung Vodafone Group PLC 699 Stk.
@@ -2888,9 +3253,10 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         // @formatter:off
                         // Zwischensumme 1,095514 EUR/USD 63,31 EUR
                         // Sous-total 1,0802 EUR/USD 0,38 EUR
+                        // Sub Total 1.0855 USD/EUR 0.66 EUR
                         // @formatter:on
                         .section("exchangeRate", "baseCurrency", "termCurrency").optional() //
-                        .match("^(Zwischensumme|Subtotale|Subtotal|Sous\\-total) (?<exchangeRate>[\\.,\\d]+) (?<baseCurrency>[\\w]{3})\\/(?<termCurrency>[\\w]{3}) (\\-)?[\\.,\\d]+ [\\w]{3}$")
+                        .match("^(Zwischensumme|Subtotale|Subtotal|Sous\\-total|Sub Total) (?<exchangeRate>[\\.,\\d]+) (?<baseCurrency>[\\w]{3})\\/(?<termCurrency>[\\w]{3}) (\\-)?[\\.,\\d]+ [\\w]{3}$")
                         .assign((t, v) -> {
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
                             {
@@ -2922,9 +3288,10 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
                         // @formatter:off
                         // Quellensteuer DE für US-Emittent -7,56 USD
+                        // Withholding Tax for US issuer -0.13 USD
                         // @formatter:on
                         .section("withHoldingTax", "currency").optional() //
-                        .match("^([\\d] )?Quellensteuer .* (\\-)?(?<withHoldingTax>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
+                        .match("^([\\d] )?(Quellensteuer|Withholding Tax) .* (\\-)?(?<withHoldingTax>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
                         .assign((t, v) -> processWithHoldingTaxEntries(t, v, "withHoldingTax", type))
 
                         // @formatter:off
@@ -3048,6 +3415,16 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("fee", "currency").optional() //
                         .match("^Supplemento spese di terzi \\-(?<fee>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
+                        .assign((t, v) -> {
+                            if (!type.getCurrentContext().getBoolean("negative"))
+                                processFeeEntries(t, v, type);
+                        })
+
+                        // @formatter:off
+                        // Tarifa plana por costes del servicio de ejecución de terceros -1,00 EUR
+                        // @formatter:on
+                        .section("fee", "currency").optional() //
+                        .match("^Tarifa plana por costes del servicio de ejecuci.n de terceros \\-(?<fee>[\\.,\\d]+) (?<currency>[\\w]{3})$") //
                         .assign((t, v) -> {
                             if (!type.getCurrentContext().getBoolean("negative"))
                                 processFeeEntries(t, v, type);
