@@ -5,12 +5,15 @@ import static name.abuchen.portfolio.util.CollectorsUtil.toMutableList;
 import java.text.MessageFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
@@ -38,6 +41,7 @@ import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 
+import name.abuchen.portfolio.model.AttributeType;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.model.SecurityPrice;
@@ -45,6 +49,7 @@ import name.abuchen.portfolio.model.Taxonomy;
 import name.abuchen.portfolio.money.CurrencyConverter;
 import name.abuchen.portfolio.money.CurrencyConverterImpl;
 import name.abuchen.portfolio.money.ExchangeRateProviderFactory;
+import name.abuchen.portfolio.money.Money;
 import name.abuchen.portfolio.money.Values;
 import name.abuchen.portfolio.snapshot.filter.ClientFilter;
 import name.abuchen.portfolio.snapshot.security.LazySecurityPerformanceRecord;
@@ -63,6 +68,7 @@ import name.abuchen.portfolio.ui.util.LabelOnly;
 import name.abuchen.portfolio.ui.util.ReportingPeriodDropDown;
 import name.abuchen.portfolio.ui.util.ReportingPeriodDropDown.ReportingPeriodListener;
 import name.abuchen.portfolio.ui.util.TableViewerCSVExporter;
+import name.abuchen.portfolio.ui.util.viewers.ClientFilterColumnOptions;
 import name.abuchen.portfolio.ui.util.viewers.Column;
 import name.abuchen.portfolio.ui.util.viewers.ColumnEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.ColumnEditingSupport.MarkDirtyClientListener;
@@ -70,8 +76,10 @@ import name.abuchen.portfolio.ui.util.viewers.ColumnEditingSupport.TouchClientLi
 import name.abuchen.portfolio.ui.util.viewers.ColumnViewerSorter;
 import name.abuchen.portfolio.ui.util.viewers.CopyPasteSupport;
 import name.abuchen.portfolio.ui.util.viewers.DateLabelProvider;
+import name.abuchen.portfolio.ui.util.viewers.ElementOptionFunction;
 import name.abuchen.portfolio.ui.util.viewers.MoneyColorLabelProvider;
 import name.abuchen.portfolio.ui.util.viewers.NumberColorLabelProvider;
+import name.abuchen.portfolio.ui.util.viewers.OptionLabelProvider;
 import name.abuchen.portfolio.ui.util.viewers.SharesLabelProvider;
 import name.abuchen.portfolio.ui.util.viewers.ShowHideColumnHelper;
 import name.abuchen.portfolio.ui.util.viewers.ToolTipCustomProviderSupport;
@@ -197,6 +205,29 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
     private ClientFilter clientFilter;
     private List<Predicate<LazySecurityPerformanceRecord>> recordFilter = new ArrayList<>();
 
+    private Map<String, Map<Security, LazySecurityPerformanceRecord>> filter2records = new HashMap<>();
+
+    private LazySecurityPerformanceRecord getRecord(Object row, ClientFilterMenu.Item filterItem)
+    {
+        var security = ((LazySecurityPerformanceRecord) row).getSecurity();
+        return getRecord(security, filterItem);
+    }
+
+    /**
+     * Retrieves the Security performance record for the given filter. If the
+     * record has not yet been computed, it is computed first.
+     */
+    private LazySecurityPerformanceRecord getRecord(Security security, ClientFilterMenu.Item filterItem)
+    {
+        return filter2records.computeIfAbsent(filterItem.getId(), id -> {
+            var filter = filterItem.getFilter();
+            var period = dropDown.getSelectedPeriod().toInterval(LocalDate.now());
+            var converter = new CurrencyConverterImpl(factory, getClient().getBaseCurrency());
+            var snapshot = LazySecurityPerformanceSnapshot.create(filter.filter(getClient()), converter, period);
+            return snapshot.getRecords().stream().collect(Collectors.toMap(r -> r.getSecurity(), r -> r));
+        }).get(security);
+    }
+
     @Override
     protected String getDefaultTitle()
     {
@@ -258,6 +289,8 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
         addCapitalGainsColumns();
         createRiskColumns();
         createAdditionalColumns();
+        createClientFilteredColumns();
+        createExperimentalEDivColumn();
 
         recordColumns.createColumns(true);
 
@@ -924,7 +957,14 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
             @Override
             public String getText(Object r)
             {
-                return String.valueOf(((LazySecurityPerformanceRecord) r).getDrawdown().get().getMaxDrawdownDuration());
+                return String.valueOf(((LazySecurityPerformanceRecord) r).getDrawdown().get().getMaxDrawdownDuration()
+                                .getDays());
+            }
+
+            @Override
+            public String getToolTipText(Object r)
+            {
+                return ((LazySecurityPerformanceRecord) r).getDrawdown().get().getMaxDrawdownDuration().toString();
             }
         });
         column.setSorter(ColumnViewerSorter.create(e -> ((LazySecurityPerformanceRecord) e).getDrawdown().get()
@@ -980,6 +1020,206 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
                         });
     }
 
+    private void createClientFilteredColumns()
+    {
+        // the suffix added to the column label so that the message format can
+        // print the filter name
+        var suffix = " [{0}]"; //$NON-NLS-1$
+
+        // shares held
+        Column column = new Column("filter:shares", Messages.ColumnSharesOwned, SWT.RIGHT, 80); //$NON-NLS-1$
+        column.setOptions(new ClientFilterColumnOptions(Messages.ColumnSharesOwned + suffix,
+                        new ClientFilterMenu(getClient(), getPreferenceStore())));
+        column.setGroupLabel(Messages.LabelClientFilterMenu);
+        column.setLabelProvider(new OptionLabelProvider<ClientFilterMenu.Item>()
+        {
+            @Override
+            public String getText(Object element, ClientFilterMenu.Item filterItem)
+            {
+                var dataRecord = getRecord(element, filterItem);
+                return dataRecord == null ? null : Values.Share.formatNonZero(dataRecord.getSharesHeld().get());
+            }
+        });
+        column.setSorter(ColumnViewerSorter.createWithOption((element, option) -> {
+            var dataRecord = getRecord(element, (ClientFilterMenu.Item) option);
+            return dataRecord == null ? null : dataRecord.getSharesHeld().get();
+        }));
+        column.setVisible(false);
+        recordColumns.addColumn(column);
+
+        // cost value - fifo
+        column = new Column("filter:pv", Messages.ColumnPurchaseValue, SWT.RIGHT, 75); //$NON-NLS-1$
+        column.setOptions(new ClientFilterColumnOptions(Messages.ColumnPurchaseValue + suffix,
+                        new ClientFilterMenu(getClient(), getPreferenceStore())));
+        column.setDescription(Messages.ColumnPurchaseValue_Description + TextUtil.PARAGRAPH_BREAK
+                        + Messages.DescriptionDataRelativeToReportingPeriod);
+        column.setGroupLabel(Messages.LabelClientFilterMenu);
+        column.setImage(Images.INTERVAL);
+        column.setLabelProvider(new OptionLabelProvider<ClientFilterMenu.Item>()
+        {
+            @Override
+            public String getText(Object element, ClientFilterMenu.Item filterItem)
+            {
+                var dataRecord = getRecord(element, filterItem);
+                return dataRecord == null ? null
+                                : Values.Money.format(dataRecord.getFifoCost().get(), getClient().getBaseCurrency());
+            }
+        });
+        column.setToolTipProvider((element, option) -> {
+            var dataRecord = getRecord(element, (ClientFilterMenu.Item) option);
+            return dataRecord == null ? "" : dataRecord.explain(LazySecurityPerformanceRecord.Trails.FIFO_COST); //$NON-NLS-1$
+        });
+        column.setSorter(ColumnViewerSorter.createWithOption((element, option) -> {
+            var dataRecord = getRecord(element, (ClientFilterMenu.Item) option);
+            return dataRecord == null ? null : dataRecord.getFifoCost().get();
+        }));
+        column.setVisible(false);
+        recordColumns.addColumn(column);
+
+        // market value
+        column = new Column("filter:mv", Messages.ColumnMarketValue, SWT.RIGHT, 75); //$NON-NLS-1$
+        column.setOptions(new ClientFilterColumnOptions(Messages.ColumnMarketValue + suffix,
+                        new ClientFilterMenu(getClient(), getPreferenceStore())));
+        column.setGroupLabel(Messages.LabelClientFilterMenu);
+        column.setLabelProvider(new OptionLabelProvider<ClientFilterMenu.Item>()
+        {
+            @Override
+            public String getText(Object element, ClientFilterMenu.Item filterItem)
+            {
+                var dataRecord = getRecord(element, filterItem);
+                return dataRecord == null ? null
+                                : Values.Money.format(dataRecord.getMarketValue().get(), getClient().getBaseCurrency());
+            }
+        });
+        column.setSorter(ColumnViewerSorter.createWithOption((element, option) -> {
+            var dataRecord = getRecord(element, (ClientFilterMenu.Item) option);
+            return dataRecord == null ? null : dataRecord.getMarketValue().get();
+        }));
+        column.setVisible(false);
+        recordColumns.addColumn(column);
+
+        // sum of dividends
+        column = new Column("filter:sumdiv", Messages.ColumnDividendSum, SWT.RIGHT, 80); //$NON-NLS-1$
+        column.setOptions(new ClientFilterColumnOptions(Messages.ColumnDividendSum + suffix,
+                        new ClientFilterMenu(getClient(), getPreferenceStore())));
+        column.setMenuLabel(Messages.ColumnDividendSum_MenuLabel);
+        column.setGroupLabel(Messages.LabelClientFilterMenu);
+        column.setLabelProvider(new OptionLabelProvider<ClientFilterMenu.Item>()
+        {
+            @Override
+            public String getText(Object element, ClientFilterMenu.Item filterItem)
+            {
+                var dataRecord = getRecord(element, filterItem);
+                return dataRecord == null ? null
+                                : Values.Money.format(dataRecord.getSumOfDividends().get(),
+                                                getClient().getBaseCurrency());
+            }
+        });
+        column.setSorter(ColumnViewerSorter.createWithOption((element, option) -> {
+            var dataRecord = getRecord(element, (ClientFilterMenu.Item) option);
+            return dataRecord == null ? null : dataRecord.getSumOfDividends().get();
+        }));
+        column.setVisible(false);
+        recordColumns.addColumn(column);
+
+        // true time weighted rate of return
+        column = new Column("filter:twror", Messages.LabelTTWROR, SWT.RIGHT, 80); //$NON-NLS-1$
+        column.setOptions(new ClientFilterColumnOptions(Messages.ColumnTTWROR + suffix,
+                        new ClientFilterMenu(getClient(), getPreferenceStore())));
+        column.setGroupLabel(Messages.LabelClientFilterMenu);
+        column.setLabelProvider(new OptionLabelProvider<ClientFilterMenu.Item>()
+        {
+            @Override
+            public String getText(Object element, ClientFilterMenu.Item filterItem)
+            {
+                var dataRecord = getRecord(element, filterItem);
+                return dataRecord == null ? null
+                                : Values.Percent2.format(dataRecord.getTrueTimeWeightedRateOfReturn().get());
+            }
+        });
+        column.setSorter(ColumnViewerSorter.createWithOption((element, option) -> {
+            var dataRecord = getRecord(element, (ClientFilterMenu.Item) option);
+            return dataRecord == null ? null : dataRecord.getTrueTimeWeightedRateOfReturn().get();
+        }));
+        column.setVisible(false);
+        recordColumns.addColumn(column);
+
+        // internal rate of erturn
+        column = new Column("filter:izf", Messages.ColumnIRR_MenuLabel, SWT.RIGHT, 80); //$NON-NLS-1$
+        column.setOptions(new ClientFilterColumnOptions(Messages.ColumnIRR + suffix,
+                        new ClientFilterMenu(getClient(), getPreferenceStore())));
+        column.setGroupLabel(Messages.LabelClientFilterMenu);
+        column.setLabelProvider(new OptionLabelProvider<ClientFilterMenu.Item>()
+        {
+            @Override
+            public String getText(Object element, ClientFilterMenu.Item filterItem)
+            {
+                var dataRecord = getRecord(element, filterItem);
+                return dataRecord == null ? null : Values.Percent2.format(dataRecord.getIrr().get());
+            }
+        });
+        column.setSorter(ColumnViewerSorter.createWithOption((element, option) -> {
+            var dataRecord = getRecord(element, (ClientFilterMenu.Item) option);
+            return dataRecord == null ? null : dataRecord.getIrr().get();
+        }));
+        column.setVisible(false);
+        recordColumns.addColumn(column);
+    }
+
+    private void createExperimentalEDivColumn()
+    {
+        // retrieve attribute
+
+        Optional<AttributeType> attribute = getClient().getSettings().getAttributeTypes()
+                        .filter(a -> a.supports(Security.class)) //
+                        .filter(a -> a.getType() == Double.class) //
+                        .filter(a -> "ediv".equalsIgnoreCase(a.getSource())) //$NON-NLS-1$
+                        .findAny();
+
+        if (attribute.isPresent())
+        {
+            var suffix = " [{0}]"; //$NON-NLS-1$
+            var edivAttribute = attribute.get();
+
+            // market value * expected dividend yield = expected dividends
+            ElementOptionFunction<Money> valueProvider = (element, option) -> {
+                var dataRecord = getRecord(element, (ClientFilterMenu.Item) option);
+                if (dataRecord == null)
+                    return null;
+
+                var dive = (Double) dataRecord.getSecurity().getAttributes().get(edivAttribute);
+                if (dive == null)
+                    return null;
+
+                var marketValue = dataRecord.getMarketValue().get();
+
+                double expected = marketValue.getAmount() * dive;
+                if (attribute.get().getConverter().getClass() == AttributeType.PercentPlainConverter.class)
+                    expected /= 100;
+
+                return Money.of(marketValue.getCurrencyCode(), Math.round(expected));
+            };
+
+            Column column = new Column("filter:expecteddividends", //$NON-NLS-1$
+                            Messages.ExperimentalColumnExpectedDividends_MenuLabel, SWT.RIGHT, 80);
+            column.setOptions(new ClientFilterColumnOptions(Messages.ExperimentalColumnExpectedDividends + suffix,
+                            new ClientFilterMenu(getClient(), getPreferenceStore())));
+            column.setGroupLabel(Messages.LabelClientFilterMenu);
+            column.setLabelProvider(new OptionLabelProvider<ClientFilterMenu.Item>()
+            {
+                @Override
+                public String getText(Object element, ClientFilterMenu.Item option)
+                {
+                    var amount = valueProvider.apply(element, option);
+                    return amount == null ? null : Values.Money.format(amount, getClient().getBaseCurrency());
+                }
+            });
+            column.setSorter(ColumnViewerSorter.createWithOption(valueProvider::apply));
+            column.setVisible(false);
+            recordColumns.addColumn(column);
+        }
+    }
+
     @Override
     protected void addPanePages(List<InformationPanePage> pages)
     {
@@ -1013,6 +1253,8 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
     {
         Client filteredClient = clientFilter.filter(getClient());
         setToContext(UIConstants.Context.FILTERED_CLIENT, filteredClient);
+
+        filter2records.clear();
 
         Interval period = dropDown.getSelectedPeriod().toInterval(LocalDate.now());
         CurrencyConverter converter = new CurrencyConverterImpl(factory, getClient().getBaseCurrency());
