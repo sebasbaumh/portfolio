@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -899,8 +900,14 @@ public class ClientFactory
                 addInvestmentPlanTypes(client);
             case 61: // NOSONAR
                 removePortfolioReportMarketProperties(client);
-            case 62:
+            case 62: // NOSONAR
                 updateSecurityChartLabelConfiguration(client);
+            case 63: // NOSONAR
+                fixNullSecurityEvents(client);
+            case 64: // NOSONAR
+                assignDashboardIds(client);
+            case 65: // NOSOANR
+                // moved 'source' field to security event
 
                 client.setVersion(Client.CURRENT_VERSION);
                 break;
@@ -1636,6 +1643,25 @@ public class ClientFactory
         }
     }
 
+    private static void fixNullSecurityEvents(Client client)
+    {
+        // see
+        // https://forum.portfolio-performance.info/t/fehlermeldung-cannot-invoke-name-abuchen-portfolio-model-securityevent-gettype-because-event-is-null/29406
+
+        for (Security security : client.getSecurities())
+        {
+            var events = new ArrayList<>(security.getEvents());
+
+            for (SecurityEvent e : events)
+            {
+                if (e == null)
+                {
+                    security.removeEvent(null);
+                }
+            }
+        }
+    }
+
     private static void addInvestmentPlanTypes(Client client)
     {
         for (InvestmentPlan plan : client.getPlans())
@@ -1680,6 +1706,13 @@ public class ClientFactory
 
         client.setProperty(propertyKey, chartConfig.replace("SHOW_DATA_LABELS", //$NON-NLS-1$
                         "SHOW_DATA_DIVESTMENT_INVESTMENT_LABEL,SHOW_DATA_DIVIDEND_LABEL,SHOW_DATA_EXTREMES_LABEL")); //$NON-NLS-1$
+    }
+
+    private static void assignDashboardIds(Client client)
+    {
+        // dashboards get a unique identifier to reliably identify them in
+        // configuration (say the navigation bar)
+        client.getDashboards().forEach(dashboard -> dashboard.setId(UUID.randomUUID().toString()));
     }
 
     private static synchronized XStream xstreamReader()
