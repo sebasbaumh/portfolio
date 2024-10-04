@@ -33,6 +33,7 @@ public class PDFImportAssistant
         extractors.add(new AJBellSecuritiesLimitedPDFExtractor(client));
         extractors.add(new AkfBankPDFExtractor(client));
         extractors.add(new ArkeaDirectBankPDFExtractor(client));
+        extractors.add(new AlpacCapitalPDFExtractor(client));
         extractors.add(new AvivaPLCPDFExtractor(client));
         extractors.add(new BaaderBankPDFExtractor(client));
         extractors.add(new Bank11PDFExtractor(client));
@@ -64,6 +65,7 @@ public class PDFImportAssistant
         extractors.add(new EasyBankAGPDFExtractor(client));
         extractors.add(new EbasePDFExtractor(client));
         extractors.add(new ErsteBankPDFExtractor(client));
+        extractors.add(new EstateGuruPDFExtractor(client));
         extractors.add(new FidelityInternationalPDFExtractor(client));
         extractors.add(new FILFondbankPDFExtractor(client));
         extractors.add(new FindependentAGPDFExtractor(client));
@@ -120,6 +122,7 @@ public class PDFImportAssistant
         extractors.add(new VZVermoegenszentrumAGPDFExtractor(client));
         extractors.add(new WealthsimpleInvestmentsIncPDFExtractor(client));
         extractors.add(new WirBankPDFExtractor(client));
+        extractors.add(new WitheBoxGmbHPDFExtractor(client));
         extractors.add(new WeberbankPDFExtractor(client));
         extractors.add(new ZuercherKantonalbankPDFExtractor(client));
     }
