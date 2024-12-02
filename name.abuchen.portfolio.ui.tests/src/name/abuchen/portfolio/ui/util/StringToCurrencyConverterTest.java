@@ -1,4 +1,4 @@
-package name.abuchen.portfolio.ui.utils;
+package name.abuchen.portfolio.ui.util;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -10,7 +10,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import name.abuchen.portfolio.money.Values;
-import name.abuchen.portfolio.ui.util.StringToCurrencyConverter;
 
 @SuppressWarnings("nls")
 public class StringToCurrencyConverterTest
@@ -105,7 +104,7 @@ public class StringToCurrencyConverterTest
     @Test
     public void testValidBENLAmount()
     {
-        Locale.setDefault(new Locale("nl", "BE"));
+        Locale.setDefault(Locale.forLanguageTag("nl-BE"));
         StringToCurrencyConverter converter = new StringToCurrencyConverter(Values.Amount);
         assertThat(converter.convert("12,34"), is(1234l));
         assertThat(converter.convert(",34"), is(34l));
@@ -117,7 +116,7 @@ public class StringToCurrencyConverterTest
     @Test
     public void testValidBEFRAmount()
     {
-        Locale.setDefault(new Locale("fr", "BE"));
+        Locale.setDefault(Locale.forLanguageTag("fr-BE"));
         StringToCurrencyConverter converter = new StringToCurrencyConverter(Values.Amount);
         assertThat(converter.convert("12,34"), is(1234l));
         assertThat(converter.convert("12.34"), is(1234l));
@@ -127,7 +126,7 @@ public class StringToCurrencyConverterTest
     @Test
     public void testValidBEFRAmountWithNBSP()
     {
-        Locale.setDefault(new Locale("fr", "BE"));
+        Locale.setDefault(Locale.forLanguageTag("fr-BE"));
         StringToCurrencyConverter converter = new StringToCurrencyConverter(Values.Amount);
 
         // Belgian locale has changed between Java 11 and 17
@@ -140,7 +139,7 @@ public class StringToCurrencyConverterTest
     @Test(expected = IllegalArgumentException.class)
     public void testInvalidBEFREAmount()
     {
-        Locale.setDefault(new Locale("fr", "BE"));
+        Locale.setDefault(Locale.forLanguageTag("fr-BE"));
         StringToCurrencyConverter converter = new StringToCurrencyConverter(Values.Amount, false);
         converter.convert("1.234,56");
     }
