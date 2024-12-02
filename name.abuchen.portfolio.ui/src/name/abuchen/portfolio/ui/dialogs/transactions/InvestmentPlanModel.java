@@ -45,6 +45,56 @@ public class InvestmentPlanModel extends AbstractModel
 
     private IStatus calculationStatus = ValidationStatus.ok();
 
+    public enum Intervals
+    {
+        WEEKLY(InvestmentPlan.WEEKS_THRESHOLD + 1), //
+        BIWEEKLY(InvestmentPlan.WEEKS_THRESHOLD + 2), //
+        MONTHLY(1), //
+        MONTHLY2(2), //
+        MONTHLY3(3), //
+        MONTHLY4(4), //
+        MONTHLY5(5), //
+        MONTHLY6(6), //
+        MONTHLY7(7), //
+        MONTHLY8(8), //
+        MONTHLY9(9), //
+        MONTHLY10(10), //
+        MONTHLY11(11), //
+        MONTHLY12(12); //
+
+        private final int interval;
+
+        private Intervals(int interval)
+        {
+            this.interval = interval;
+        }
+
+        public int getInterval()
+        {
+            return interval;
+        }
+
+        public static Intervals get(int interval)
+        {
+            for (Intervals e : Intervals.values())
+            {
+                if (e.interval == interval)
+                    return e;
+            }
+            throw new IllegalArgumentException("unknown interval"); //$NON-NLS-1$
+        }
+
+        @Override
+        public String toString()
+        {
+            if (interval < InvestmentPlan.WEEKS_THRESHOLD) // monthly
+                return MessageFormat.format(Messages.InvestmentPlanIntervalLabel, interval);
+            else // weekly or biweekly
+                return MessageFormat.format(Messages.InvestmentPlanIntervalWeeklyLabel,
+                                interval - InvestmentPlan.WEEKS_THRESHOLD);
+        }
+    }
+
     public InvestmentPlanModel(Client client, InvestmentPlan.Type planType)
     {
         this.client = client;

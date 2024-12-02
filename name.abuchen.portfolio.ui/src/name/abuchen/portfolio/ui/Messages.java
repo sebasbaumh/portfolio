@@ -482,6 +482,7 @@ public class Messages extends NLS
     public static String InvestmentPlanAutoCreationJob;
     public static String InvestmentPlanInfoNoTransactionsGenerated;
     public static String InvestmentPlanIntervalLabel;
+    public static String InvestmentPlanIntervalWeeklyLabel;
     public static String InvestmentPlanMenuCreate;
     public static String InvestmentPlanMenuDelete;
     public static String InvestmentPlanMenuGenerateTransactions;
@@ -547,11 +548,13 @@ public class Messages extends NLS
     public static String LabelBeforeTaxAndFees;
     public static String LabelBenchmarks;
     public static String LabelBiggerSize;
+    public static String LabelBlueGrayOrange;
     public static String LabelCapitalGains;
     public static String LabelCategoryOtherMovements;
     public static String LabelChartDetailChartDevelopment;
     public static String LabelChartDetailChartDevelopmentClosing;
     public static String LabelChartDetailChartDevelopmentClosingFIFO;
+    public static String LabelChartDetailChartDevelopmentClosingMovingAverage;
     public static String LabelChartDetailChartScaling;
     public static String LabelChartDetailChartScalingLinear;
     public static String LabelChartDetailChartScalingLog;
@@ -674,6 +677,7 @@ public class Messages extends NLS
     public static String LabelFontSize;
     public static String LabelFormatJSON;
     public static String LabelFullClassification;
+    public static String LabelGreenGrayRed;
     public static String LabelGreenWhiteRed;
     public static String LabelGreenYellowRed;
     public static String LabelGross;
@@ -901,6 +905,7 @@ public class Messages extends NLS
     public static String LabelXDays;
     public static String LabelYear;
     public static String LabelYearlyHeatmap;
+    public static String LabelYellowWhiteBlack;
     public static String LabelYes;
     public static String LabelYTD;
     public static String MarkSecurityPageDescription;
@@ -1168,6 +1173,7 @@ public class Messages extends NLS
     public static String PrefNoteStoreSettingsNextToFile;
     public static String PrefPortfolioReportAPIKey;
     public static String PrefPortfolioReportAPIURL;
+    public static String PrefPrefixSecurityName;
     public static String PrefQuandlAPIKey;
     public static String PrefRelativeBackupDirectoryName;
     public static String PrefStoreSettingsNextToFile;

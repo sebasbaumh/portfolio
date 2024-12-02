@@ -8,7 +8,6 @@ import java.util.function.Function;
 import jakarta.inject.Inject;
 
 import org.eclipse.e4.ui.services.IStylingEngine;
-import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.Separator;
@@ -386,14 +385,11 @@ public class PerformanceView extends AbstractHistoricView
 
     private void addTreeActionsContextMenu(IMenuManager manager, Object obj)
     {
-        manager.add(new Action(Messages.LabelExpand)
-        {
-            @Override
-            public void run()
-            {
-                calculation.setExpandedState(obj, true);
-            }
+        if (obj == null)
+            return;
 
+        manager.add(new SimpleAction(Messages.LabelExpand, a -> calculation.setExpandedState(obj, true))
+        {
             @Override
             public boolean isEnabled()
             {
@@ -401,14 +397,8 @@ public class PerformanceView extends AbstractHistoricView
             }
         });
 
-        manager.add(new Action(Messages.LabelCollapse)
+        manager.add(new SimpleAction(Messages.LabelCollapse, a -> calculation.setExpandedState(obj, false))
         {
-            @Override
-            public void run()
-            {
-                calculation.setExpandedState(obj, false);
-            }
-
             @Override
             public boolean isEnabled()
             {
@@ -418,23 +408,8 @@ public class PerformanceView extends AbstractHistoricView
 
         manager.add(new Separator());
 
-        manager.add(new Action(Messages.LabelExpandAll)
-        {
-            @Override
-            public void run()
-            {
-                calculation.expandAll();
-            }
-        });
-
-        manager.add(new Action(Messages.LabelCollapseAll)
-        {
-            @Override
-            public void run()
-            {
-                calculation.collapseAll();
-            }
-        });
+        manager.add(new SimpleAction(Messages.LabelExpandAll, a -> calculation.expandAll()));
+        manager.add(new SimpleAction(Messages.LabelCollapseAll, a -> calculation.collapseAll()));
     }
 
     private TableViewer createTransactionViewer(CTabFolder folder, String title)
