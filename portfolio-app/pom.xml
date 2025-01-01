@@ -5,7 +5,7 @@
 
 	<groupId>name.abuchen.portfolio</groupId>
 	<artifactId>portfolio-app</artifactId>
-	<version>0.72.2</version>
+	<version>0.73.0</version>
 	<packaging>pom</packaging>
 
 	<name>Portfolio Performance</name>
@@ -121,6 +121,11 @@
 							<os>win32</os>
 							<ws>win32</ws>
 							<arch>x86_64</arch>
+						</environment>
+						<environment>
+							<os>win32</os>
+							<ws>win32</ws>
+							<arch>aarch64</arch>
 						</environment>
 					</environments>
 					<filters>
