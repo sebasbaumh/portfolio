@@ -65,6 +65,7 @@ public class Messages extends NLS
     public static String ChartSeriesBenchmarkSuffix;
     public static String ChartSeriesCopySeriesFromOtherChart;
     public static String ChartSeriesPickerAddBenchmark;
+    public static String ChartSeriesPickerAddDerivedData;
     public static String ChartSeriesPickerAddItem;
     public static String ChartSeriesPickerColor;
     public static String ChartSeriesPickerDialogMsg;
@@ -103,6 +104,7 @@ public class Messages extends NLS
     public static String ColumnAutoGenerate;
     public static String ColumnBalance;
     public static String ColumnBalance_Description;
+    public static String ColumnBalanceOfReferenceAccount;
     public static String ColumnBaseCurrency;
     public static String ColumnCapitalGains;
     public static String ColumnCapitalGains_Description;
@@ -205,6 +207,10 @@ public class Messages extends NLS
     public static String ColumnForeignCurrencies;
     public static String ColumnGrossDividend;
     public static String ColumnGrossProfitLoss;
+    public static String ColumnGrossPurchasePriceFIFO;
+    public static String ColumnGrossPurchasePriceFIFO_Description;
+    public static String ColumnGrossPurchasePriceMovingAverage;
+    public static String ColumnGrossPurchasePriceMovingAverage_Description;
     public static String ColumnGrossValue;
     public static String ColumnHeight;
     public static String ColumnHoldingPeriod;
@@ -265,12 +271,14 @@ public class Messages extends NLS
     public static String ColumnProfitLossBaseCurrency;
     public static String ColumnPurchasePrice;
     public static String ColumnPurchasePrice_Description;
+    public static String ColumnPurchasePrice_MenuLabel;
     public static String ColumnPurchasePriceBaseCurrency;
     public static String ColumnPurchasePriceMovingAverage;
     public static String ColumnPurchasePriceMovingAverage_Description;
     public static String ColumnPurchasePriceMovingAverage_MenuLabel;
     public static String ColumnPurchaseValue;
     public static String ColumnPurchaseValue_Description;
+    public static String ColumnPurchaseValue_MenuLabel;
     public static String ColumnPurchaseValueBaseCurrency;
     public static String ColumnPurchaseValueMovingAverage;
     public static String ColumnPurchaseValueMovingAverage_Description;
@@ -285,6 +293,9 @@ public class Messages extends NLS
     public static String ColumnQuoteDistanceFromAthPercent_Option;
     public static String ColumnQuoteFeedHistoric;
     public static String ColumnQuoteFeedLatest;
+    public static String ColumnQuoteRangeWidget;
+    public static String ColumnQuoteRangeWidget_Description;
+    public static String ColumnQuoteRangeWidget_Option;
     public static String ColumnRealizedCapitalGains;
     public static String ColumnRebalanceAmount;
     public static String ColumnRebalancingIndicatorAbsoluteThreshold;
@@ -785,6 +796,7 @@ public class Messages extends NLS
     public static String LabelPortfolioTimeMachine;
     public static String LabelPreTax;
     public static String LabelPreviousTradingDay;
+    public static String LabelPurchasePrice;
     public static String LabelPurchaseTransactionsOnly;
     public static String LabelQuandlCode;
     public static String LabelQuandlColumnNameQuote;
@@ -850,6 +862,8 @@ public class Messages extends NLS
     public static String LabelStatementOfAssetsHoldings;
     public static String LabelSuffix_HICP;
     public static String LabelSuffix_PreTax;
+    public static String LabelTaxesAndFeesIncluded;
+    public static String LabelTaxesAndFeesNotIncluded;
     public static String LabelTaxonomies;
     public static String LabelTaxonomyTemplates;
     public static String LabelTemplate;
@@ -1045,6 +1059,7 @@ public class Messages extends NLS
     public static String MsgErrorTradeCollectionWithErrors;
     public static String MsgErrorUpdating;
     public static String MsgHintNoAttributesConfigured;
+    public static String MsgHintUseOutboundDeliveryForZeroTotal;
     public static String MsgIncorrectConvertedSubTotal;
     public static String MsgIncorrectSubTotal;
     public static String MsgIncorrectTotal;
