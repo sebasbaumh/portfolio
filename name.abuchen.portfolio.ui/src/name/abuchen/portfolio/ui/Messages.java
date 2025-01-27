@@ -188,6 +188,7 @@ public class Messages extends NLS
     public static String ColumnEntity;
     public static String ColumnEntryValue;
     public static String ColumnErrorMessages;
+    public static String ColumnEventType;
     public static String ColumnExchangeRate;
     public static String ColumnExDate;
     public static String ColumnExitValue;
@@ -423,6 +424,7 @@ public class Messages extends NLS
     public static String EditWizardQuoteFeedTitle;
     public static String EODHistoricalDataMissingAPIKey;
     public static String ErrorKeyAlreadyUsed;
+    public static String EventListWidgetTitle;
     public static String EventWizardDescription;
     public static String EventWizardLabelMessage;
     public static String EventWizardTitle;
@@ -703,6 +705,7 @@ public class Messages extends NLS
     public static String LabelHeatmapOrnament;
     public static String LabelHeatmapTaxes;
     public static String LabelHide;
+    public static String LabelHideMarkings;
     public static String LabelHistoricalReturnsAndVolatiltity;
     public static String LabelImportNotesFromSource;
     public static String LabelIncludeSecuritiesInPieChart;
@@ -1059,6 +1062,7 @@ public class Messages extends NLS
     public static String MsgErrorTradeCollectionWithErrors;
     public static String MsgErrorUpdating;
     public static String MsgHintNoAttributesConfigured;
+    public static String MsgHintNoEvents;
     public static String MsgHintUseOutboundDeliveryForZeroTotal;
     public static String MsgIncorrectConvertedSubTotal;
     public static String MsgIncorrectSubTotal;
