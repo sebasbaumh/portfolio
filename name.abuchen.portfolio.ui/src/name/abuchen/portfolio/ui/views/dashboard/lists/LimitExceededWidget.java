@@ -94,7 +94,7 @@ public class LimitExceededWidget extends AbstractSecurityListWidget<LimitExceede
     }
 
     @Override
-    protected Composite createItemControl(Composite parent, LimitItem item)
+    protected Composite createItemControl(Composite parent, LimitItem item, LimitItem previous)
     {
         Composite composite = new Composite(parent, SWT.NONE);
         composite.setLayout(new FormLayout());
@@ -102,7 +102,7 @@ public class LimitExceededWidget extends AbstractSecurityListWidget<LimitExceede
         Label logo = createLabel(composite,
                         LogoManager.instance().getDefaultColumnImage(item.getSecurity(), getClient().getSettings()));
 
-        Label name = createLabel(composite, item.getSecurity().getName());
+        Label name = createLabel(composite, item.getSecurity().getName(getClient().getSecurityNameConfig()));
 
         ColoredLabel price = new ColoredLabel(composite, SWT.RIGHT);
 

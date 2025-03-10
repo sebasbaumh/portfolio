@@ -116,14 +116,21 @@ public class FollowUpWidget extends AbstractSecurityListWidget<FollowUpWidget.Fo
             }
 
             var comparator = get(SortingConfig.class).getValue().getComparator();
-            Collections.sort(items, (r, l) -> comparator.compare(r.date, l.date));
+            Collections.sort(items, (r, l) -> {
+                int res = comparator.compare(r.date, l.date);
+                // If date is the same, we want to group items by attribute type
+                // (by simply sorting them by it).
+                if (res == 0)
+                    res = r.type.getName().compareTo(l.type.getName());
+                return res;
+            });
 
             return items;
         };
     }
 
     @Override
-    protected Composite createItemControl(Composite parent, FollowUpItem item)
+    protected Composite createItemControl(Composite parent, FollowUpItem item, FollowUpItem previous)
     {
         Composite composite = new Composite(parent, SWT.NONE);
         composite.setLayout(new FormLayout());
@@ -131,15 +138,20 @@ public class FollowUpWidget extends AbstractSecurityListWidget<FollowUpWidget.Fo
         Label logo = createLabel(composite,
                         LogoManager.instance().getDefaultColumnImage(item.getSecurity(), getClient().getSettings()));
 
-        Label name = createLabel(composite, item.getSecurity().getName());
-
-        Label date = createLabel(composite, item.type.getName() + ": " + Values.Date.format(item.date)); //$NON-NLS-1$
+        Label name = createLabel(composite, item.getSecurity().getName(getClient().getSecurityNameConfig()));
 
         composite.addMouseListener(mouseUpAdapter);
         name.addMouseListener(mouseUpAdapter);
-        date.addMouseListener(mouseUpAdapter);
 
-        FormDataFactory.startingWith(logo).thenRight(name).right(new FormAttachment(100)).thenBelow(date);
+        if (previous == null || !item.date.equals(previous.date) || !item.type.equals(previous.type))
+        {
+            Label date = createLabel(composite, item.type.getName() + ": " + Values.Date.format(item.date)); //$NON-NLS-1$
+            FormDataFactory.startingWith(date).thenBelow(logo).thenRight(name).right(new FormAttachment(100));
+        }
+        else
+        {
+            FormDataFactory.startingWith(logo).thenRight(name).right(new FormAttachment(100));
+        }
 
         return composite;
     }
