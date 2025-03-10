@@ -21,7 +21,8 @@ public class ArkeaDirectBankPDFExtractor extends AbstractPDFExtractor
 
         addBankIdentifier("Arkéa Direct Bank");
 
-        addBuySellTransaction();
+        addBuySellTransaction_Format01();
+        addBuySellTransaction_Format02();
         addDividendeTransaction();
         addTaxesTransaction();
     }
@@ -32,7 +33,7 @@ public class ArkeaDirectBankPDFExtractor extends AbstractPDFExtractor
         return "Arkéa Direct Bank / Fortuneo Banque";
     }
 
-    private void addBuySellTransaction()
+    private void addBuySellTransaction_Format01()
     {
         var securityRange = new Block("^.* (ACTION|TRACKER) : .* \\([A-Z]{2}[A-Z0-9]{9}[0-9]\\)$") //
                         .asRange(section -> section //
@@ -69,7 +70,7 @@ public class ArkeaDirectBankPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("shares") //
                         .documentRange("name", "isin", "currency") //
-                        .match("^Quantit. (?<shares>[\\,\\d\\s]+) Cours [\\,\\d\\s]+ \\p{Sc}$") //
+                        .match("^Quantit. (?<shares>[\\,\\d]+) Cours [\\,\\d\\s]+ \\p{Sc}$") //
                         .assign((t, v) -> {
                             t.setSecurity(getOrCreateSecurity(v));
                             t.setShares(asShares(v.get("shares")));
@@ -86,6 +87,7 @@ public class ArkeaDirectBankPDFExtractor extends AbstractPDFExtractor
 
                         // @formatter:off
                         // Montant NET 491,67 € 491,67 €
+                        // Montant NET 5 068,28 € 5 068,28 €
                         // @formatter:on
                         .section("amount", "currency") //
                         .match("^Montant NET [\\,\\d\\s]+ \\p{Sc} (?<amount>[\\,\\d\\s]+) (?<currency>\\p{Sc})$") //
@@ -107,6 +109,61 @@ public class ArkeaDirectBankPDFExtractor extends AbstractPDFExtractor
         addFeesSectionsTransaction(pdfTransaction, type);
     }
 
+    private void addBuySellTransaction_Format02()
+    {
+        final DocumentType type = new DocumentType("(Souscription . titre r.ductible|Souscription avec droits)");
+        this.addDocumentTyp(type);
+
+        Transaction<BuySellEntry> pdfTransaction = new Transaction<>();
+
+        Block firstRelevantLine = new Block("^RESULTAT D'OST.*$");
+        type.addBlock(firstRelevantLine);
+        firstRelevantLine.set(pdfTransaction);
+
+        pdfTransaction //
+
+                        .subject(() -> {
+                            BuySellEntry portfolioTransaction = new BuySellEntry();
+                            portfolioTransaction.setType(PortfolioTransaction.Type.BUY);
+                            return portfolioTransaction;
+                        })
+
+                        // @formatter:off
+                        // Nous vous informons que  nous avons procédé à la souscription de 1 titre(s) VEOLIA ENVIRON. (FR0000124141).
+                        // montant net de  : - 22,70 EUR
+                        // @formatter:on
+                        .section("name", "isin", "currency") //
+                        .match("^.*titre\\(s\\) (?<name>.*) \\((?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])\\).*$") //
+                        .match("^montant net.* \\- [\\,\\d\\s]+ (?<currency>[\\w]{3})$") //
+                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v)))
+
+                        // @formatter:off
+                        // Nous vous informons que  nous avons procédé à la souscription de 1 titre(s) VEOLIA ENVIRON. (FR0000124141).
+                        // @formatter:on
+                        .section("shares") //
+                        .match("^.*la souscription de (?<shares>[\\,\\d]+) titre\\(s\\).*.*$") //
+                        .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
+
+                        // @formatter:off
+                        // Au 8 octobre 2021 2 gst eBJu gAAqm ZZYZnPSIY
+                        // @formatter:on
+                        .section("date") //
+                        .match("^Au (?<date>[\\d]{1,2} .* [\\d]{4}).*$") //
+                        .assign((t, v) -> t.setDate(asDate(v.get("date"))))
+
+                        // @formatter:off
+                        // montant net de  : - 22,70 EUR
+                        // @formatter:on
+                        .section("amount", "currency") //
+                        .match("^montant net.* \\- (?<amount>[\\,\\d\\s]+) (?<currency>[\\w]{3})$") //
+                        .assign((t, v) -> {
+                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                            t.setAmount(asAmount(v.get("amount")));
+                        })
+
+                        .wrap(BuySellEntryItem::new);
+    }
+
     private void addDividendeTransaction()
     {
         DocumentType type = new DocumentType("AVIS D.ENCAISSEMENT COUPON");
@@ -114,7 +171,7 @@ public class ArkeaDirectBankPDFExtractor extends AbstractPDFExtractor
 
         Transaction<AccountTransaction> pdfTransaction = new Transaction<>();
 
-        Block firstRelevantLine = new Block("^AVIS D.ENCAISSEMENT COUPON$");
+        Block firstRelevantLine = new Block("^AVIS D.ENCAISSEMENT COUPON.*$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
@@ -126,34 +183,56 @@ public class ArkeaDirectBankPDFExtractor extends AbstractPDFExtractor
                             return accountTransaction;
                         })
 
-                        // @formatter:off
-                        //   n       ACTION  ORANGE (FR0000133308)
-                        // Montant unitaire 0,30 €
-                        // @formatter:on
-                        .section("name", "isin", "currency") //
-                        .match("^.* ACTION (?<name>.*) \\((?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])\\)$") //
-                        .match("^Montant unitaire [\\,\\d\\s]+ (?<currency>\\p{Sc})$") //
-                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v)))
+                        .oneOf( //
+                                        // @formatter:off
+                                        //   n       ACTION  ORANGE (FR0000133308)
+                                        // Montant unitaire 0,30 €
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "isin", "currency") //
+                                                        .match("^.* (ACTION|OPCVM) (?<name>.*) \\((?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])\\).*$") //
+                                                        .match("^Montant unitaire [\\,\\d\\s]+ (?<currency>\\p{Sc})$") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
+                                        //   n       OPCVM  AMUND.MSCI WORLD D (LU2655993207)
+                                        // Montant unitaire 0,21 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "isin", "currency") //
+                                                        .match("^.* (ACTION|OPCVM) (?<name>.*) \\((?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])\\).*$") //
+                                                        .match("^Montant unitaire [\\,\\d\\s]+ (?<currency>[\\w]{3})$") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
+                                        //   n       ACTION  ENGIE (FR0010208488))
+                                        // Montant Net 140,00 € 140,00 €
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "isin", "currency") //
+                                                        .match("^.* (ACTION|OPCVM) (?<name>.*) \\((?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])\\).*$") //
+                                                        .match("^Montant Net [\\,\\d\\s]+ (?<currency>\\p{Sc}).*$") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))))
 
                         // @formatter:off
                         // Quantité 450
+                        // 28/04/2023 Quantité 100
                         // @formatter:on
                         .section("shares") //
-                        .match("^Quantit. (?<shares>[\\,\\d\\s]+)$") //
+                        .match("^.*Quantit. (?<shares>[\\,\\d\\s]+)$") //
                         .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
 
                         // @formatter:off
                         // 04/12/2023
                         // @formatter:on
                         .section("date") //
-                        .match("^(?<date>[\\d]{2}\\/[\\d]{2}\\/[\\d]{4})$") //
+                        .match("^(?<date>[\\d]{2}\\/[\\d]{2}\\/[\\d]{4}).*$") //
                         .assign((t, v) -> t.setDateTime(asDate(v.get("date"))))
 
                         // @formatter:off
                         // Montant Net 135,00 €
+                        // Montant Net 140,00 € 140,00 €
                         // @formatter:on
                         .section("amount", "currency") //
-                        .match("^Montant Net (?<amount>[\\,\\d\\s]+) (?<currency>\\p{Sc})$") //
+                        .match("^Montant Net (?<amount>[\\,\\d\\s]+) (?<currency>\\p{Sc}).*$") //
                         .assign((t, v) -> {
                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                             t.setAmount(asAmount(v.get("amount")));

@@ -19,7 +19,6 @@ import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasTaxes;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasTicker;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasWkn;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.interest;
-import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.interestCharge;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.purchase;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.removal;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.sale;
@@ -5673,8 +5672,8 @@ public class ComdirectPDFExtractorTest
         assertThat(errors, empty());
         assertThat(countSecurities(results), is(0L));
         assertThat(countBuySell(results), is(0L));
-        assertThat(countAccountTransactions(results), is(24L));
-        assertThat(results.size(), is(24));
+        assertThat(countAccountTransactions(results), is(22L));
+        assertThat(results.size(), is(22));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
         // assert transaction
@@ -5762,16 +5761,12 @@ public class ComdirectPDFExtractorTest
                         hasSource("Finanzreport01.txt"), hasNote("Versandpauschale"))));
 
         // assert transaction
-        assertThat(results, hasItem(interestCharge(hasDate("2015-12-31"), hasAmount("EUR", 0.07), //
-                        hasSource("Finanzreport01.txt"), hasNote("Kontoabschluss Abschluss Zinsen"))));
-
-        // assert transaction
-        assertThat(results, hasItem(interest(hasDate("2018-09-28"), hasAmount("EUR", 0.14), //
-                        hasSource("Finanzreport01.txt"), hasNote("Kontoabschluss Abschluss Zinsen"))));
-
-        // assert transaction
-        assertThat(results, hasItem(taxes(hasDate("2018-09-28"), hasAmount("EUR", 0.05), //
-                        hasSource("Finanzreport01.txt"), hasNote("Kapitalertragsteuer"))));
+        assertThat(results, hasItem(interest( //
+                        hasDate("2018-09-28"), hasShares(0), //
+                        hasSource("Finanzreport01.txt"), //
+                        hasNote("30.06.2018 bis 30.09.2018"), //
+                        hasAmount("EUR", 0.14), hasGrossValue("EUR", 0.19), //
+                        hasTaxes("EUR", (0.05 + 0.00)), hasFees("EUR", 0.00))));
     }
 
     @Test
@@ -5918,8 +5913,7 @@ public class ComdirectPDFExtractorTest
         assertThat(countBuySell(results), is(0L));
         assertThat(countAccountTransactions(results), is(7L));
         assertThat(results.size(), is(7));
-        // new AssertImportActions().check(results, CurrencyUnit.EUR); <--
-        // Multiple currencies
+        new AssertImportActions().check(results, "EUR", "USD"); // Multiple currencies
 
         // assert transaction
         assertThat(results, hasItem(removal(hasDate("2017-06-14"), hasAmount("EUR", 501.00), //
@@ -5946,8 +5940,12 @@ public class ComdirectPDFExtractorTest
                         hasSource("Finanzreport04.txt"), hasNote("Kontoübertrag"))));
 
         // assert transaction
-        assertThat(results, hasItem(interest(hasDate("2017-06-30"), hasAmount("EUR", 0.02), //
-                        hasSource("Finanzreport04.txt"), hasNote("Kontoabschluss Abschluss Zinsen"))));
+        assertThat(results, hasItem(interest( //
+                        hasDate("2017-06-30"), hasShares(0), //
+                        hasSource("Finanzreport04.txt"), //
+                        hasNote("31.03.2017 bis 30.06.2017"), //
+                        hasAmount("EUR", 0.02), hasGrossValue("EUR", 0.02), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.00))));
     }
 
     @Test
@@ -6091,6 +6089,121 @@ public class ComdirectPDFExtractorTest
         // assert transaction
         assertThat(results, hasItem(fee(hasDate("2023-01-31"), hasAmount("EUR", 4.90), //
                         hasSource("Finanzreport07.txt"), hasNote("Entgelte"))));
+    }
+
+    @Test
+    public void testFinanzreport08()
+    {
+        ComdirectPDFExtractor extractor = new ComdirectPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(
+                        PDFInputFile.loadTestCase(getClass(), "Finanzreport08MitAuslandsueberweisung.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(5L));
+        assertThat(results.size(), is(5));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2023-05-07"), hasAmount("EUR", 1000.00), //
+                        hasSource("Finanzreport08MitAuslandsueberweisung.txt"), hasNote("Devisen"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-05-09"), hasAmount("EUR", 1000.00), //
+                        hasSource("Finanzreport08MitAuslandsueberweisung.txt"), hasNote("Übertrag"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-05-10"), hasAmount("EUR", 2000.00), //
+                        hasSource("Finanzreport08MitAuslandsueberweisung.txt"), hasNote("Übertrag"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2023-06-01"), hasAmount("EUR", 345.94), //
+                        hasSource("Finanzreport08MitAuslandsueberweisung.txt"), hasNote("Übertrag"))));
+
+        // assert transaction
+        assertThat(results, hasItem(fee(hasDate("2023-06-01"), hasAmount("EUR", 0.27), //
+                        hasSource("Finanzreport08MitAuslandsueberweisung.txt"), hasNote("Entgelte"))));
+    }
+
+    @Test
+    public void testFinanzreport09()
+    {
+        ComdirectPDFExtractor extractor = new ComdirectPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(
+                        PDFInputFile.loadTestCase(getClass(), "Finanzreport09MitSteuerverrechnungNegativ.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(10L));
+        assertThat(results.size(), is(10));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transactions
+        assertThat(results, hasItem(deposit(hasDate("2024-11-04"), hasAmount("EUR", 200.00), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Übertrag"))));
+
+        assertThat(results, hasItem(removal(hasDate("2024-11-05"), hasAmount("EUR", 47.19), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Lastschrift"))));
+
+        assertThat(results, hasItem(removal(hasDate("2024-11-05"), hasAmount("EUR", 1.00), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Lastschrift"))));
+
+        assertThat(results, hasItem(removal(hasDate("2024-11-11"), hasAmount("EUR", 13.70), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Übertrag"))));
+
+        assertThat(results, hasItem(taxes(hasDate("2024-11-11"), hasAmount("EUR", 0.01), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Steuerverrechnung"))));
+
+        assertThat(results, hasItem(removal(hasDate("2024-11-19"), hasAmount("EUR", 84.08), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Lastschrift"))));
+
+        assertThat(results, hasItem(removal(hasDate("2024-11-26"), hasAmount("EUR", 10.99), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Lastschrift"))));
+
+        assertThat(results, hasItem(removal(hasDate("2024-11-28"), hasAmount("EUR", 107.58), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Lastschrift"))));
+
+        assertThat(results, hasItem(removal(hasDate("2024-11-28"), hasAmount("EUR", 1.00), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Lastschrift"))));
+
+        assertThat(results, hasItem(fee(hasDate("2024-11-29"), hasAmount("EUR", 4.90), //
+                        hasSource("Finanzreport09MitSteuerverrechnungNegativ.txt"), hasNote("Entgelte"))));
+    }
+
+    @Test
+    public void testFinanzreport10()
+    {
+        ComdirectPDFExtractor extractor = new ComdirectPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        List<Item> results = extractor.extract(
+                        PDFInputFile.loadTestCase(getClass(), "Finanzreport10MitSteuerverrechnungPositiv.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(3L));
+        assertThat(results.size(), is(3));
+        new AssertImportActions().check(results, CurrencyUnit.EUR);
+
+        // assert transactions
+        assertThat(results, hasItem(fee(hasDate("2024-11-01"), hasAmount("EUR", 4.33), //
+                        hasSource("Finanzreport10MitSteuerverrechnungPositiv.txt"), hasNote("Entgelte"))));
+
+        assertThat(results, hasItem(taxRefund(hasDate("2024-11-11"), hasAmount("EUR", 33.50), //
+                        hasSource("Finanzreport10MitSteuerverrechnungPositiv.txt"), hasNote("Steuerverrechnung"))));
+
+        assertThat(results, hasItem(fee(hasDate("2024-12-01"), hasAmount("EUR", 4.37), //
+                        hasSource("Finanzreport10MitSteuerverrechnungPositiv.txt"), hasNote("Entgelte"))));
     }
 
     @Test
