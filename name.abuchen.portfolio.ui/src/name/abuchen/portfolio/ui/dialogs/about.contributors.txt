@@ -170,3 +170,5 @@ jonathlan
 PhrozenByte
 ralisi
 pyBlockDev
+mikaelpeltier
+Selevra

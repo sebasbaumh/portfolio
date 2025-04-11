@@ -46,13 +46,17 @@ public class PDFImportAssistant
         extractors.add(new BigbankPDFExtractor(client));
         extractors.add(new BisonPDFExtractor(client));
         extractors.add(new BondoraCapitalPDFExtractor(client));
+        extractors.add(new BourseDirectPDFExtractor(client));
         extractors.add(new BoursoBankPDFExtractor(client));
+        extractors.add(new BSDEXPDFExtractor(client));
         extractors.add(new C24BankGmbHPDFExtractor(client));
+        extractors.add(new CetesDirectoPDFExtractor(client));
         extractors.add(new ComdirectPDFExtractor(client));
         extractors.add(new CommerzbankPDFExtractor(client));
         extractors.add(new CommSecPDFExtractor(client));
         extractors.add(new ComputersharePDFExtractor(client));
         extractors.add(new ConsorsbankPDFExtractor(client));
+        extractors.add(new CreditMutuelAllianceFederalePDFExtractor(client));
         extractors.add(new CreditSuisseAGPDFExtractor(client));
         extractors.add(new CrowdestorPDFExtractor(client));
         extractors.add(new DABPDFExtractor(client));
@@ -69,6 +73,7 @@ public class PDFImportAssistant
         extractors.add(new EbasePDFExtractor(client));
         extractors.add(new ErsteBankPDFExtractor(client));
         extractors.add(new EstateGuruPDFExtractor(client));
+        extractors.add(new ETradePDFExtractor(client));
         extractors.add(new FidelityInternationalPDFExtractor(client));
         extractors.add(new FILFondbankPDFExtractor(client));
         extractors.add(new FindependentAGPDFExtractor(client));
@@ -87,6 +92,7 @@ public class PDFImportAssistant
         extractors.add(new KFintechPDFExtractor(client));
         extractors.add(new MerkurPrivatBankPDFExtractor(client));
         extractors.add(new MLPBankingAGPDFExtractor(client));
+        extractors.add(new ModenaEstoniaPDFExtractor(client));
         extractors.add(new N26BankAGkPDFExtractor(client));
         extractors.add(new NIBCBankPDFExtractor(client));
         extractors.add(new OldenburgischeLandesbankAGPDFExtractor(client));
@@ -141,7 +147,7 @@ public class PDFImportAssistant
 
         Map<Extractor, List<Item>> itemsByExtractor = new HashMap<>();
 
-        SecurityCache securityCache = new SecurityCache(client);
+        var securityCache = new SecurityCache(client);
 
         for (PDFInputFile inputFile : inputFiles)
         {
@@ -151,12 +157,12 @@ public class PDFImportAssistant
             {
                 inputFile.convertPDFtoText();
 
-                boolean extracted = false;
+                var extracted = false;
 
                 List<Exception> warnings = new ArrayList<>();
                 for (Extractor extractor : extractors)
                 {
-                    List<Item> items = extractor.extract(securityCache, inputFile, warnings);
+                    var items = extractor.extract(securityCache, inputFile, warnings);
 
                     if (!items.isEmpty())
                     {
@@ -171,7 +177,7 @@ public class PDFImportAssistant
                     inputFile.convertLegacyPDFtoText();
                     for (Extractor extractor : extractors)
                     {
-                        List<Item> items = extractor.extract(securityCache, inputFile, warnings);
+                        var items = extractor.extract(securityCache, inputFile, warnings);
 
                         if (!items.isEmpty())
                         {
@@ -190,7 +196,7 @@ public class PDFImportAssistant
                 if (!extracted)
                 {
                     Predicate<? super Exception> isNotUnsupportedOperation = e -> !(e instanceof UnsupportedOperationException);
-                    List<Exception> meaningfulExceptions = warnings.stream().filter(isNotUnsupportedOperation).toList();
+                    var meaningfulExceptions = warnings.stream().filter(isNotUnsupportedOperation).toList();
 
                     errors.put(inputFile.getFile(), meaningfulExceptions.isEmpty() ? warnings : meaningfulExceptions);
                 }
