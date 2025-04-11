@@ -1,5 +1,7 @@
 package name.abuchen.portfolio.online;
 
+import static name.abuchen.portfolio.util.TextUtil.trim;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +20,20 @@ public interface SecuritySearchProvider
 
         String getSymbol();
 
+        /**
+         * Returns the ticker symbol (if available) without the stock market
+         * extension.
+         */
+        default String getSymbolWithoutStockMarket()
+        {
+            String symbol = getSymbol();
+            if (symbol == null)
+                return null;
+
+            int p = symbol.indexOf('.');
+            return p >= 0 ? symbol.substring(0, p) : symbol;
+        }
+
         String getIsin();
 
         String getWkn();
@@ -29,11 +45,6 @@ public interface SecuritySearchProvider
         String getSource();
 
         default String getCurrencyCode()
-        {
-            return null;
-        }
-
-        default String getExtraAttributes()
         {
             return null;
         }
@@ -50,26 +61,9 @@ public interface SecuritySearchProvider
 
         Security create(Client client);
 
-    }
-
-    public enum Type
-    {
-        ALL(Messages.LabelSearchAll), //
-        SHARE(Messages.LabelSearchShare), //
-        BOND(Messages.LabelSearchBond), //
-        CRYPTO(Messages.LabelSearchCryptoCurrency);
-
-        private final String label;
-
-        private Type(String label)
+        default List<ResultItem> getMarkets()
         {
-            this.label = label;
-        }
-
-        @Override
-        public String toString()
-        {
-            return label;
+            return Collections.emptyList();
         }
     }
 
@@ -78,7 +72,7 @@ public interface SecuritySearchProvider
         return getClass().getSimpleName();
     }
 
-    default List<ResultItem> search(String query, Type type) throws IOException
+    default List<ResultItem> search(String query) throws IOException
     {
         return Collections.emptyList();
     }
@@ -91,30 +85,36 @@ public interface SecuritySearchProvider
     @SuppressWarnings("nls")
     static String convertType(String type)
     {
+        if (type == null)
+            return null;
+        
+        type = trim(type).toLowerCase();
+        
         // Convert the security type to a standard value
         Map<String, String> typeMap = new HashMap<>();
 
-        typeMap.put("common stock", Messages.LabelSearchShare);
-        typeMap.put("common", Messages.LabelSearchShare);
-        typeMap.put("new york registered shares", Messages.LabelSearchShare);
-        typeMap.put("preferred stock", Messages.LabelSearchPreferredStock);
         typeMap.put("bond", Messages.LabelSearchBond);
-        typeMap.put("warrant", Messages.LabelSearchWarrant);
+        typeMap.put("closed-end fund", Messages.LabelSearchCloseEndFund);
+        typeMap.put("common", Messages.LabelSearchShare);
+        typeMap.put("common stock", Messages.LabelSearchShare);
+        typeMap.put("currency", Messages.LabelSearchCurrency);
+        typeMap.put("digital currency", Messages.LabelSearchCryptoCurrency);
+        typeMap.put("cryptocurrency", Messages.LabelSearchCryptoCurrency);
         typeMap.put("etf", Messages.LabelSearchETF);
         typeMap.put("etc", Messages.LabelSearchETC);
         typeMap.put("exchange-traded note", Messages.LabelSearchETN);
+        typeMap.put("equity", Messages.LabelSearchShare);
         typeMap.put("fund", Messages.LabelSearchFund);
+        typeMap.put("future", Messages.LabelSearchFuture);
+        typeMap.put("index", Messages.LabelSearchIndex);
         typeMap.put("mutual fund", Messages.LabelSearchMutualFund);
         typeMap.put("mutualfund", Messages.LabelSearchMutualFund);
-        typeMap.put("closed-end fund", Messages.LabelSearchCloseEndFund);
-        typeMap.put("digital currency", Messages.LabelSearchCryptoCurrency);
-        typeMap.put("cryptocurrency", Messages.LabelSearchCryptoCurrency);
-        typeMap.put("index", Messages.LabelSearchIndex);
-        typeMap.put("reit", Messages.LabelSearchReit);
-        typeMap.put("real estate investment trust (reit)", Messages.LabelSearchReit);
-        typeMap.put("future", Messages.LabelSearchFuture);
-        typeMap.put("currency", Messages.LabelSearchCurrency);
+        typeMap.put("new york registered shares", Messages.LabelSearchShare);
         typeMap.put("physical currency", Messages.LabelSearchCurrency);
+        typeMap.put("preferred stock", Messages.LabelSearchPreferredStock);
+        typeMap.put("real estate investment trust (reit)", Messages.LabelSearchReit);
+        typeMap.put("reit", Messages.LabelSearchReit);
+        typeMap.put("warrant", Messages.LabelSearchWarrant);
 
         return typeMap.getOrDefault(type, type);
     }

@@ -16,7 +16,6 @@ import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.money.CurrencyUnit;
 import name.abuchen.portfolio.online.QuoteFeed;
-import name.abuchen.portfolio.online.SecuritySearchProvider;
 import name.abuchen.portfolio.online.SecuritySearchProvider.ResultItem;
 import name.abuchen.portfolio.util.WebAccess;
 
@@ -83,12 +82,18 @@ public class PortfolioReportNet
         }
 
         @Override
+        public String getCurrencyCode()
+        {
+            return "EUR, USD, AED, AUD, BGN, BRL, CAD, CHF, CNY, CZK, DKK, GBP, GBX, HKD, HRK, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PHP, PLN, RON, RUB, SEK, SGD, THB, TRY, ZAR"; //$NON-NLS-1$
+        }
+
+        @Override
         public String getType()
         {
             if (TYPE_SHARE.equals(securityType))
-                return SecuritySearchProvider.Type.SHARE.toString();
+                return Messages.LabelSearchShare;
             else if (TYPE_BOND.equals(securityType))
-                return SecuritySearchProvider.Type.BOND.toString();
+                return Messages.LabelSearchBond;
             else if (TYPE_FUND.equals(securityType))
                 return Messages.LabelSearchFund;
             else if (TYPE_CRYPTO.equals(securityType))
@@ -163,14 +168,14 @@ public class PortfolioReportNet
 
     private static final String PROPERTY_SECURITY_TYPE = "securityType"; //$NON-NLS-1$
 
-    private static final String TYPE_SHARE = "share"; //$NON-NLS-1$
-    private static final String TYPE_BOND = "bond"; //$NON-NLS-1$
-    private static final String TYPE_FUND = "fund"; //$NON-NLS-1$
-    private static final String TYPE_CRYPTO = "crypto"; //$NON-NLS-1$
+    static final String TYPE_SHARE = "share"; //$NON-NLS-1$
+    static final String TYPE_BOND = "bond"; //$NON-NLS-1$
+    static final String TYPE_FUND = "fund"; //$NON-NLS-1$
+    static final String TYPE_CRYPTO = "crypto"; //$NON-NLS-1$
 
     private static final String HOST = "api.portfolio-report.net"; //$NON-NLS-1$
 
-    public List<ResultItem> search(String query, SecuritySearchProvider.Type type) throws IOException
+    public List<ResultItem> search(String query, String type) throws IOException
     {
         var version = FrameworkUtil.getBundle(PortfolioReportNet.class).getVersion().toString();
 
@@ -179,21 +184,8 @@ public class PortfolioReportNet
 
         webAccess.addParameter("q", query); //$NON-NLS-1$
 
-        switch (type)
-        {
-            case SHARE:
-                webAccess.addParameter(PROPERTY_SECURITY_TYPE, TYPE_SHARE);
-                break;
-            case BOND:
-                webAccess.addParameter(PROPERTY_SECURITY_TYPE, TYPE_BOND);
-                break;
-            case CRYPTO:
-                webAccess.addParameter(PROPERTY_SECURITY_TYPE, TYPE_CRYPTO);
-                break;
-            case ALL:
-            default:
-                // do nothing
-        }
+        if (type != null)
+            webAccess.addParameter(PROPERTY_SECURITY_TYPE, type);
 
         return readItems(webAccess.get());
     }

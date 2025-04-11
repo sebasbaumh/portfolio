@@ -38,6 +38,8 @@ public enum Images
     SECURITY_RETIRED("watchlist.png"), //$NON-NLS-1$
     ACCOUNT("account.png"), //$NON-NLS-1$
     PORTFOLIO("portfolio.png"), //$NON-NLS-1$
+    GROUPEDACCOUNTS("groupedaccounts.png"), //$NON-NLS-1$
+    GROUPEDACCOUNTS_ON("groupedaccounts_on.png"), //$NON-NLS-1$
     WATCHLIST("watchlist.png"), //$NON-NLS-1$
     INVESTMENTPLAN("investmentplan.png"), //$NON-NLS-1$
     NOTE("note.png"), //$NON-NLS-1$
@@ -110,6 +112,9 @@ public enum Images
 
     VISIBLE("visible.png"), //$NON-NLS-1$
     HIDDEN("hidden.png"), //$NON-NLS-1$
+
+    ARROW_FORWARD("arrow_forward.png"), //$NON-NLS-1$
+    ARROW_BACK("arrow_back.png"), //$NON-NLS-1$
 
     // 3rd party logos
 
