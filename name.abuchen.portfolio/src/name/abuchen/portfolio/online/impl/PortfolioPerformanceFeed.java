@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,10 +31,12 @@ import name.abuchen.portfolio.oauth.AccessToken;
 import name.abuchen.portfolio.oauth.AuthenticationException;
 import name.abuchen.portfolio.oauth.OAuthClient;
 import name.abuchen.portfolio.online.AuthenticationExpiredException;
+import name.abuchen.portfolio.online.FeedConfigurationException;
 import name.abuchen.portfolio.online.QuoteFeed;
 import name.abuchen.portfolio.online.QuoteFeedData;
+import name.abuchen.portfolio.online.QuoteFeedException;
 import name.abuchen.portfolio.online.RateLimitExceededException;
-import name.abuchen.portfolio.online.SecurityNotSupportedException;
+import name.abuchen.portfolio.util.TradeCalendarManager;
 import name.abuchen.portfolio.util.WebAccess;
 import name.abuchen.portfolio.util.WebAccess.WebAccessException;
 
@@ -108,14 +111,60 @@ public final class PortfolioPerformanceFeed implements QuoteFeed
     }
 
     @Override
-    public QuoteFeedData getHistoricalQuotes(Security security, boolean collectRawResponse)
+    public QuoteFeedData getHistoricalQuotes(Security security, boolean collectRawResponse) throws QuoteFeedException
     {
+        if (security.getTickerSymbol() == null)
+        {
+            return QuoteFeedData.withError(
+                            new IOException(MessageFormat.format(Messages.MsgMissingTickerSymbol, security.getName())));
+        }
+
         LocalDate quoteStartDate = null;
 
         if (!security.getPrices().isEmpty())
         {
+            var lastPriceDate = security.getPrices().get(security.getPrices().size() - 1).getDate();
+
+            // skip the download if
+            // a) the configuration has not changed and we therefore can assume
+            // historical prices have been provided by this feed *and*
+            // b) there cannot be a newer price available on the server
+
+            var configChanged = security.getEphemeralData().getFeedConfigurationChanged();
+            var feedUpdate = security.getEphemeralData().getFeedLastUpdate();
+            var configHasNotChanged = configChanged.isEmpty()
+                            || (feedUpdate.isPresent() && feedUpdate.get().isAfter(configChanged.get()));
+
+            if (configHasNotChanged)
+            {
+                var utcToday = ZonedDateTime.now(ZoneOffset.UTC).toLocalDate();
+
+                // For EU equities, it will be available only the next day.
+                // For US equities, a couple hours after market closing at 22:00
+                // UTC.
+                var expectedAvailablePrice = utcToday.minusDays(1);
+
+                // For the time being, use a minimal calendar (weekends,
+                // christmas, new year). We can possibly switch to
+                // exchange-specific trade calendar, however, let's start with
+                // less aggressive caching. Do not use the trade calendar
+                // configured by the user.
+                var tradeCalendar = TradeCalendarManager.getInstance(TradeCalendarManager.MINIMAL_CALENDAR_CODE);
+
+                while (tradeCalendar.isHoliday(expectedAvailablePrice))
+                {
+                    expectedAvailablePrice = expectedAvailablePrice.minusDays(1);
+                }
+
+                if (lastPriceDate.equals(expectedAvailablePrice))
+                {
+                    // skip update b/c server cannot have newer data
+                    return new QuoteFeedData();
+                }
+            }
+
             // adjust request to Monday to enable more aggressive caching
-            quoteStartDate = security.getPrices().get(security.getPrices().size() - 1).getDate();
+            quoteStartDate = lastPriceDate;
             if (quoteStartDate.getDayOfWeek() != DayOfWeek.MONDAY)
                 quoteStartDate = quoteStartDate.with(TemporalAdjusters.previous(DayOfWeek.MONDAY));
         }
@@ -129,12 +178,7 @@ public final class PortfolioPerformanceFeed implements QuoteFeed
     }
 
     @Override
-    public QuoteFeedData previewHistoricalQuotes(Security security)
-    {
-        return getHistoricalQuotes(security, true, LocalDate.now().minusMonths(2));
-    }
-
-    private QuoteFeedData getHistoricalQuotes(Security security, boolean collectRawResponse, LocalDate startDate)
+    public QuoteFeedData previewHistoricalQuotes(Security security) throws QuoteFeedException
     {
         if (security.getTickerSymbol() == null)
         {
@@ -142,6 +186,12 @@ public final class PortfolioPerformanceFeed implements QuoteFeed
                             new IOException(MessageFormat.format(Messages.MsgMissingTickerSymbol, security.getName())));
         }
 
+        return getHistoricalQuotes(security, true, LocalDate.now().minusMonths(2));
+    }
+
+    private QuoteFeedData getHistoricalQuotes(Security security, boolean collectRawResponse, LocalDate startDate)
+                    throws QuoteFeedException
+    {
         var isSample = SAMPLE_SYMBOLS.contains(security.getTickerSymbol());
         var isAuthenticated = oauthClient != null && oauthClient.isAuthenticated();
 
@@ -211,7 +261,7 @@ public final class PortfolioPerformanceFeed implements QuoteFeed
                     throw new RateLimitExceededException(Duration.ofMinutes(1),
                                     MessageFormat.format(Messages.MsgRateLimitExceeded, getName()));
                 case HttpStatus.SC_NOT_FOUND, HttpStatus.SC_FORBIDDEN:
-                    throw new SecurityNotSupportedException();
+                    throw new FeedConfigurationException();
                 default:
                     data.addError(e);
             }

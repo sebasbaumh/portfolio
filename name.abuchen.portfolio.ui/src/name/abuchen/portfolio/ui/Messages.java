@@ -1089,6 +1089,7 @@ public class Messages extends NLS
     public static String MsgIncorrectTotal;
     public static String MsgInfoChangingCurrencyNotPossible;
     public static String MsgInfoRetiredSecurities;
+    public static String MsgInstrumentWithConfigurationIssue;
     public static String MsgInvalidImage;
     public static String MsgInvalidImageDetail;
     public static String MsgJavaVersionTooOldForLetsEncrypt;
@@ -1109,6 +1110,7 @@ public class Messages extends NLS
     public static String MsgPortfolioMustBeDifferent;
     public static String MsgPortfolioToMissing;
     public static String MsgPreviousStockSplit;
+    public static String MsgRateLimitExceededAndRetrying;
     public static String MsgRestartRequired;
     public static String MsgSecurityHasNoQuotes;
     public static String MsgThemeRestartRequired;
