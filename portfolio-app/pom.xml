@@ -5,7 +5,7 @@
 
 	<groupId>name.abuchen.portfolio</groupId>
 	<artifactId>portfolio-app</artifactId>
-	<version>0.76.2</version>
+	<version>0.76.3</version>
 	<packaging>pom</packaging>
 
 	<name>Portfolio Performance</name>
@@ -379,6 +379,8 @@
 					<version>${tycho-version}</version>
 					<configuration>
 						<trimStackTrace>false</trimStackTrace>
+						<!-- disable warnings about Mockito -->
+						<argLine>-XX:+EnableDynamicAgentLoading</argLine>
 					</configuration>
 				</plugin>
 				<plugin>
