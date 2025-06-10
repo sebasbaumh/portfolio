@@ -20,6 +20,7 @@ import org.apache.hc.core5.http.HttpStatus;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
+import org.osgi.framework.FrameworkUtil;
 
 import name.abuchen.portfolio.Messages;
 import name.abuchen.portfolio.PortfolioLog;
@@ -65,6 +66,7 @@ public final class PortfolioPerformanceFeed implements QuoteFeed
                     "AMZN", // Amazon
                     "NVD.F", // Nvidia
                     "MBG.DE", // Mercedes Benz
+                    "DTG.DE", // Daimler Truck Holding
                     "IQQY.DE", // iShares Core MSCI Europe UCITS ETF EUR (Dist)
                     "SXRS.DE", // iShares Diversified Commodity Swap UCITS ETF
                     "EUNH.DE", // iShares Core Euro Government Bond UCITS ETF
@@ -137,12 +139,18 @@ public final class PortfolioPerformanceFeed implements QuoteFeed
 
             if (configHasNotChanged)
             {
-                var utcToday = ZonedDateTime.now(ZoneOffset.UTC).toLocalDate();
+                var utcNow = ZonedDateTime.now(ZoneOffset.UTC);
+                var utcToday = utcNow.toLocalDate();
+
+                // Check if symbol ends with ".TG" (Tradegate) and if it's after
+                // 16:00 UTC
+                var isTradegate = security.getTickerSymbol().endsWith(".TG"); //$NON-NLS-1$
+                var after16UTC = utcNow.getHour() > 15;
 
                 // For EU equities, it will be available only the next day.
                 // For US equities, a couple hours after market closing at 22:00
                 // UTC.
-                var expectedAvailablePrice = utcToday.minusDays(1);
+                var expectedAvailablePrice = (isTradegate && after16UTC) ? utcToday : utcToday.minusDays(1);
 
                 // For the time being, use a minimal calendar (weekends,
                 // christmas, new year). We can possibly switch to
@@ -225,8 +233,11 @@ public final class PortfolioPerformanceFeed implements QuoteFeed
 
             var to = LocalDate.now().atStartOfDay(ZoneOffset.UTC).toEpochSecond();
 
+            var version = FrameworkUtil.getBundle(PortfolioReportNet.class).getVersion().toString();
+
             @SuppressWarnings("nls")
             WebAccess webaccess = new WebAccess(ENDPOINT, isSample ? PATH_PREFIX_SAMPLE + PATH_HISTORIC : PATH_HISTORIC) //
+                            .addUserAgent("PortfolioPerformance/" + version) //$NON-NLS-1$
                             .addParameter("symbol", security.getTickerSymbol()) //
                             .addParameter("from",
                                             String.valueOf(startDate.atStartOfDay().toEpochSecond(ZoneOffset.UTC))) //
