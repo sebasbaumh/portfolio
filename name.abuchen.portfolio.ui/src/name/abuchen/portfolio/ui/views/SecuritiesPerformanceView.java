@@ -777,8 +777,14 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
 
         hookContextMenu(records.getTable(), this::fillContextMenu);
 
-        records.addSelectionChangedListener(event -> setInformationPaneInput(
-                        ((IStructuredSelection) event.getSelection()).getFirstElement()));
+        records.addSelectionChangedListener(event -> {
+            var selection = event.getStructuredSelection();
+
+            if (selection.size() == 1)
+                setInformationPaneInput(selection.getFirstElement());
+            else
+                setInformationPaneInput(SecuritySelection.from(getClient(), selection));
+        });
 
         records.addSelectionChangedListener(event -> {
             List<Security> securities = event.getStructuredSelection().stream().filter(e -> ((RowElement) e).isRecord())
