@@ -5,7 +5,7 @@
 
 	<groupId>name.abuchen.portfolio</groupId>
 	<artifactId>portfolio-app</artifactId>
-	<version>0.77.1</version>
+	<version>0.77.2</version>
 	<packaging>pom</packaging>
 
 	<name>Portfolio Performance</name>
@@ -28,7 +28,6 @@
 
 	<modules>
 		<module>../portfolio-target-definition</module>
-		<module>../name.abuchen.portfolio.pdfbox1</module>
 		<module>../name.abuchen.portfolio.pdfbox3</module>
 		<module>../name.abuchen.portfolio</module>
 		<module>../name.abuchen.portfolio.junit</module>
@@ -395,7 +394,7 @@
 					<configuration>
 						<trimStackTrace>false</trimStackTrace>
 						<!-- disable warnings about Mockito -->
-						<argLine>-XX:+EnableDynamicAgentLoading</argLine>
+						<argLine>-XX:+EnableDynamicAgentLoading -Djdk.xml.elementAttributeLimit=0</argLine>
 					</configuration>
 				</plugin>
 				<plugin>

@@ -254,8 +254,10 @@ public class SecuritiesChart
         DIVIDENDS(Messages.LabelChartDetailMarkerDividends), //
         EVENTS(Messages.LabelChartDetailMarkerEvents), //
         EXTREMES(Messages.LabelChartDetailMarkerHighLow), //
-        FIFOPURCHASE(Messages.LabelChartDetailMarkerPurchaseFIFO), //
-        FLOATINGAVGPURCHASE(Messages.LabelChartDetailMarkerPurchaseMovingAverage), //
+        FIFOPURCHASE(MessageFormat.format(Messages.LabelWithQualifier, Messages.ColumnPurchasePrice,
+                        Messages.LabelCapitalGainsMethodFIFO)), //
+        FLOATINGAVGPURCHASE(MessageFormat.format(Messages.LabelWithQualifier, Messages.ColumnPurchasePrice,
+                        Messages.LabelCapitalGainsMethodMovingAverage)), //
         BOLLINGERBANDS(Messages.LabelChartDetailIndicatorBollingerBands), //
         MACD(Messages.LabelChartDetailIndicatorMacd), //
         SMA_5DAYS(Messages.LabelChartDetailMovingAverage_5days), //
@@ -566,8 +568,10 @@ public class SecuritiesChart
         }
         toolTip.overrideValueFormat(Messages.LabelChartDetailIndicatorBollingerBandsLower, calculatedFormat);
         toolTip.overrideValueFormat(Messages.LabelChartDetailIndicatorBollingerBandsUpper, calculatedFormat);
-        toolTip.overrideValueFormat(Messages.LabelChartDetailMarkerPurchaseFIFO, calculatedFormat);
-        toolTip.overrideValueFormat(Messages.LabelChartDetailMarkerPurchaseMovingAverage, calculatedFormat);
+        toolTip.overrideValueFormat(MessageFormat.format(Messages.LabelWithQualifier, Messages.ColumnPurchasePrice,
+                        Messages.LabelCapitalGainsMethodFIFO), calculatedFormat);
+        toolTip.overrideValueFormat(MessageFormat.format(Messages.LabelWithQualifier, Messages.ColumnPurchasePrice,
+                        Messages.LabelCapitalGainsMethodMovingAverage), calculatedFormat);
         toolTip.overrideValueFormat(Messages.LabelChartDetailIndicatorMacd, calculatedFormat);
         toolTip.overrideValueFormat(Messages.LabelChartDetailIndicatorMacdSignal, calculatedFormat);
 
@@ -861,6 +865,12 @@ public class SecuritiesChart
     {
         this.client = client;
         this.securities = securities;
+
+        // update the tooltip format: for single security we show quotes, for
+        // multiple securities we show percentages
+        chart.getToolTip().setDefaultValueFormat(securities.length <= 1 ? new DecimalFormat(Values.Quote.pattern())
+                        : new DecimalFormat(Values.Percent2.pattern()));
+
         updateChart();
     }
 
@@ -1850,7 +1860,8 @@ public class SecuritiesChart
                     values.add(values.get(values.size() - 1));
 
                     createPriceLineSeries(values, dates, seriesCounter++, colorFifoPurchasePrice,
-                                    Messages.LabelChartDetailMarkerPurchaseFIFO);
+                                    MessageFormat.format(Messages.LabelWithQualifier, Messages.ColumnPurchasePrice,
+                                                    Messages.LabelCapitalGainsMethodFIFO));
 
                     values.clear();
                     dates.clear();
@@ -1872,7 +1883,8 @@ public class SecuritiesChart
 
         if (!dates.isEmpty())
             createPriceLineSeries(values, dates, seriesCounter, colorFifoPurchasePrice,
-                            Messages.LabelChartDetailMarkerPurchaseFIFO);
+                            MessageFormat.format(Messages.LabelWithQualifier, Messages.ColumnPurchasePrice,
+                                            Messages.LabelCapitalGainsMethodFIFO));
     }
 
     private void addMovingAveragePurchasePrice(ChartInterval chartInterval, Security security)
@@ -1930,7 +1942,8 @@ public class SecuritiesChart
                     values.add(values.get(values.size() - 1));
 
                     createPriceLineSeries(values, dates, seriesCounter++, colorMovingAveragePurchasePrice,
-                                    Messages.LabelChartDetailMarkerPurchaseMovingAverage);
+                                    MessageFormat.format(Messages.LabelWithQualifier, Messages.ColumnPurchasePrice,
+                                                    Messages.LabelCapitalGainsMethodMovingAverage));
 
                     values.clear();
                     dates.clear();
@@ -1953,7 +1966,8 @@ public class SecuritiesChart
 
         if (!dates.isEmpty())
             createPriceLineSeries(values, dates, seriesCounter, colorMovingAveragePurchasePrice,
-                            Messages.LabelChartDetailMarkerPurchaseMovingAverage);
+                            MessageFormat.format(Messages.LabelWithQualifier, Messages.ColumnPurchasePrice,
+                                            Messages.LabelCapitalGainsMethodMovingAverage));
     }
 
     private void createPriceLineSeries(List<Double> values, List<LocalDate> dates, int seriesCounter, Color color,
