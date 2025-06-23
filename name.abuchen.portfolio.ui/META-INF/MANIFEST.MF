@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Portfolio Platform UI
 Bundle-SymbolicName: name.abuchen.portfolio.ui;singleton:=true
-Bundle-Version: 0.77.1
+Bundle-Version: 0.77.2
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: name.abuchen.portfolio.ui.PortfolioPlugin
@@ -115,14 +115,13 @@ Import-Package: com.google.common.base,
  org.osgi.service.component.annotations,
  org.osgi.service.event,
  org.osgi.service.prefs
-Require-Bundle: name.abuchen.portfolio;bundle-version="0.77.1",
+Require-Bundle: name.abuchen.portfolio;bundle-version="0.77.2",
  org.eclipse.nebula.cwt,
  org.eclipse.ui.forms,
  org.eclipse.e4.ui.css.core,
  org.eclipse.ui.themes,
  org.eclipse.jface,
- org.apache.httpcomponents.core5.httpcore5,
- io.github.java-diff-utils
+ org.apache.httpcomponents.core5.httpcore5
 Automatic-Module-Name: name.abuchen.portfolio.ui
 Service-Component: OSGI-INF/name.abuchen.portfolio.ui.util.theme.ColorAndFontProviderImpl.xml,
  OSGI-INF/name.abuchen.portfolio.ui.theme.CustomThemeEngineManager.xml

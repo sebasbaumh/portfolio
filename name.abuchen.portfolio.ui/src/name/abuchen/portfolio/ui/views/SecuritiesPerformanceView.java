@@ -751,6 +751,7 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
         addPerformanceColumns();
         addCapitalGainsColumns();
         createRiskColumns();
+        createForeignCurrencyColumns();
         createAdditionalColumns();
         createClientFilteredColumns();
         createExperimentalEDivColumn();
@@ -1018,6 +1019,8 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
 
         // cost value - FIFO
         column = new Column("pv", Messages.ColumnPurchaseValue, SWT.RIGHT, 75); //$NON-NLS-1$
+        column.setGroupLabel(Messages.ColumnPurchaseValue);
+        column.setHeading(Messages.LabelTaxesAndFeesIncluded);
         column.setMenuLabel(Messages.ColumnPurchaseValue_MenuLabel);
         column.setDescription(Messages.ColumnPurchaseValue_Description + TextUtil.PARAGRAPH_BREAK
                         + Messages.DescriptionDataRelativeToReportingPeriod);
@@ -1034,6 +1037,7 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
 
         // cost value - moving average
         column = new Column("pvmvavg", Messages.ColumnPurchaseValueMovingAverage, SWT.RIGHT, 75); //$NON-NLS-1$
+        column.setGroupLabel(Messages.ColumnPurchaseValue);
         column.setMenuLabel(Messages.ColumnPurchaseValueMovingAverage_MenuLabel);
         column.setDescription(Messages.ColumnPurchaseValueMovingAverage_Description + TextUtil.PARAGRAPH_BREAK
                         + Messages.DescriptionDataRelativeToReportingPeriod);
@@ -1585,6 +1589,35 @@ public class SecuritiesPerformanceView extends AbstractFinanceView implements Re
                         r -> Values.Percent2.format(r.getVolatility().get().getSemiDeviation())));
         column.setSorter(ColumnViewerSorter
                         .create(e -> ((LazySecurityPerformanceRecord) e).getVolatility().get().getSemiDeviation()));
+        recordColumns.addColumn(column);
+    }
+
+    private void createForeignCurrencyColumns()
+    {
+        Column column = new Column("quoteReportingCurrency", Messages.ColumnQuote + Messages.BaseCurrencyCue, SWT.RIGHT, 75); //$NON-NLS-1$
+        column.setGroupLabel(Messages.ColumnForeignCurrencies);
+        column.setDescription(Messages.ColumnQuote_DescriptionEndOfReportingPeriod);
+        column.setLabelProvider(new RowElementLabelProvider(new ColumnLabelProvider()
+        {
+            @Override
+            public String getText(Object element)
+            {
+                LazySecurityPerformanceRecord entry = (LazySecurityPerformanceRecord) element;
+                return Values.CalculatedQuote.format(entry.getQuoteInTermCurrency().get(), getClient().getBaseCurrency());
+            }
+
+            @Override
+            public String getToolTipText(Object element)
+            {
+                LazySecurityPerformanceRecord entry = (LazySecurityPerformanceRecord) element;
+
+                return MessageFormat.format(Messages.TooltipQuoteAtDate, getText(element),
+                                Values.Date.format(entry.getLatestSecurityPrice().get().getDate()));
+            }
+        }));
+        column.setSorter(ColumnViewerSorter
+                        .create(e -> ((LazySecurityPerformanceRecord) e).getQuoteInTermCurrency().get()));
+        column.setVisible(false);
         recordColumns.addColumn(column);
     }
 

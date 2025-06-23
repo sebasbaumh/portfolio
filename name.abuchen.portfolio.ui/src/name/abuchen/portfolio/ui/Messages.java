@@ -599,8 +599,6 @@ public class Messages extends NLS
     public static String LabelChartDetailMarkerHighLow;
     public static String LabelChartDetailMarkerInvestments;
     public static String LabelChartDetailMarkerLow;
-    public static String LabelChartDetailMarkerPurchaseFIFO;
-    public static String LabelChartDetailMarkerPurchaseMovingAverage;
     public static String LabelChartDetailMarkerPurchasePeriodNo;
     public static String LabelChartDetailMovingAverage;
     public static String LabelChartDetailMovingAverage_100days;
@@ -738,6 +736,8 @@ public class Messages extends NLS
     public static String LabelIRR;
     public static String LabelJSONDateFormat;
     public static String LabelJSONDateFormatHint;
+    public static String LabelJSONDateTimezone;
+    public static String LabelJSONDateTimezoneHint;
     public static String LabelJSONFactor;
     public static String LabelJSONFactorHint;
     public static String LabelJSONPathHint;
@@ -927,6 +927,7 @@ public class Messages extends NLS
     public static String LabelUseExistingSecurity;
     public static String LabelUseGrossValue;
     public static String LabelUser;
+    public static String LabelUseSecurityCurrency;
     public static String LabelUsingDashboardDefaultReportingPeriod;
     public static String LabelValueInboundDelivery;
     public static String LabelValueOutboundDelivery;
@@ -941,6 +942,7 @@ public class Messages extends NLS
     public static String LabelVolatility;
     public static String LabelWatchlist;
     public static String LabelWithoutClassification;
+    public static String LabelWithQualifier;
     public static String LabelXDays;
     public static String LabelYear;
     public static String LabelYearlyHeatmap;
@@ -1115,7 +1117,8 @@ public class Messages extends NLS
     public static String MsgPortfolioToMissing;
     public static String MsgPreviousStockSplit;
     public static String MsgRateLimitExceededAndRetrying;
-    public static String MsgRestartRequired;
+    public static String MsgRestartRequiredAfterGUIReset;
+    public static String MsgRestartRequiredAfterUpdate;
     public static String MsgSecurityHasNoQuotes;
     public static String MsgSignedInAs;
     public static String MsgThemeRestartRequired;
@@ -1186,6 +1189,7 @@ public class Messages extends NLS
     public static String PrefCreateBackupBeforeSaving;
     public static String PrefDescriptionAlphaVantage;
     public static String PrefDescriptionCoingecko;
+    public static String PrefDescriptionCoinGeckoDemoAPIKey;
     public static String PrefDescriptionDivvyDiary;
     public static String PrefDescriptionEODHistoricalData;
     public static String PrefDescriptionFinnhub;
@@ -1230,6 +1234,7 @@ public class Messages extends NLS
     public static String PrefTitleAPIKeys;
     public static String PrefTitleBackup;
     public static String PrefTitleCalendar;
+    public static String PrefTitleDemoAPIKey;
     public static String PrefTitleDivvyDiary;
     public static String PrefTitleEODHistoricalData;
     public static String PrefTitleFinnhub;
@@ -1404,6 +1409,7 @@ public class Messages extends NLS
     public static String TransactionFilterTaxes;
     public static String TransactionFilterTransfers;
     public static String Url;
+    public static String MsgWarningWayland;
     public static String WatchlistDelete;
     public static String WatchlistEditDialog;
     public static String WatchlistEditDialogMsg;
