@@ -10,18 +10,21 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
 
 import org.eclipse.e4.core.contexts.IEclipseContext;
-import org.eclipse.jface.action.IMenuListener;
+import org.eclipse.e4.ui.services.IStylingEngine;
+import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Display;
 
+import name.abuchen.portfolio.model.Classification;
 import name.abuchen.portfolio.model.Client;
 import name.abuchen.portfolio.model.Taxonomy;
 import name.abuchen.portfolio.model.TaxonomyTemplate;
@@ -29,10 +32,13 @@ import name.abuchen.portfolio.model.Watchlist;
 import name.abuchen.portfolio.ui.Images;
 import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.UIConstants;
+import name.abuchen.portfolio.ui.dialogs.TaxonomyImportDialog;
+import name.abuchen.portfolio.ui.preferences.Experiments;
 import name.abuchen.portfolio.ui.util.CommandAction;
 import name.abuchen.portfolio.ui.util.ConfirmAction;
 import name.abuchen.portfolio.ui.util.LabelOnly;
 import name.abuchen.portfolio.ui.util.SimpleAction;
+import name.abuchen.portfolio.ui.util.swt.ActiveShell;
 import name.abuchen.portfolio.ui.views.AccountListView;
 import name.abuchen.portfolio.ui.views.AllTransactionsView;
 import name.abuchen.portfolio.ui.views.BrowserTestView;
@@ -44,6 +50,7 @@ import name.abuchen.portfolio.ui.views.PortfolioListView;
 import name.abuchen.portfolio.ui.views.ReturnsVolatilityChartView;
 import name.abuchen.portfolio.ui.views.SecuritiesPerformanceView;
 import name.abuchen.portfolio.ui.views.SecurityListView;
+import name.abuchen.portfolio.ui.views.SecurityPriceUpdateView;
 import name.abuchen.portfolio.ui.views.StatementOfAssetsHistoryView;
 import name.abuchen.portfolio.ui.views.StatementOfAssetsView;
 import name.abuchen.portfolio.ui.views.currency.CurrencyView;
@@ -71,8 +78,8 @@ public final class Navigation
         private String label;
         private Images image;
 
-        private IMenuListener actionMenu;
-        private IMenuListener contextMenu;
+        private MenuListener actionMenu;
+        private MenuListener contextMenu;
 
         private Class<? extends AbstractFinanceView> viewClass;
         private boolean hideInformationPane;
@@ -123,12 +130,12 @@ public final class Navigation
             return image;
         }
 
-        public IMenuListener getActionMenu()
+        public MenuListener getActionMenu()
         {
             return actionMenu;
         }
 
-        public IMenuListener getContextMenu()
+        public MenuListener getContextMenu()
         {
             return contextMenu;
         }
@@ -180,6 +187,12 @@ public final class Navigation
     }
 
     @FunctionalInterface
+    public interface MenuListener
+    {
+        public void menuAboutToShow(PortfolioPart part, IMenuManager manager);
+    }
+
+    @FunctionalInterface
     public interface Listener
     {
         void changed(Item item);
@@ -187,6 +200,9 @@ public final class Navigation
 
     @Inject
     private IEclipseContext context;
+
+    @Inject
+    private IStylingEngine stylingEngine;
 
     private List<Item> roots = new ArrayList<>();
     private List<Listener> listeners = new ArrayList<>();
@@ -323,7 +339,7 @@ public final class Navigation
     private void createGeneralDataSection(Client client)
     {
         Item generalData = new Item(Messages.LabelSecurities);
-        generalData.actionMenu = manager -> {
+        generalData.actionMenu = (part, manager) -> {
 
             manager.add(CommandAction.forCommand(context, DomainElement.WATCHLIST.getPaletteLabel(),
                             UIConstants.Command.NEW_DOMAIN_ELEMENT, UIConstants.Parameter.TYPE,
@@ -379,7 +395,7 @@ public final class Navigation
         Item item = new Item(watchlist.getName(), Images.WATCHLIST, SecurityListView.class);
         item.parameter = watchlist;
 
-        item.contextMenu = manager -> {
+        item.contextMenu = (part, manager) -> {
             manager.add(new SimpleAction(Messages.WatchlistRename, a -> {
                 String newName = askWatchlistName(watchlist.getName());
                 if (newName != null)
@@ -392,7 +408,10 @@ public final class Navigation
                 }
             }));
 
-            manager.add(new SimpleAction(Messages.WatchlistDelete, a -> client.removeWatchlist(watchlist)));
+            manager.add(new SimpleAction(Messages.WatchlistDelete, a -> {
+                client.removeWatchlist(watchlist);
+                part.activateView(SecurityListView.class, null);
+            }));
 
             manager.add(new Separator());
 
@@ -481,7 +500,7 @@ public final class Navigation
         Item section = new Item(Messages.LabelTaxonomies);
         roots.add(section);
 
-        section.actionMenu = manager -> {
+        section.actionMenu = (part, manager) -> {
 
             manager.add(CommandAction.forCommand(context, DomainElement.TAXONOMY.getPaletteLabel(),
                             UIConstants.Command.NEW_DOMAIN_ELEMENT, UIConstants.Parameter.TYPE,
@@ -495,8 +514,28 @@ public final class Navigation
                 manager.add(new SimpleAction(template.getName(), a -> {
                     Taxonomy taxonomy = template.build();
                     client.addTaxonomy(taxonomy);
+                    part.activateView(TaxonomyView.class, taxonomy);
                 }));
             }
+
+            manager.add(new Separator());
+            manager.add(new SimpleAction(Messages.MenuImportTaxonomy, action -> {
+
+                var taxonomy = new Taxonomy(Messages.LabelNewTaxonomy);
+                taxonomy.setRootNode(new Classification(UUID.randomUUID().toString(), Messages.LabelNewTaxonomy));
+
+                var dialog = new TaxonomyImportDialog(ActiveShell.get(), stylingEngine, part.getPreferenceStore(),
+                                client, taxonomy);
+                if (dialog.open() == TaxonomyImportDialog.DIRTY)
+                {
+                    // set the name of the taxonomy to the name of the root node
+                    // (which might have changed during the import)
+                    taxonomy.setName(taxonomy.getRoot().getName());
+
+                    client.addTaxonomy(taxonomy);
+                    part.activateView(TaxonomyView.class, taxonomy);
+                }
+            }));
         };
 
         for (Taxonomy taxonomy : client.getTaxonomies())
@@ -506,7 +545,7 @@ public final class Navigation
 
         // no need to remove the listener as the Navigation object is only a
         // singleton and lives as long as the client (plus: no option to attach
-        // oneself here ot a dispose listener)
+        // oneself here to a dispose listener)
         client.addPropertyChangeListener(Client.Properties.TAXONOMIES, e -> {
             if (e.getNewValue() != null)
             {
@@ -534,7 +573,7 @@ public final class Navigation
         item.hideInformationPane = true;
         item.parameter = taxonomy;
 
-        item.contextMenu = manager -> {
+        item.contextMenu = (part, manager) -> {
             manager.add(new SimpleAction(Messages.MenuTaxonomyRename, a -> {
                 String newName = askTaxonomyName(taxonomy.getName());
                 if (newName != null)
@@ -544,6 +583,8 @@ public final class Navigation
 
                     this.listeners.forEach(l -> l.changed(item));
                     client.touch();
+
+                    part.activateView(TaxonomyView.class, taxonomy);
                 }
             }));
 
@@ -554,12 +595,15 @@ public final class Navigation
                     Taxonomy copy = taxonomy.copy();
                     copy.setName(newName);
                     client.addTaxonomy(copy);
+
+                    part.activateView(TaxonomyView.class, copy);
                 }
             }));
 
             manager.add(new ConfirmAction(Messages.MenuTaxonomyDelete,
                             MessageFormat.format(Messages.MenuTaxonomyDeleteConfirm, taxonomy.getName()), a -> {
                                 client.removeTaxonomy(taxonomy);
+                                part.activateView(StatementOfAssetsView.class, null);
                             }));
 
             manager.add(new Separator());
@@ -609,6 +653,14 @@ public final class Navigation
 
         section.add(new Item(Messages.LabelCurrencies, CurrencyView.class, true));
         section.add(new Item(Messages.LabelSettings, SettingsView.class));
+
+        var isExperimentEnabled = new Experiments().isEnabled(Experiments.Feature.JULY26_REFACTORED_PRICE_UPDATE);
+        if (isExperimentEnabled)
+        {
+            var progressView = new Item(Messages.LabelPriceUpdateProgress, SecurityPriceUpdateView.class, true);
+            progressView.addTag(Tag.HIDE);
+            section.add(progressView);
+        }
 
         if ("yes".equals(System.getProperty("name.abuchen.portfolio.debug"))) //$NON-NLS-1$ //$NON-NLS-2$
             section.add(new Item("Browser Test", BrowserTestView.class)); //$NON-NLS-1$

@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import jakarta.inject.Inject;
 
 import org.eclipse.e4.core.di.extensions.Preference;
+import org.eclipse.e4.ui.services.IStylingEngine;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
@@ -51,12 +52,14 @@ import name.abuchen.portfolio.model.Classification.Assignment;
 import name.abuchen.portfolio.model.InvestmentVehicle;
 import name.abuchen.portfolio.model.Named;
 import name.abuchen.portfolio.model.Security;
+import name.abuchen.portfolio.model.TaxonomyJSONExporter;
 import name.abuchen.portfolio.money.CurrencyConverter;
 import name.abuchen.portfolio.money.ExchangeRate;
 import name.abuchen.portfolio.money.Values;
 import name.abuchen.portfolio.ui.Images;
 import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.UIConstants;
+import name.abuchen.portfolio.ui.dialogs.TaxonomyImportDialog;
 import name.abuchen.portfolio.ui.dnd.SecurityTransfer;
 import name.abuchen.portfolio.ui.editor.AbstractFinanceView;
 import name.abuchen.portfolio.ui.editor.PortfolioPart;
@@ -64,6 +67,7 @@ import name.abuchen.portfolio.ui.selection.SecuritySelection;
 import name.abuchen.portfolio.ui.selection.SelectionService;
 import name.abuchen.portfolio.ui.util.Colors;
 import name.abuchen.portfolio.ui.util.ContextMenu;
+import name.abuchen.portfolio.ui.util.JSONExporterDialog;
 import name.abuchen.portfolio.ui.util.SimpleAction;
 import name.abuchen.portfolio.ui.util.TreeViewerCSVExporter;
 import name.abuchen.portfolio.ui.util.viewers.Column;
@@ -292,6 +296,9 @@ import name.abuchen.portfolio.util.TextUtil;
     @Inject
     private PortfolioPart part;
 
+    @Inject
+    private IStylingEngine stylingEngine;
+
     private boolean useIndirectQuotation = false;
 
     private final AbstractFinanceView view;
@@ -360,6 +367,26 @@ import name.abuchen.portfolio.util.TextUtil;
     {
         manager.add(new SimpleAction(Messages.MenuExportData, action -> new TreeViewerCSVExporter(nodeViewer)
                         .export(getModel().getTaxonomy().getName() + ".csv"))); //$NON-NLS-1$
+
+        manager.add(new Separator());
+
+        manager.add(new SimpleAction(Messages.MenuExportTaxonomy,
+                        action -> new JSONExporterDialog(nodeViewer.getTree().getShell(),
+                                        new TaxonomyJSONExporter(getModel().getTaxonomy())).export()));
+
+        manager.add(new SimpleAction(Messages.MenuImportTaxonomy, action -> {
+            var dialog = new TaxonomyImportDialog(nodeViewer.getTree().getShell(), stylingEngine,
+                            part.getPreferenceStore(), getModel().getClient(), getModel().getTaxonomy());
+            if (dialog.open() == TaxonomyImportDialog.DIRTY)
+            {
+                // do a complete reload of the view including taxonomy model
+                // because there can be structural changes which are not
+                // reflected in TaxonomyNode objects.
+
+                getModel().getClient().markDirty();
+                part.activateView(TaxonomyView.class, getModel().getTaxonomy());
+            }
+        }));
     }
 
     @Override
@@ -371,7 +398,7 @@ import name.abuchen.portfolio.util.TextUtil;
 
         nodeViewer = new TreeViewer(container, SWT.FULL_SELECTION | SWT.MULTI);
 
-        ColumnEditingSupport.prepare(nodeViewer);
+        ColumnEditingSupport.prepare(view.getEditorActivationState(), nodeViewer);
         ColumnViewerToolTipSupport.enableFor(nodeViewer, ToolTip.NO_RECREATE);
         CopyPasteSupport.enableFor(nodeViewer);
 

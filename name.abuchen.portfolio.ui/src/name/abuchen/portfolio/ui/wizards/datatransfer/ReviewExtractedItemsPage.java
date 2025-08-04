@@ -3,6 +3,7 @@ package name.abuchen.portfolio.ui.wizards.datatransfer;
 import static name.abuchen.portfolio.util.CollectorsUtil.toMutableList;
 
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -908,13 +909,23 @@ public class ReviewExtractedItemsPage extends AbstractWizardPage implements Impo
         {
             var label = new Label(primaryContainer, SWT.NONE);
             label.setText(currency);
-            var dropdown = new ComboViewer(primaryContainer, SWT.READ_ONLY);
-            dropdown.setContentProvider(ArrayContentProvider.getInstance());
-            dropdown.setInput(accounts.stream().filter(a -> a.getCurrencyCode().equals(currency))
-                            .sorted(new Account.ByName()).toList());
-            dropdown.addSelectionChangedListener(e -> checkEntriesAndRefresh(allEntries));
 
-            primaryAccounts.put(currency, new Pair<>(label, dropdown));
+            var accountsByCurrency = accounts.stream().filter(a -> a.getCurrencyCode().equals(currency))
+                            .sorted(new Account.ByName()).toList();
+            if (accountsByCurrency.isEmpty())
+            {
+                var message = new Label(primaryContainer, SWT.NONE);
+                message.setText(MessageFormat.format(Messages.LabelCreateAccountFirst, currency));
+            }
+            else
+            {
+                var dropdown = new ComboViewer(primaryContainer, SWT.READ_ONLY);
+                dropdown.setContentProvider(ArrayContentProvider.getInstance());
+                dropdown.setInput(accountsByCurrency);
+                dropdown.addSelectionChangedListener(e -> checkEntriesAndRefresh(allEntries));
+
+                primaryAccounts.put(currency, new Pair<>(label, dropdown));
+            }
         }
 
         var lblPrimaryPortfolio = new Label(primaryContainer, SWT.NONE);
@@ -936,13 +947,23 @@ public class ReviewExtractedItemsPage extends AbstractWizardPage implements Impo
         {
             var label = new Label(secondaryContainer, SWT.NONE);
             label.setText(currency);
-            var dropdown = new ComboViewer(secondaryContainer, SWT.READ_ONLY);
-            dropdown.setContentProvider(ArrayContentProvider.getInstance());
-            dropdown.setInput(accounts.stream().filter(a -> a.getCurrencyCode().equals(currency))
-                            .sorted(new Account.ByName()).toList());
-            dropdown.addSelectionChangedListener(e -> checkEntriesAndRefresh(allEntries));
+            List<Account> accountsByCurrency = accounts.stream().filter(a -> a.getCurrencyCode().equals(currency))
+                            .sorted(new Account.ByName()).toList();
 
-            secondaryAccounts.put(currency, new Pair<>(label, dropdown));
+            if (accountsByCurrency.isEmpty())
+            {
+                var message = new Label(primaryContainer, SWT.NONE);
+                message.setText(MessageFormat.format(Messages.LabelCreateAccountFirst, currency));
+            }
+            else
+            {
+                var dropdown = new ComboViewer(secondaryContainer, SWT.READ_ONLY);
+                dropdown.setContentProvider(ArrayContentProvider.getInstance());
+                dropdown.setInput(accountsByCurrency);
+                dropdown.addSelectionChangedListener(e -> checkEntriesAndRefresh(allEntries));
+
+                secondaryAccounts.put(currency, new Pair<>(label, dropdown));
+            }
         }
 
         var needsSecondaryPortfolio = entries.stream()
@@ -1022,11 +1043,6 @@ public class ReviewExtractedItemsPage extends AbstractWizardPage implements Impo
                     {
                         ImportAction.Status actionStatus = entry.getItem().apply(action, this);
                         entry.addStatus(actionStatus);
-                        if (actionStatus.getCode() == ImportAction.Status.Code.ERROR)
-                        {
-                            allErrors.add(new IOException(actionStatus.getMessage() + ": " //$NON-NLS-1$
-                                            + entry.getItem().toString()));
-                        }
                     }
                     catch (Exception e)
                     {
@@ -1042,6 +1058,11 @@ public class ReviewExtractedItemsPage extends AbstractWizardPage implements Impo
                         PortfolioPlugin.log(e);
                     }
                 }
+
+                entry.getStatus().filter(s -> s.getCode() == ImportAction.Status.Code.ERROR)
+                                .forEach(status -> allErrors
+                                                .add(new IOException(MessageFormat.format(Messages.LabelColonSeparated,
+                                                                status.getMessage(), entry.getItem().toString()))));
             }
         }
 
