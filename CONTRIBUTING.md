@@ -153,9 +153,10 @@ export MAVEN_OPTS="-Xmx4g"
 mvn -f portfolio-app/pom.xml clean verify
 ```
 
+Windows
 ```
 set MAVEN_OPTS="-Xmx4g"
-mvn -f portfolio-app\pom.xml -Denforcer.skip=true clean verify
+mvn -f portfolio-app/pom.xml -Denforcer.skip=true clean verify
 ```
 
 Hint: if you run into resolution problems, try deleting the `~/.m2/repository/p2` directory. Apparently, when switching to Maven Tycho 3, there are some layout changes.
