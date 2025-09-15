@@ -14,7 +14,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -37,7 +36,6 @@ import name.abuchen.portfolio.ui.Messages;
 import name.abuchen.portfolio.ui.PortfolioPlugin;
 import name.abuchen.portfolio.ui.dialogs.AuthenticationRequiredDialog;
 import name.abuchen.portfolio.ui.jobs.AbstractClientJob;
-import name.abuchen.portfolio.ui.jobs.UpdateQuotesJob.Target;
 import name.abuchen.portfolio.ui.jobs.priceupdate.Task.HistoricalTask;
 import name.abuchen.portfolio.ui.jobs.priceupdate.Task.LatestTask;
 
@@ -47,12 +45,17 @@ import name.abuchen.portfolio.ui.jobs.priceupdate.Task.LatestTask;
  */
 public class UpdatePricesJob extends AbstractClientJob
 {
+    public enum Target
+    {
+        LATEST, HISTORIC
+    }
+
     private static final int UI_PROGRESS_UPDATE_INTERVAL = 300;
 
     private final Set<Target> target;
     private final Predicate<Security> filter;
-    private long repeatPeriod;
-    private final AtomicBoolean authenticationDialogShown = new AtomicBoolean(false);
+
+    private boolean suppressAuthenticationDialog = false;
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
@@ -79,10 +82,9 @@ public class UpdatePricesJob extends AbstractClientJob
         this.filter = filter;
     }
 
-    public UpdatePricesJob repeatEvery(long milliseconds)
+    public void suppressAuthenticationDialog(boolean suppressAuthenticationDialog)
     {
-        this.repeatPeriod = milliseconds;
-        return this;
+        this.suppressAuthenticationDialog = suppressAuthenticationDialog;
     }
 
     @Override
@@ -111,11 +113,12 @@ public class UpdatePricesJob extends AbstractClientJob
             // check if any of the jobs need an authenticated user
 
             var feed = Factory.getQuoteFeed(PortfolioPerformanceFeed.class);
-            var feedNeedsUser = feed.requiresAuthentication(securities);
+            var requireAuthentication = feed.requireAuthentication(securities);
 
-            if (feedNeedsUser)
+            if (!requireAuthentication.isEmpty() && !suppressAuthenticationDialog)
             {
-                showAuthenticationDialogOnce();
+                Display.getDefault().asyncExec(() -> AuthenticationRequiredDialog
+                                .open(Display.getDefault().getActiveShell(), getClient(), requireAuthentication));
             }
         }
 
@@ -181,19 +184,7 @@ public class UpdatePricesJob extends AbstractClientJob
             fireSnapshot(request);
         }
 
-        if (repeatPeriod > 0)
-            schedule(repeatPeriod);
-
         return Status.OK_STATUS;
-    }
-
-    private void showAuthenticationDialogOnce()
-    {
-        if (authenticationDialogShown.compareAndSet(false, true))
-        {
-            Display.getDefault()
-                            .asyncExec(() -> AuthenticationRequiredDialog.open(Display.getDefault().getActiveShell()));
-        }
     }
 
     private List<Task> prepareHistoricalTasks(PriceUpdateRequest request, List<Security> securities)
