@@ -5,13 +5,13 @@
 
 	<groupId>name.abuchen.portfolio</groupId>
 	<artifactId>portfolio-app</artifactId>
-	<version>0.79.1</version>
+	<version>0.80.0</version>
 	<packaging>pom</packaging>
 
 	<name>Portfolio Performance</name>
 
 	<properties>
-		<tycho-version>4.0.13</tycho-version>
+		<tycho-version>5.0.0</tycho-version>
 		<jarsigner.skip>true</jarsigner.skip>
 		<gpgsigner.skip>true</gpgsigner.skip>
 		<applesigner.skip>true</applesigner.skip>
@@ -253,6 +253,11 @@
 						</filter>
 						<filter>
 							<type>eclipse-plugin</type>
+							<id>org.eclipse.equinox.launcher.cocoa.macosx.aarch64.nl_ca</id>
+							<removeAll />
+						</filter>
+						<filter>
+							<type>eclipse-plugin</type>
 							<id>org.eclipse.equinox.launcher.gtk.linux.aarch64.nl_it</id>
 							<removeAll />
 						</filter>
@@ -333,6 +338,11 @@
 						</filter>
 						<filter>
 							<type>eclipse-plugin</type>
+							<id>org.eclipse.equinox.launcher.gtk.linux.aarch64.nl_ca</id>
+							<removeAll />
+						</filter>
+						<filter>
+							<type>eclipse-plugin</type>
 							<id>org.eclipse.e4.ui.swt.gtk.nl_it</id>
 							<removeAll />
 						</filter>
@@ -389,6 +399,11 @@
 						<filter>
 							<type>eclipse-plugin</type>
 							<id>org.eclipse.e4.ui.swt.gtk.nl_vi</id>
+							<removeAll />
+						</filter>
+						<filter>
+							<type>eclipse-plugin</type>
+							<id>org.eclipse.e4.ui.swt.gtk.nl_ca</id>
 							<removeAll />
 						</filter>
 					</filters>
@@ -506,7 +521,7 @@
 						<dependency>
 							<groupId>com.puppycrawl.tools</groupId>
 							<artifactId>checkstyle</artifactId>
-							<version>11.0.0</version>
+							<version>11.0.1</version>
 						</dependency>
 					</dependencies>
 					<executions>
@@ -530,7 +545,7 @@
 				<plugin>
 					<groupId>org.sonarsource.scanner.maven</groupId>
 					<artifactId>sonar-maven-plugin</artifactId>
-					<version>5.1.0.4751</version>
+					<version>5.2.0.4988</version>
 				</plugin>
 				<plugin>
 					<groupId>name.abuchen</groupId>
