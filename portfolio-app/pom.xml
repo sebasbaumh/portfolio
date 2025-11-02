@@ -16,6 +16,7 @@
 		<gpgsigner.skip>true</gpgsigner.skip>
 		<applesigner.skip>true</applesigner.skip>
 		<installer.skip>true</installer.skip>
+		<exesigner.skip>true</exesigner.skip>
 		<sonar.skippedModules>name.abuchen.portfolio.feature</sonar.skippedModules>
 		<sonar.exclusions>**/Messages.java,**/name/abuchen/portfolio/model/proto/**</sonar.exclusions>
 		<sonar.organization>buchen-github</sonar.organization>

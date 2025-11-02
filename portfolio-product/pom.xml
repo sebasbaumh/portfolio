@@ -233,6 +233,78 @@
 								</configuration>
 							</execution>
 							<execution>
+								<id>sign-win-x86_64-executable</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>${project.basedir}/signing/codesign-win-executable.sh</executable>
+									<workingDirectory>${project.build.directory}</workingDirectory>
+									<arguments>
+										<argument>${project.build.directory}/products/name.abuchen.portfolio.product/win32/win32/x86_64/portfolio/PortfolioPerformance.exe</argument>
+										<argument>${jarsigner.providerArg}</argument>
+										<argument>${jarsigner.storepass}</argument>
+										<argument>${jarsigner.alias}</argument>
+									</arguments>
+									<skip>${exesigner.skip}</skip>
+								</configuration>
+							</execution>
+							<execution>
+								<id>sign-win-aarch64-executable</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>${project.basedir}/signing/codesign-win-executable.sh</executable>
+									<workingDirectory>${project.build.directory}</workingDirectory>
+									<arguments>
+										<argument>${project.build.directory}/products/name.abuchen.portfolio.product/win32/win32/aarch64/portfolio/PortfolioPerformance.exe</argument>
+										<argument>${jarsigner.providerArg}</argument>
+										<argument>${jarsigner.storepass}</argument>
+										<argument>${jarsigner.alias}</argument>
+									</arguments>
+									<skip>${exesigner.skip}</skip>
+								</configuration>
+							</execution>
+							<execution>
+								<id>sign-win-distro-x86_64-executable</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>${project.basedir}/signing/codesign-win-executable.sh</executable>
+									<workingDirectory>${project.build.directory}</workingDirectory>
+									<arguments>
+										<argument>${project.build.directory}/products/name.abuchen.portfolio.distro.product/win32/win32/x86_64/portfolio/PortfolioPerformance.exe</argument>
+										<argument>${jarsigner.providerArg}</argument>
+										<argument>${jarsigner.storepass}</argument>
+										<argument>${jarsigner.alias}</argument>
+									</arguments>
+									<skip>${exesigner.skip}</skip>
+								</configuration>
+							</execution>
+							<execution>
+								<id>sign-win-distro-aarch64-executable</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>${project.basedir}/signing/codesign-win-executable.sh</executable>
+									<workingDirectory>${project.build.directory}</workingDirectory>
+									<arguments>
+										<argument>${project.build.directory}/products/name.abuchen.portfolio.distro.product/win32/win32/aarch64/portfolio/PortfolioPerformance.exe</argument>
+										<argument>${jarsigner.providerArg}</argument>
+										<argument>${jarsigner.storepass}</argument>
+										<argument>${jarsigner.alias}</argument>
+									</arguments>
+									<skip>${exesigner.skip}</skip>
+								</configuration>
+							</execution>
+							<execution>
 								<id>sign-macos-distro-x86_64</id>
 								<phase>package</phase>
 								<goals>
@@ -426,6 +498,35 @@
 										<argument>${project.basedir}/installer/installer.nsi</argument>
 									</arguments>
 									<skip>${installer.skip}</skip>
+								</configuration>
+							</execution>
+							<execution>
+								<id>sign-installer</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>jsign</executable>
+									<workingDirectory>${project.build.directory}/products</workingDirectory>
+									<arguments>
+										<argument>--keystore</argument>
+										<argument>${jarsigner.providerArg}</argument>
+										<argument>--storetype</argument>
+										<argument>PKCS11</argument>
+										<argument>--storepass</argument>
+										<argument>${jarsigner.storepass}</argument>
+										<argument>--alias</argument>
+										<argument>${jarsigner.alias}</argument>
+										<argument>--tsaurl</argument>
+										<argument>http://time.certum.pl/</argument>
+										<argument>--name</argument>
+										<argument>Portfolio Performance</argument>
+										<argument>-url</argument>
+										<argument>https://www.portfolio-performance.info</argument>
+										<argument>PortfolioPerformance-${project.version}-setup.exe</argument>
+									</arguments>
+									<skip>${exesigner.skip}</skip>
 								</configuration>
 							</execution>
 						</executions>
