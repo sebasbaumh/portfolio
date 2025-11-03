@@ -30,6 +30,7 @@ import name.abuchen.portfolio.online.QuoteFeedData;
 import name.abuchen.portfolio.online.impl.AMFIIndiaQuoteFeed;
 import name.abuchen.portfolio.online.impl.AlphavantageQuoteFeed;
 import name.abuchen.portfolio.online.impl.BinanceQuoteFeed;
+import name.abuchen.portfolio.online.impl.BinanceFuturesUsdsMarginedQuoteFeed;
 import name.abuchen.portfolio.online.impl.MEXCQuoteFeed;
 import name.abuchen.portfolio.online.impl.BitfinexQuoteFeed;
 import name.abuchen.portfolio.online.impl.CoinGeckoQuoteFeed;
@@ -127,6 +128,12 @@ public class HistoricalQuoteProviderPage extends AbstractQuoteProviderPage
     protected String getJSONDateTimezonePropertyName()
     {
         return GenericJSONQuoteFeed.DATE_TIMEZONE_PROPERTY_NAME_HISTORIC;
+    }
+
+    @Override
+    protected String getJSONDateLocalePropertyName()
+    {
+        return GenericJSONQuoteFeed.DATE_LOCALE_PROPERTY_NAME_HISTORIC;
     }
 
     @Override
@@ -234,6 +241,8 @@ public class HistoricalQuoteProviderPage extends AbstractQuoteProviderPage
             return FinnhubQuoteFeed.ID + getModel().getTickerSymbol();
         else if (BinanceQuoteFeed.ID.equals(getFeed()))
             return BinanceQuoteFeed.ID + getModel().getTickerSymbol();
+        else if (BinanceFuturesUsdsMarginedQuoteFeed.ID.equals(getFeed()))
+            return BinanceFuturesUsdsMarginedQuoteFeed.ID + getModel().getTickerSymbol();
         else if (MEXCQuoteFeed.ID.equals(getFeed()))
             return MEXCQuoteFeed.ID + getModel().getTickerSymbol();
         else if (BitfinexQuoteFeed.ID.equals(getFeed()))
@@ -268,6 +277,8 @@ public class HistoricalQuoteProviderPage extends AbstractQuoteProviderPage
                                             .getFeedProperty(GenericJSONQuoteFeed.DATE_FORMAT_PROPERTY_NAME_HISTORIC))
                             + String.valueOf(getModel()
                                             .getFeedProperty(GenericJSONQuoteFeed.DATE_TIMEZONE_PROPERTY_NAME_HISTORIC))
+                            + String.valueOf(getModel()
+                                            .getFeedProperty(GenericJSONQuoteFeed.DATE_LOCALE_PROPERTY_NAME_HISTORIC))
                             + String.valueOf(
                                             getModel().getFeedProperty(GenericJSONQuoteFeed.LOW_PROPERTY_NAME_HISTORIC))
                             + String.valueOf(getModel()

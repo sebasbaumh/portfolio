@@ -42,11 +42,12 @@ import name.abuchen.portfolio.model.Security;
 import name.abuchen.portfolio.online.QuoteFeed;
 import name.abuchen.portfolio.online.impl.AlphavantageQuoteFeed;
 import name.abuchen.portfolio.online.impl.BinanceQuoteFeed;
+import name.abuchen.portfolio.online.impl.BinanceFuturesUsdsMarginedQuoteFeed;
 import name.abuchen.portfolio.online.impl.MEXCQuoteFeed;
 import name.abuchen.portfolio.online.impl.BitfinexQuoteFeed;
 import name.abuchen.portfolio.online.impl.CSQuoteFeed;
 import name.abuchen.portfolio.online.impl.CoinGeckoQuoteFeed;
-import name.abuchen.portfolio.online.impl.ECBStatisticalDataWarehouseQuoteFeed;
+import name.abuchen.portfolio.online.impl.ECBDataPortalQuoteFeed;
 import name.abuchen.portfolio.online.impl.EODHistoricalDataQuoteFeed;
 import name.abuchen.portfolio.online.impl.EurostatHICPQuoteFeed;
 import name.abuchen.portfolio.online.impl.FinnhubQuoteFeed;
@@ -92,6 +93,8 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
     private Text textJsonDateFormat;
     private Label labelJsonDateTimezone;
     private Text textJsonDateTimezone;
+    private Label labelJsonDateLocale;
+    private Text textJsonDateLocale;
     private Label labelJsonPathLow;
     private Text textJsonPathLow;
     private Label labelJsonPathHigh;
@@ -142,6 +145,8 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
     protected abstract String getJSONDateFormatPropertyName();
 
     protected abstract String getJSONDateTimezonePropertyName();
+
+    protected abstract String getJSONDateLocalePropertyName();
 
     protected abstract String getJSONClosePropertyName();
 
@@ -249,6 +254,13 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
             textJsonDateTimezone.setText(dateTimezone != null ? dateTimezone : ""); //$NON-NLS-1$
         }
 
+        if (textJsonDateLocale != null
+                        && !textJsonDateLocale.getText().equals(model.getFeedProperty(getJSONDateLocalePropertyName())))
+        {
+            String dateLocale = model.getFeedProperty(getJSONDateLocalePropertyName());
+            textJsonDateLocale.setText(dateLocale != null ? dateLocale : ""); //$NON-NLS-1$
+        }
+
         if (textJsonPathLow != null
                         && !textJsonPathLow.getText().equals(model.getFeedProperty(getJSONLowPathPropertyName())))
         {
@@ -298,7 +310,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
                         || feed.getId().equals(EurostatHICPQuoteFeed.ID) //
                         || feed.getId().equals(LeewayQuoteFeed.ID) //
                         || feed.getId().equals(TwelveDataQuoteFeed.ID) //
-                        || feed.getId().equals(ECBStatisticalDataWarehouseQuoteFeed.ID)))
+                        || feed.getId().equals(ECBDataPortalQuoteFeed.ID)))
         {
             Exchange exchange = (Exchange) ((IStructuredSelection) comboExchange.getSelection()).getFirstElement();
             if (exchange != null)
@@ -431,7 +443,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
                         (feed.getId().startsWith(YAHOO) //
                                         || feed.getId().equals(PortfolioPerformanceFeed.ID) //
                                         || feed.getId().equals(EurostatHICPQuoteFeed.ID) //
-                                        || feed.getId().equals(ECBStatisticalDataWarehouseQuoteFeed.ID) //
+                                        || feed.getId().equals(ECBDataPortalQuoteFeed.ID) //
                                         || feed.getId().equals(LeewayQuoteFeed.ID) //
                                         || feed.getId().equals(TwelveDataQuoteFeed.ID));
 
@@ -444,6 +456,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
                         && Set.of(AlphavantageQuoteFeed.ID, //
                                         FinnhubQuoteFeed.ID, //
                                         BinanceQuoteFeed.ID, //
+                                        BinanceFuturesUsdsMarginedQuoteFeed.ID, //
                                         MEXCQuoteFeed.ID, //
                                         BitfinexQuoteFeed.ID, //
                                         CoinGeckoQuoteFeed.ID, //
@@ -492,6 +505,8 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
         textJsonDateFormat = disposeIf(textJsonDateFormat);
         labelJsonDateTimezone = disposeIf(labelJsonDateTimezone);
         textJsonDateTimezone = disposeIf(textJsonDateTimezone);
+        labelJsonDateLocale = disposeIf(labelJsonDateFormat);
+        textJsonDateLocale = disposeIf(textJsonDateLocale);
         labelJsonPathLow = disposeIf(labelJsonPathLow);
         textJsonPathLow = disposeIf(textJsonPathLow);
         labelJsonPathHigh = disposeIf(labelJsonPathHigh);
@@ -610,6 +625,19 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
 
             deco = new ControlDecoration(textJsonDateTimezone, SWT.CENTER | SWT.RIGHT);
             deco.setDescriptionText(Messages.LabelJSONDateTimezoneHint);
+            deco.setImage(Images.INFO.image());
+            deco.setMarginWidth(2);
+            deco.show();
+
+            labelJsonDateLocale = new Label(grpQuoteFeed, SWT.NONE);
+            labelJsonDateLocale.setText(Messages.LabelJSONDateLocale);
+
+            textJsonDateLocale = new Text(grpQuoteFeed, SWT.BORDER);
+            GridDataFactory.fillDefaults().span(2, 1).hint(100, SWT.DEFAULT).applyTo(textJsonDateLocale);
+            textJsonDateLocale.addModifyListener(e -> onJsonDateLocaleChanged());
+
+            deco = new ControlDecoration(textJsonDateLocale, SWT.CENTER | SWT.RIGHT);
+            deco.setDescriptionText(Messages.LabelJSONDateLocaleHint);
             deco.setImage(Images.INFO.image());
             deco.setMarginWidth(2);
             deco.show();
@@ -755,7 +783,7 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
                                         || feed.getId().equals(LeewayQuoteFeed.ID) //
                                         || feed.getId().equals(TwelveDataQuoteFeed.ID) //
                                         || feed.getId().equals(EurostatHICPQuoteFeed.ID) //
-                                        || feed.getId().equals(ECBStatisticalDataWarehouseQuoteFeed.ID)))
+                                        || feed.getId().equals(ECBDataPortalQuoteFeed.ID)))
         {
             updateExchangesDropdown(feed);
         }
@@ -793,6 +821,10 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
             String dateTimezone = model.getFeedProperty(getJSONDateTimezonePropertyName());
             if (dateTimezone != null)
                 textJsonDateTimezone.setText(dateTimezone);
+
+            String dateLocale = model.getFeedProperty(getJSONDateLocalePropertyName());
+            if (dateLocale != null)
+                textJsonDateLocale.setText(dateLocale);
 
             String lowPath = model.getFeedProperty(getJSONLowPathPropertyName());
             if (lowPath != null)
@@ -985,6 +1017,10 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
             if (dateTimezone != null)
                 textJsonDateTimezone.setText(dateTimezone);
 
+            String dateLocale = model.getFeedProperty(getJSONDateLocalePropertyName());
+            if (dateLocale != null)
+                textJsonDateLocale.setText(dateLocale);
+
             String lowPath = model.getFeedProperty(getJSONLowPathPropertyName());
             if (lowPath != null)
                 textJsonPathLow.setText(lowPath);
@@ -1154,6 +1190,17 @@ public abstract class AbstractQuoteProviderPage extends AbstractPage
         String dateTimezone = textJsonDateTimezone.getText();
 
         model.setFeedProperty(getJSONDateTimezonePropertyName(), dateTimezone.isEmpty() ? null : dateTimezone);
+
+        QuoteFeed feed = (QuoteFeed) ((IStructuredSelection) comboProvider.getSelection()).getFirstElement();
+        showSampleQuotes(feed, null);
+        setStatus(null);
+    }
+
+    private void onJsonDateLocaleChanged()
+    {
+        String dateLocale = textJsonDateLocale.getText();
+
+        model.setFeedProperty(getJSONDateLocalePropertyName(), dateLocale.isEmpty() ? null : dateLocale);
 
         QuoteFeed feed = (QuoteFeed) ((IStructuredSelection) comboProvider.getSelection()).getFirstElement();
         showSampleQuotes(feed, null);

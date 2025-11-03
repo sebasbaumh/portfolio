@@ -6,7 +6,7 @@
   - [Development setup](#development-setup)
     - [Install Eclipse](#install-eclipse)
     - [Install Eclipse plug-ins](#install-eclipse-plug-ins)
-      - [Install from the simulatenous release update site](#install-from-the-simulatenous-release-update-site)
+      - [Install from the simultaneous release update site](#install-from-the-simultaneous-release-update-site)
     - [Configure Eclipse](#configure-eclipse)
   - [Project setup](#project-setup)
     - [Source code](#source-code)
@@ -58,7 +58,7 @@ Optionally, install language packs for Eclipse:
  * By default, Eclipse uses the host operating system language (locale).
    To force the use of another language, use the **-nl** parameter:
    ```
-   eclipse.exe -nl de
+   eclipse -nl de
    ```
 
 
@@ -70,12 +70,12 @@ Optionally, install via the Eclipse Marketplace (drag and drop the *Install* but
 * [Infinitest](https://marketplace.eclipse.org/content/infinitest)
 * [ResourceBundle Editor](https://marketplace.eclipse.org/content/resourcebundle-editor)
 * [Checkstyle Plug-In](https://marketplace.eclipse.org/content/checkstyle-plug)
-* [SonarLint](https://marketplace.eclipse.org/content/sonarlint)
+* [SonarQube for IDE](https://marketplace.eclipse.org/content/sonarqube-ide)
 * [Launch Configuration DSL](https://marketplace.eclipse.org/content/launch-configuration-dsl)
 * [Darkest Dark Theme with DevStyle](https://marketplace.eclipse.org/content/darkest-dark-theme-devstyle) (Programming and chilling in DarkMode :sunglasses:)
 
 
-#### Install from the simulatenous release update site
+#### Install from the simultaneous release update site
 
 `Menu` --> `Help` --> `Install New Software`
 
@@ -110,12 +110,12 @@ Configure the following preferences (`Menu` --> `Window` --> `Preferences`)
 
 ## Project setup
  
-For further disucssion, check out the thread in the [(German) Forum](https://forum.portfolio-performance.info/t/verbesserungen-im-source-code-in-github-einbringen/7063).
+For further discussion, check out the thread in the [(German) Forum](https://forum.portfolio-performance.info/t/verbesserungen-im-source-code-in-github-einbringen/7063).
 
 
 ### Source code
 
-To contribute to Portfolio Performacne, you create a fork, clone the repository, make and push changes to your repository, and then create a pull request.
+To contribute to Portfolio Performance, create a fork, clone the repository, make and push changes to your repository, and then create a pull request.
 
 * [Create your own fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo)
 * Within Eclipse, [clone your repository](https://www.vogella.com/tutorials/EclipseGit/article.html#exercise-clone-an-existing-repository). In the last step, choose to *import all existing Eclipse projects*.
@@ -202,7 +202,7 @@ For naming externalized labels:
 
 Images and logos used must be subject to [Creative Commons CC0](https://creativecommons.org/publicdomain/zero/1.0/legalcode).
 
-* We only use icon from [iconmonstr.com](https://iconmonstr.com).
+* We only use icons from [iconmonstr.com](https://iconmonstr.com).
 * If a color change icon is used, the passive state is gray and the active state is orange.
 * Please add all used images, logos and icons in the [Images](https://github.com/portfolio-performance/portfolio/blob/master/name.abuchen.portfolio.ui/src/name/abuchen/portfolio/ui/Images.java) file.
 
@@ -487,7 +487,7 @@ Please take a look at the formatting and structure in the other PDF importers! E
 Via the application menu, users can create a test case file. The test file is the extracted text from the PDF documents. Users then anonymize the text by replacing personal idenfiable information and account numbers with alternative text.
 
 * The test files should not be modified beyond the anonymization
-* All source code (including the test files) are stored in UTF-8 encoding
+* All source code (including the test files) is stored in UTF-8 encoding
 * Follow the naming convention for test files (type in the local language, two digit counter):
 	* `Buy01.txt, Sell01.txt` --> Purchase and sale (single settlements) (e.g. SecurityBuy01.txt or SecuritySale01.txt)
 	* `Dividend01.txt` --> Dividends (single statements)
@@ -521,7 +521,7 @@ Via the application menu, users can create a test case file. The test file is th
 
 To test regular expression you can use [https://regex101.com/](https://regex101.com/).
 
-Beside general good practices for regular expresions, keep in mind:
+Beside general good practices for regular expressions, keep in mind:
 * all special characters in the PDF document (`äöüÄÖÜß` as well as e.g. circumflex or similar) should be matched by a `.` (dot) because the PDF to text conversion can create different results 
 * the special characters `$^{[(|)]}*+?\` in the PDF document are to be escaped
 * expression in `.match(" ... ")` is started with an anchor `^` and ended with `$`
