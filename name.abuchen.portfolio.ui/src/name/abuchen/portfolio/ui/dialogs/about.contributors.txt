@@ -36,7 +36,6 @@ mccare
 redevening
 tomcastro89
 christian-wehrheim
-derari
 Mauin
 masterzuso
 rbaeumler
@@ -183,3 +182,8 @@ GDL75
 arnonm
 wahlbrink
 earthjasonlin
+lmb
+georgemac-labs
+hporten
+knightjoel
+gamue
