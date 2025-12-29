@@ -31,7 +31,7 @@ public class Client
         String WATCHLISTS = "watchlists"; //$NON-NLS-1$
     }
 
-    public static final int CURRENT_VERSION = 67;
+    public static final int CURRENT_VERSION = 68;
     public static final int VERSION_WITH_CURRENCY_SUPPORT = 29;
     public static final int VERSION_WITH_UNIQUE_FILTER_KEY = 57;
 
@@ -55,7 +55,8 @@ public class Client
     private List<Watchlist> watchlists;
 
     // keep typo -> xstream deserialization
-    @Deprecated
+    @SuppressWarnings("deprecation")
+    @Deprecated(since = "2019")
     /* package */ List<ConsumerPriceIndex> consumerPriceIndeces;
 
     private List<Account> accounts = new ArrayList<>();
@@ -76,7 +77,8 @@ public class Client
     @Deprecated
     private String industryTaxonomyId;
 
-    @Deprecated
+    @SuppressWarnings("deprecation")
+    @Deprecated(since = "2013")
     private Category rootCategory;
 
     private transient SecretKey secret; // NOSONAR

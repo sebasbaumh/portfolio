@@ -72,6 +72,7 @@ import name.abuchen.portfolio.ui.util.viewers.ColumnEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.ColumnEditingSupport.ModificationListener;
 import name.abuchen.portfolio.ui.util.viewers.ColumnViewerSorter;
 import name.abuchen.portfolio.ui.util.viewers.CopyPasteSupport;
+import name.abuchen.portfolio.ui.util.viewers.LocaleSenstiveViewerComparator;
 import name.abuchen.portfolio.ui.util.viewers.ShowHideColumnHelper;
 import name.abuchen.portfolio.ui.util.viewers.StringEditingSupport;
 import name.abuchen.portfolio.ui.views.columns.NameColumn;
@@ -114,6 +115,7 @@ public class GroupedAccountsListView extends AbstractFinanceView implements Modi
 
     private void setInput()
     {
+        groupedAccountColumns.invalidateCache();
         groupedAccounts.setInput(items);
     }
 
@@ -193,6 +195,12 @@ public class GroupedAccountsListView extends AbstractFinanceView implements Modi
     }
 
     @Override
+    public void notifyModelUpdated()
+    {
+        groupedAccounts.refresh();
+    }
+
+    @Override
     public void onModified(Object element, Object newValue, Object oldValue)
     {
         storeChangedFilter();
@@ -216,7 +224,6 @@ public class GroupedAccountsListView extends AbstractFinanceView implements Modi
                                             groupedAccounts.setExpandedState(newItem, true);
                                             // select the newly created account
                                             groupedAccounts.setSelection(new StructuredSelection(newItem));
-
                                         })))));
     }
 
@@ -467,10 +474,7 @@ public class GroupedAccountsListView extends AbstractFinanceView implements Modi
         String message = MessageFormat.format(Messages.MenuReportingPeriodDeleteConfirm, filterItem.getLabel());
         if (MessageDialog.openConfirm(Display.getDefault().getActiveShell(), Messages.MenuReportingPeriodDelete,
                         message))
-        {
             items.remove(filterItem);
-            groupedAccounts.refresh();
-        }
     }
 
     private void deleteElementInFilter(Object element, ClientFilterMenu.Item filterItem)
@@ -481,7 +485,6 @@ public class GroupedAccountsListView extends AbstractFinanceView implements Modi
             // important step: update UUIDs because this is basic
             // information in settings
             filterItem.setUUIDs(ClientFilterMenu.buildUUIDs(filter.getAllElements()));
-            groupedAccounts.refresh();
         }
     }
 
@@ -505,6 +508,7 @@ public class GroupedAccountsListView extends AbstractFinanceView implements Modi
 
         dialog.setTitle(Messages.LabelClientFilterDialogTitle);
         dialog.setMessage(Messages.LabelClientFilterDialogMessage);
+        dialog.setViewerComparator(new LocaleSenstiveViewerComparator(labelProvider));
 
         List<Object> elements = new ArrayList<>();
         elements.addAll(getClient().getPortfolios());
@@ -527,7 +531,6 @@ public class GroupedAccountsListView extends AbstractFinanceView implements Modi
                 // important step: update UUIDs because this is
                 // basic information in settings
                 selectedFilterElement.setUUIDs(ClientFilterMenu.buildUUIDs(filter.getAllElements()));
-                groupedAccounts.refresh();
             }
         }
     }
