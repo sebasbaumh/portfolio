@@ -388,13 +388,12 @@ public class Messages extends NLS
     public static String CSVImportLabelDoubleClickHere;
     public static String CSVImportLabelEditMapping;
     public static String CSVImportLabelEncoding;
-    public static String CSVImportLabelExpectedValue;
     public static String CSVImportLabelFileAll;
     public static String CSVImportLabelFileCSV;
     public static String CSVImportLabelFirstLineIsHeader;
     public static String CSVImportLabelFormat;
     public static String CSVImportLabelMappedToField;
-    public static String CSVImportLabelProvidedValue;
+    public static String CSVImportLabelMappingCSVValue;
     public static String CSVImportLabelSkipLines;
     public static String CSVImportLabelTarget;
     public static String CSVImportSeparatorComma;
@@ -446,7 +445,6 @@ public class Messages extends NLS
     public static String ExperimentalColumnExpectedDividends;
     public static String ExperimentalColumnExpectedDividends_MenuLabel;
     public static String ExportWizardAccountTransactions;
-    public static String ExportWizardAllTransactionsAktienfreundeNet;
     public static String ExportWizardCurrencyConversionQuotes;
     public static String ExportWizardDescription;
     public static String ExportWizardErrorExporting;
@@ -878,6 +876,7 @@ public class Messages extends NLS
     public static String LabelSaleTransactionsOnly;
     public static String LabelSave;
     public static String LabelSaveAndNew;
+    public static String LabelSaveDialogTitle;
     public static String LabelSaveInFile;
     public static String LabelSaving;
     public static String LabelSearch;
@@ -977,6 +976,7 @@ public class Messages extends NLS
     public static String MenuAddAll;
     public static String MenuAddNewDashboardColumnLeft;
     public static String MenuAddNewDashboardColumnRight;
+    public static String MenuAddUnitRiskLine;
     public static String MenuApplyToAllWidgets;
     public static String MenuChangeHeight;
     public static String MenuChangeUrl;
@@ -1209,6 +1209,7 @@ public class Messages extends NLS
     public static String PortfolioReportNotificationMessage;
     public static String PrefAlphaVantageAPIKey;
     public static String PrefAlphaVantageCallFrequencyLimit;
+    public static String PrefDoubleClickCellToEdit;
     public static String PrefAutoSaveFrequency;
     public static String PrefBackupDirectory;
     public static String PrefBackupLocation;
