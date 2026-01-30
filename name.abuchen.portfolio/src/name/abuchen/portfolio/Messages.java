@@ -79,6 +79,7 @@ public class Messages extends NLS
     public static String CSVFormatYYYYMM;
     public static String CSVFormatYYYYMMDD;
     public static String CSVFormatYYYYMMDDSlashes;
+    public static String CSVFormatYYYYMMDDDot;
     public static String CSVFormatYYYYMMDDTHHMM;
     public static String CSVImportedSecurityLabel;
     public static String CSVImportGenericColumnLabel;
@@ -338,6 +339,9 @@ public class Messages extends NLS
     public static String PDFMsgErrorDoNotProcessMissingExchangeRateIfInForex;
     public static String PDFMsgExtracingFiles;
     public static String PDFMsgFileNotSupported;
+    public static String PDFSkipMissingDetails;
+    public static String PDFSkipNoPayableAmount;
+    public static String PDFSkipNotImportable;
     public static String QuoteFeedManual;
     public static String SecurityBasedExchangeRateProvider;
     public static String VINISAppValueCapitalGainsCurrentYear;

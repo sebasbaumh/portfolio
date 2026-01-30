@@ -29,6 +29,7 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
         addDividendeTransaction();
         addInterestTransaction();
         addAccountStatementTransaction();
+        addTaxAdjustmentTransaction();
     }
 
     @Override
@@ -44,14 +45,7 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
 
         var pdfTransaction = new Transaction<BuySellEntry>();
 
-        var firstRelevantLine = new Block("^(f.r|voor|per) " //
-                        + "(Kundenauftrag" //
-                        + "|Sparplanausf.hrung" //
-                        + "|savings plan order" //
-                        + "|client order" //
-                        + "|Auftrag" //
-                        + "|beleggingsplanorder" //
-                        + "|l.ordine del piano di accumulo).*$");
+        var firstRelevantLine = new Block();
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
@@ -212,7 +206,8 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
 
     private void addDividendeTransaction()
     {
-        final var type = new DocumentType("(Dividende|Zinszahlung|Dividend)");
+        final var type = new DocumentType("(Dividende|Zinszahlung|Dividend|Kapitalr.ckzahlung)", //
+                        "(Kauf|Buy|Kopen|Acquisto|Verkauf|Sell)");
         this.addDocumentTyp(type);
 
         var pdfTransaction = new Transaction<AccountTransaction>();
@@ -239,18 +234,19 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                                                         .attributes("name", "isin", "currency") //
                                                         .match("^Effect met recht (?<name>.*)$") //
                                                         .match("^ISIN (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]).*$") //
-                                                        .match("^[\\d]{2}\\.[\\w]{2}\\.[\\d]{4} [\\d]{2}\\.[\\w]{2}\\.[\\d]{4} Krediet [\\.,\\d]+ (?<currency>[A-Z]{3}).*$") //)
+                                                        .match("^[\\d]{2}\\.[\\w]{2}\\.[\\d]{4} [\\d]{2}\\.[\\w]{2}\\.[\\d]{4} Krediet [\\.,\\d]+ (?<currency>[A-Z]{3}).*$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
                                         // @formatter:off
                                         // Berechtigtes Wertpapier AGNC Investment Corp.
+                                        // BerechtigtesWertpapier PepsiCo Inc.
                                         // ISIN US00123Q1040
-                                        // 15.01.2025 15.01.2025 Gutschrift 0,12 USD 0,663129 0,08 EUR
+                                        // 15.01.2025 15.01.2025 Gutschrift 0,12 USD 0,663129 0,08 EUR     
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("name", "isin", "currency") //
-                                                        .match("^Berechtigtes Wertpapier (?<name>.*)$") //
+                                                        .match("^Berechtigtes(\\s)?Wertpapier (?<name>.*)$") //
                                                         .match("^ISIN (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]).*$") //
-                                                        .match("^[\\d]{2}\\.[\\w]{2}\\.[\\d]{4} [\\d]{2}\\.[\\w]{2}\\.[\\d]{4} Gutschrift [\\.,\\d]+ (?<currency>[A-Z]{3}).*$") //)
+                                                        .match("^[\\d]{2}\\.[\\w]{2}\\.[\\d]{4} [\\d]{2}\\.[\\w]{2}\\.[\\d]{4} Gutschrift [\\.,\\d]+ (?<currency>[A-Z]{3}).*$") //
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))))
 
                         .oneOf( //
@@ -259,14 +255,14 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("shares") //
-                                                        .match("^Rechthebbende hoeveelheid (?<shares>[\\.,\\d]+).*$") //")
+                                                        .match("^Rechthebbende hoeveelheid (?<shares>[\\.,\\d]+).*$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
                                         // @formatter:off
                                         // Berechtigte Anzahl 0,663129
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("shares") //
-                                                        .match("^Berechtigte Anzahl (?<shares>[\\.,\\d]+).*$") //")
+                                                        .match("^Berechtigte Anzahl (?<shares>[\\.,\\d]+).*$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares")))))
 
                         .oneOf( //
@@ -275,14 +271,14 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date") //
-                                                        .match("^(?<date>[\\d]{2}\\.[\\w]{2}\\.[\\d]{4}) [\\d]{2}\\.[\\w]{2}\\.[\\d]{4} Krediet [\\.,\\d]+ [A-Z]{3} [\\.,\\d]+ [\\.,\\d]+ [A-Z]{3}.*$") //"
+                                                        .match("^[\\d]{2}\\.[\\w]{2}\\.[\\d]{4} (?<date>[\\d]{2}\\.[\\w]{2}\\.[\\d]{4}) Krediet [\\.,\\d]+ [A-Z]{3} [\\.,\\d]+ [\\.,\\d]+ [A-Z]{3}.*$")
                                                         .assign((t, v) -> t.setDateTime(asDate(v.get("date")))),
                                         // @formatter:off
                                         // 15.01.2025 15.01.2025 Gutschrift 0,12 USD 0,663129 0,08 EUR
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date") //
-                                                        .match("^(?<date>[\\d]{2}\\.[\\w]{2}\\.[\\d]{4}) [\\d]{2}\\.[\\w]{2}\\.[\\d]{4} Gutschrift [\\.,\\d]+ [A-Z]{3} [\\.,\\d]+ [\\.,\\d]+ [A-Z]{3}.*$") //"
+                                                        .match("^[\\d]{2}\\.[\\w]{2}\\.[\\d]{4} (?<date>[\\d]{2}\\.[\\w]{2}\\.[\\d]{4}) Gutschrift [\\.,\\d]+ [A-Z]{3} [\\.,\\d]+ [\\.,\\d]+ [A-Z]{3}.*$")
                                                         .assign((t, v) -> t.setDateTime(asDate(v.get("date")))))
 
                         .oneOf( //
@@ -305,7 +301,7 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("termCurrency", "baseCurrency", "exchangeRate", "gross") //
-                                                        .match("^[\\d]{2}\\.[\\w]{2}\\.[\\d]{4} [\\d]{2}\\.[\\w]{2}\\.[\\d]{4} Gutschrift [\\.,\\d]+ [A-Z]{3} [\\.,\\d]+ (?<gross>[\\.,\\d]+) [A-Z]{3}.*$") //")
+                                                        .match("^[\\d]{2}\\.[\\w]{2}\\.[\\d]{4} [\\d]{2}\\.[\\w]{2}\\.[\\d]{4} Gutschrift [\\.,\\d]+ [A-Z]{3} [\\.,\\d]+ (?<gross>[\\.,\\d]+) [A-Z]{3}.*$") //
                                                         .match("^(?<termCurrency>[A-Z]{3}) \\/ (?<baseCurrency>[A-Z]{3}) (?<exchangeRate>[\\.,\\d]+).*$") //
                                                         .assign((t, v) -> {
                                                             var rate = asExchangeRate(v);
@@ -503,6 +499,45 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
 
                             return item;
                         }));
+    }
+
+    private void addTaxAdjustmentTransaction()
+    {
+        final var type = new DocumentType("Steuerneuberechnung");
+        this.addDocumentTyp(type);
+
+        var pdfTransaction = new Transaction<AccountTransaction>();
+
+        var firstRelevantLine = new Block();
+        type.addBlock(firstRelevantLine);
+        firstRelevantLine.set(pdfTransaction);
+
+        pdfTransaction //
+
+                        .subject(() -> {
+                            var accountTransaction = new AccountTransaction();
+                            accountTransaction.setType(AccountTransaction.Type.TAX_REFUND);
+                            return accountTransaction;
+                        })
+
+                        // @formatter:off
+                        // 96023 TNVf Datum 10.01.2026
+                        // @formatter:on
+                        .section("date") //
+                        .match("^.* Datum (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4})$") //
+                        .assign((t, v) -> t.setDateTime(asDate(v.get("date"))))
+
+                        // @formatter:off
+                        // Gutschrift 3,65 EUR 
+                        // @formatter:on
+                        .section("amount", "currency") //
+                        .match("^Gutschrift (?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})\\s?$") //
+                        .assign((t, v) -> {
+                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                            t.setAmount(asAmount(v.get("amount")));
+                        })
+
+                        .wrap(TransactionItem::new);
     }
 
     private <T extends Transaction<?>> void addTaxesSectionsTransaction(T transaction, DocumentType type)

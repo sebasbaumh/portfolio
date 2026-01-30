@@ -240,14 +240,14 @@ public class PostbankPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("note").optional() //
                         .match("^(?<note>Limit .*)$") //
-                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), trim(v.get("note")), " | ")))
+                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), v.get("note"), " | ")))
 
                         // @formatter:off
                         // Barabfindung wegen Fusion
                         // @formatter:on
                         .section("note").optional() //
                         .match("^(?<note>Barabfindung wegen .*)$") //
-                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), trim(v.get("note")), " | ")))
+                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), v.get("note"), " | ")))
 
                         .conclude(ExtractorUtils.fixGrossValueBuySell())
 
@@ -499,7 +499,7 @@ public class PostbankPDFExtractor extends AbstractPDFExtractor
                                         section -> section //
                                                         .attributes("note") //
                                                         .match("^.* Art der Dividende (?<note>.*)$") //
-                                                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), trim(v.get("note")), " | "))),
+                                                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), v.get("note"), " | "))),
                                         // @formatter:off
                                         // Bruttoertrag 312,50 USD 285,83 EUR
                                         // Umrechnungskurs USD zu EUR 1,0933000000
@@ -507,7 +507,7 @@ public class PostbankPDFExtractor extends AbstractPDFExtractor
                                         section -> section //
                                                         .attributes("note") //
                                                         .match("^.* (?<note>Zinsschein .*)$") //
-                                                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), trim(v.get("note")), " | "))))
+                                                        .assign((t, v) -> t.setNote(concatenate(t.getNote(), v.get("note"), " | "))))
 
                         .conclude(ExtractorUtils.fixGrossValueA())
 
@@ -568,21 +568,17 @@ public class PostbankPDFExtractor extends AbstractPDFExtractor
                         // @formatter:off
                         // Belastung mit Wert 02.01.2024 26,41 EUR
                         // @formatter:on
-                        .section("date") //
-                        .match("^Belastung mit Wert (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}).*$") //
-                        .assign((t, v) -> t.setDateTime(asDate(v.get("date"))))
-
-                        // @formatter:off
-                        // Belastung mit Wert 02.01.2024 26,41 EUR
-                        // @formatter:on
-                        .section("currency", "amount") //
-                        .match("^Belastung mit Wert [\\d]{2}\\.[\\d]{2}\\.[\\d]{4} (?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
+                        .section("date", "currency", "amount").optional() //
+                        .match("^Belastung mit Wert (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) (?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
                         .assign((t, v) -> {
+                            t.setDateTime(asDate(v.get("date")));
                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                             t.setAmount(asAmount(v.get("amount")));
                         })
 
-                        .wrap(TransactionItem::new);
+                        .wrap(t -> t.getAmount() == 0
+                                        ? new SkippedItem(new TransactionItem(t), Messages.PDFSkipNoPayableAmount)
+                                        : new TransactionItem(t));
     }
 
     private void addDepotStatementTransaction()

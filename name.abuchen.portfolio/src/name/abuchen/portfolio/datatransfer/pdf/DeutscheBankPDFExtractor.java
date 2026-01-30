@@ -23,6 +23,8 @@ import name.abuchen.portfolio.money.Values;
 @SuppressWarnings("nls")
 public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
 {
+    private static final String SKIP_TRANSACTION = "skipTransaction";
+
     public DeutscheBankPDFExtractor(Client client)
     {
         super(client);
@@ -214,9 +216,9 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
                                                         .attributes("note1", "note2", "note3") //
                                                         .match("^(?<note1>Zinsen .* [\\d]+ Zinstag(e)?).* (?<note3>[A-Z]{3}) (?<note2>[\\.,\\d]+)$") //
                                                         .assign((t, v) -> {
-                                                            t.setNote(concatenate(t.getNote(), trim(v.get("note1")), " | "));
-                                                            t.setNote(concatenate(t.getNote(), trim(v.get("note2")), ": "));
-                                                            t.setNote(concatenate(t.getNote(), trim(v.get("note3")), " "));
+                                                            t.setNote(concatenate(t.getNote(), v.get("note1"), " | "));
+                                                            t.setNote(concatenate(t.getNote(), v.get("note2"), ": "));
+                                                            t.setNote(concatenate(t.getNote(), v.get("note3"), " "));
                                                         }))
 
                         .wrap(t -> {
@@ -234,12 +236,12 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
 
     private void addBuyTransactionFundsSavingsPlan()
     {
-        var type = new DocumentType("Ihr db AnsparPlan");
+        var type = new DocumentType("(db AnsparPlan|Verm.gensSparplan)");
         this.addDocumentTyp(type);
 
         var pdfTransaction = new Transaction<BuySellEntry>();
 
-        var firstRelevantLine = new Block("^.*, WKN [A-Z0-9]{6}, .* [\\.,\\d]+%$");
+        var firstRelevantLine = new Block("^.*, WKN [A-Z0-9]{6}.*$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.setMaxSize(2);
         firstRelevantLine.set(pdfTransaction);
@@ -252,34 +254,53 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
                             return portfolioTransaction;
                         })
 
+                        .oneOf( //
                         // @formatter:off
-                        // DWS VERMÖGENSBG.FONDS I INHABER-ANTEILE LD , WKN 847652, Ausgabeaufschlag 5,00%
-                        // 03.01.2024 0,1610 279,3800 EUR 44,98 EUR
-                        // @formatter:on
-                        .section("name", "wkn", "currency") //
-                        .match("^(?<name>.*), WKN (?<wkn>[A-Z0-9]{6}), .* [\\.,\\d]+%$")//
-                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} [\\.,\\d]+ [\\.,\\d]+ (?<currency>[A-Z]{3}) [\\.,\\d]+ [A-Z]{3}$") //
-                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v)))
+                                        // DWS VERMÖGENSBG.FONDS I INHABER-ANTEILE LD , WKN 847652, Ausgabeaufschlag 5,00%
+                                        // DWS VERMÖGENSBG.FONDS I INHABER-ANTEILE LD , WKN 847652
+                                        //
+                                        // 03.01.2024 0,1610 279,3800 EUR 44,98 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "wkn", "currency") //
+                                                        .match("^(?<name>.*), WKN (?<wkn>[A-Z0-9]{6}).*$")//
+                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} [\\.,\\d]+ [\\.,\\d]+ (?<currency>[A-Z]{3}) [\\.,\\d]+ [A-Z]{3}") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
 
+                                        // @formatter:off
+                                        // DWS VERMÖGENSBG.FONDS I INHABER-ANTEILE LD , WKN 847652, Ausgabeaufschlag 5,00%
+                                        // DWS VERMÖGENSBG.FONDS I INHABER-ANTEILE LD , WKN 847652
+                                        //
+                                        // 02.09.2019 0,1042 172,4300 25,00 EUR
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("name", "wkn", "currency") //
+                                                        .match("^(?<name>.*), WKN (?<wkn>[A-Z0-9]{6}).*$")//
+                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} [\\.,\\d]+ [\\.,\\d]+ [\\.,\\d]+ (?<currency>[A-Z]{3})") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v)))
+                        )
                         // @formatter:off
                         // 03.01.2024 0,1610 279,3800 EUR 44,98 EUR
+                        // 02.09.2019 0,1042 172,4300 25,00 EUR
                         // @formatter:on
                         .section("shares") //
-                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} (?<shares>[\\.,\\d]+) [\\.,\\d]+ [A-Z]{3} [\\.,\\d]+ [A-Z]{3}$") //
+                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} (?<shares>[\\.,\\d]+) [\\.,\\d]+ ([A-Z]{3}\\s)?[\\.,\\d]+ [A-Z]{3}$") //
                         .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
 
                         // @formatter:off
                         // 03.01.2024 0,1610 279,3800 EUR 44,98 EUR
+                        // 02.09.2019 0,1042 172,4300 25,00 EUR
                         // @formatter:on
                         .section("date")
-                        .match("^(?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) [\\.,\\d]+ [\\.,\\d]+ [A-Z]{3} [\\.,\\d]+ [A-Z]{3}$") //
+                        .match("^(?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) [\\.,\\d]+ [\\.,\\d]+ ([A-Z]{3}\\s)?[\\.,\\d]+ [A-Z]{3}$") //
                         .assign((t, v) -> t.setDate(asDate(v.get("date"))))
 
                         // @formatter:off
                         // 03.01.2024 0,1610 279,3800 EUR 44,98 EUR
+                        // 02.09.2019 0,1042 172,4300 25,00 EUR
                         // @formatter:on
                         .section("amount", "currency") //
-                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} [\\.,\\d]+ [\\.,\\d]+ [A-Z]{3} (?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
+                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} [\\.,\\d]+ [\\.,\\d]+ ([A-Z]{3}\\s)?(?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
                         .assign((t, v) -> {
                             t.setAmount(asAmount(v.get("amount")));
                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
@@ -303,7 +324,7 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
         var type = new DocumentType("(Dividendengutschrift|Ertragsgutschrift|Kupongutschrift)");
         this.addDocumentTyp(type);
 
-        var firstRelevantLine = new Block("^^(Dividendengutschrift|Ertragsgutschrift|Kupongutschrift)$");
+        var firstRelevantLine = new Block("^(Dividendengutschrift|Ertragsgutschrift|Kupongutschrift)$");
         type.addBlock(firstRelevantLine);
 
         var pdfTransaction = new Transaction<AccountTransaction>();
@@ -406,8 +427,9 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
                                         // Umrechnungskurs USD zu EUR 1,1019000000
                                         // @formatter:on
                                         section -> section //
-                                                        .attributes("gross", "baseCurrency", "termCurrency", "exchangeRate") //
-                                                        .match("^Bruttoertrag (?<gross>[\\.,\\d]+) [A-Z]{3}$") //
+                                                        .attributes("fxGross", "baseCurrency", "termCurrency",
+                                                                        "exchangeRate") //
+                                                        .match("^Bruttoertrag (?<fxGross>[\\.,\\d]+) [A-Z]{3}[\\s]*$") //
                                                         .match("^Umrechnungskurs (?<termCurrency>[A-Z]{3}) zu (?<baseCurrency>[A-Z]{3}) (?<exchangeRate>[\\.,\\d]+)$") //
                                                         .assign((t, v) -> {
                                                             if (!type.getCurrentContext().getBoolean("negative"))
@@ -415,10 +437,23 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
                                                                 var rate = asExchangeRate(v);
                                                                 type.getCurrentContext().putType(rate);
 
-                                                                var gross = Money.of(rate.getBaseCurrency(), asAmount(v.get("gross")));
-                                                                var fxGross = rate.convert(rate.getTermCurrency(), gross);
+                                                                var fxGross = Money.of(rate.getTermCurrency(),
+                                                                                asAmount(v.get("fxGross")));
+                                                                var gross = rate.convert(rate.getBaseCurrency(),
+                                                                                fxGross);
 
-                                                                checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
+                                                                // @formatter:off
+                                                                // Even though this is a forex transaction, the security may be
+                                                                // held in the native currency. In that case, the GROSS_VALUE
+                                                                // unit needs to be set. In the foreign currency that is.
+                                                                // @formatter:on
+                                                                if (t.getSecurity().getCurrencyCode()
+                                                                                .equals(t.getCurrencyCode()))
+                                                                    checkAndSetGrossUnit(gross, fxGross, t,
+                                                                                    type.getCurrentContext());
+                                                                else
+                                                                    checkAndSetGrossUnit(fxGross, gross, t,
+                                                                                    type.getCurrentContext());
                                                             }
                                                         }))
 
@@ -523,8 +558,9 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
                                                             // 31.12. 31.12. Verwendungszweck/ Kundenreferenz - 13,47
                                                             // Saldo der Abschlussposten
                                                             // @formatter:on
-                                                                if ("Saldo der Abschlussposten".equals(v.get("note1")))
-                                                                    type.getCurrentContext().putBoolean("skipTransaction", true);
+                                                            if ("Saldo der Abschlussposten".equals(v.get("note1")))
+                                                                type.getCurrentContext().put(SKIP_TRANSACTION,
+                                                                                Messages.PDFSkipMissingDetails);
 
                                                             // @formatter:off
                                                             // If we have security transaction, then we skip the transaction
@@ -536,7 +572,8 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
                                                             // 2023 2023 ZINSEN/DIVIDENDEN/ERTRAEGE FIL/DEPOT-NR:
                                                             // @formatter:on
                                                             if (v.get("note1").contains("WERTPAPIER") || v.get("note1").contains("DEPOT-NR:") || v.get("note1").contains("STK/NOM"))
-                                                                type.getCurrentContext().putBoolean("skipTransaction", true);
+                                                                type.getCurrentContext().put(SKIP_TRANSACTION,
+                                                                                Messages.PDFSkipMissingDetails);
                                                         }),
                                         // @formatter:off
                                         // 01.12. 01.12. SEPA Dauerauftrag an - 40,00
@@ -603,7 +640,8 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
                                                             // Saldo der Abschlussposten
                                                             // @formatter:on
                                                                 if ("Saldo der Abschlussposten".equals(v.get("note1")))
-                                                                    type.getCurrentContext().putBoolean("skipTransaction", true);
+                                                                type.getCurrentContext().put(SKIP_TRANSACTION,
+                                                                                Messages.PDFSkipMissingDetails);
 
                                                             // @formatter:off
                                                             // If we have security transaction, then we skip the transaction
@@ -615,7 +653,8 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
                                                             // 2023 2023 ZINSEN/DIVIDENDEN/ERTRAEGE FIL/DEPOT-NR:
                                                             // @formatter:on
                                                             if (v.get("note1").contains("WERTPAPIER") || v.get("note1").contains("DEPOT-NR:") || v.get("note1").contains("STK/NOM"))
-                                                                type.getCurrentContext().putBoolean("skipTransaction", true);
+                                                                type.getCurrentContext().put(SKIP_TRANSACTION,
+                                                                                Messages.PDFSkipMissingDetails);
                                                         }))
 
                     .wrap(t -> {
@@ -624,12 +663,16 @@ public class DeutscheBankPDFExtractor extends AbstractPDFExtractor
                         if (t.getCurrencyCode() != null && t.getAmount() == 0)
                             item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
 
-                        if (type.getCurrentContext().getBoolean("skipTransaction"))
-                            return null;
+                        if (type.getCurrentContext().containsKey(SKIP_TRANSACTION))
+                        {
+                            var skipped = new SkippedItem(item, type.getCurrentContext().get(SKIP_TRANSACTION));
+                            // If we have multiple entries in the document,
+                            // then the SKIP_TRANSACTION flag must be
+                            // removed.
+                            type.getCurrentContext().remove(SKIP_TRANSACTION);
 
-                        // If we have multiple entries in the document,
-                        // then the "skipTransaction" flag must be removed.
-                        type.getCurrentContext().remove("skipTransaction");
+                            return skipped;
+                        }
 
                         return item;
                     }));

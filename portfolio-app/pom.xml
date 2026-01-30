@@ -5,7 +5,7 @@
 
 	<groupId>name.abuchen.portfolio</groupId>
 	<artifactId>portfolio-app</artifactId>
-	<version>0.81.0</version>
+	<version>0.81.4</version>
 	<packaging>pom</packaging>
 
 	<name>Portfolio Performance</name>
@@ -539,7 +539,7 @@
 						<dependency>
 							<groupId>com.puppycrawl.tools</groupId>
 							<artifactId>checkstyle</artifactId>
-							<version>12.3.0</version>
+							<version>13.0.0</version>
 						</dependency>
 					</dependencies>
 					<executions>
@@ -573,7 +573,7 @@
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
 					<artifactId>exec-maven-plugin</artifactId>
-					<version>3.6.2</version>
+					<version>3.6.3</version>
 				</plugin>
 				<plugin>
 					<groupId>org.jacoco</groupId>
