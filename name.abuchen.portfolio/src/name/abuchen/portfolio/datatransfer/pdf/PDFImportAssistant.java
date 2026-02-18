@@ -35,6 +35,7 @@ public class PDFImportAssistant
         extractors.add(new AkfBankPDFExtractor(client));
         extractors.add(new ArkeaDirectBankPDFExtractor(client));
         extractors.add(new AudiBankPDFExtractor(client));
+        extractors.add(new AustrianAnadiBankPDFExtractor(client));
         extractors.add(new AlpacCapitalPDFExtractor(client));
         extractors.add(new ApoBankPDFExtractor(client));
         extractors.add(new AvivaPLCPDFExtractor(client));
@@ -51,6 +52,7 @@ public class PDFImportAssistant
         extractors.add(new BourseDirectPDFExtractor(client));
         extractors.add(new BoursoBankPDFExtractor(client));
         extractors.add(new BSDEXPDFExtractor(client));
+        extractors.add(new BundesschatzPDFExtractor(client));
         extractors.add(new C24BankGmbHPDFExtractor(client));
         extractors.add(new CetesDirectoPDFExtractor(client));
         extractors.add(new ComdirectPDFExtractor(client));
@@ -101,6 +103,7 @@ public class PDFImportAssistant
         extractors.add(new N26BankAGPDFExtractor(client));
         extractors.add(new NIBCBankPDFExtractor(client));
         extractors.add(new NordaxBankABPDFExtractor(client));
+        extractors.add(new NorddeutscheLandesbankPDFExtractor(client));
         extractors.add(new OldenburgischeLandesbankAGPDFExtractor(client));
         extractors.add(new LGTBankPDFExtractor(client));
         extractors.add(new LiechtensteinischeLandesbankAGPDFExtractor(client));
@@ -111,7 +114,7 @@ public class PDFImportAssistant
         extractors.add(new PictetCieGruppeSAPDFExtractor(client));
         extractors.add(new PostbankPDFExtractor(client));
         extractors.add(new PostfinancePDFExtractor(client));
-        extractors.add(new QuestradePDFExtractor(client));
+        extractors.add(new QuestradeGroupPDFExtractor(client));
         extractors.add(new QuirinBankAGPDFExtractor(client));
         extractors.add(new RaiffeisenBankgruppePDFExtractor(client));
         extractors.add(new RaisinBankAGPDFExtractor(client));
