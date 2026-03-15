@@ -1,7 +1,5 @@
 package name.abuchen.portfolio.datatransfer.pdf;
 
-import static name.abuchen.portfolio.util.TextUtil.trim;
-
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Block;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.DocumentType;
 import name.abuchen.portfolio.datatransfer.pdf.PDFParser.Transaction;
@@ -58,7 +56,7 @@ public class N26BankAGPDFExtractor extends AbstractPDFExtractor
                             // @formatter:off
                             // Is type is "-" change from DEPOSIT to REMOVAL
                             // @formatter:on
-                            if ("-".equals(trim(v.get("type"))))
+                            if ("-".equals(v.get("type")))
                                 t.setType(AccountTransaction.Type.REMOVAL);
 
                             t.setDateTime(asDate(v.get("date")));
@@ -70,6 +68,11 @@ public class N26BankAGPDFExtractor extends AbstractPDFExtractor
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
                                 return new TransactionItem(t);
 
+                            // No test case available for a transaction with
+                            // zero amount. It is a monthly account statement,
+                            // therefore reporting a skip transaction only
+                            // because there are no deposits or withdrawals this
+                            // months is debatable.
                             return null;
                         });
     }
@@ -154,6 +157,11 @@ public class N26BankAGPDFExtractor extends AbstractPDFExtractor
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
                                 return new TransactionItem(t);
 
+                            // No test case available for a transaction with
+                            // zero amount. It is a monthly account statement,
+                            // therefore reporting a skip transaction only
+                            // because there are no interest payments this
+                            // months is debatable.
                             return null;
                         });
 

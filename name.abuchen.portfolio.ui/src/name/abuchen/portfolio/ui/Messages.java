@@ -102,7 +102,6 @@ public class Messages extends NLS
     public static String ColumnAbsolutePerformancePercent_MenuLabel;
     public static String ColumnAbsolutePerformancePercent_Option;
     public static String ColumnAccount;
-    public static String ColumnAccount2nd;
     public static String ColumnAccountFrom;
     public static String ColumnAccountTo;
     public static String ColumnAction;
@@ -647,6 +646,7 @@ public class Messages extends NLS
     public static String LabelColonSeparated;
     public static String LabelColorBy;
     public static String LabelColorSchema;
+    public static String LabelColorValueScheme;
     public static String LabelColumns;
     public static String LabelColumnsInReverseOrder;
     public static String LabelCommon;
@@ -1095,12 +1095,14 @@ public class Messages extends NLS
     public static String MsgConfirmInstall;
     public static String MsgCreateTransactionsAutomaticallyUponOpening;
     public static String MsgDateIsInTheFuture;
+    public static String MsgDateExIsAfterTheDate;
     public static String MsgDeletionNotPossible;
     public static String MsgDeletionNotPossibleDetail;
     public static String MsgDialogInputRequired;
     public static String MsgDialogNotAValidCurrency;
     public static String MsgDialogNotAValidISIN;
     public static String MsgEmbeddedBrowserError;
+    public static String MsgExDateNotAllowed;
     public static String MsgErrorAccountNotExist;
     public static String MsgErrorConvertedAmount;
     public static String MsgErrorConvertToBuySellCurrencyMismatch;
@@ -1451,6 +1453,9 @@ public class Messages extends NLS
     public static String TransactionFilterTransfers;
     public static String Url;
     public static String MsgWarningWayland;
+    public static String ValueColorSchemeAsia;
+    public static String ValueColorSchemeBlueOrange;
+    public static String ValueColorSchemeStandard;
     public static String WatchlistDelete;
     public static String WatchlistEditDialog;
     public static String WatchlistEditDialogMsg;

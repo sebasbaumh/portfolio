@@ -96,7 +96,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                         // Stornierung Wertpapierabrechnung Kauf Fonds
                         .section("type").optional() //
                         .match("^(?<type>(Storno|Stornierung)) Wertpapierabrechnung .*$") //
-                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported))
+                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported))
 
                         .oneOf( //
                                         // @formatter:off
@@ -432,9 +432,6 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                             // Finally, we remove the flag.
                             // @formatter:on
                             type.getCurrentContext().remove("isPurchaseBonds");
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
 
                             return item;
                         });
@@ -955,7 +952,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("type").optional() //
                         .match("^(?<type>Storno) Ertragsmitteilung.*$") //
-                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported))
+                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported))
 
                         .oneOf( //
                                         // @formatter:off
@@ -1008,7 +1005,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                                                         .match("^.* ISIN: (?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
                                                         .match("Bruttoaussch.ttung pro St.ck [\\.,\\d]+ (?<currency>[A-Z]{3})$") //
                                                         .assign((t, v) -> {
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
                                                             t.setSecurity(getOrCreateSecurity(v));
                                                         }))
 
@@ -1053,6 +1050,20 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                                                         .attributes("date") //
                                                         .match("^Zahlungsdatum: (?<date>[\\d]{2}\\. .* [\\d]{4})$") //
                                                         .assign((t, v) -> t.setDateTime(asDate(v.get("date")))))
+
+                        // @formatter:off
+                        // Extag           :  08.05.2014          Bruttodividende
+                        // Ex-Datum: 9. Feb 2024 CUSIP: D69671218
+                        // @formatter:on
+                        .optionalOneOf( //
+                                        section -> section //
+                                                        .attributes("exDate") //
+                                                        .match("^Extag[:\\s]+(?<exDate>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}).*$") //
+                                                        .assign((t, v) -> t.setExDate(asDate(v.get("exDate")))), //
+                                        section -> section //
+                                                        .attributes("exDate") //
+                                                        .match("^Ex-Datum: (?<exDate>[\\d]{1,2}\\. .* [\\d]{4}) CUSIP:.*$") //
+                                                        .assign((t, v) -> t.setExDate(asDate(v.get("exDate")))))
 
                         .oneOf( //
                                         // @formatter:off
@@ -1217,9 +1228,6 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                             // Finally, we remove the flag.
                             type.getCurrentContext().remove("negative");
 
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
                                 return item;
                             return null;
@@ -1231,12 +1239,12 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
 
     private void addDividendWithNegativeAmountTransaction()
     {
-        final var type = new DocumentType("Ertragsmitteilung \\- (aussch.ttender\\/teil)?thesaurierender( transparenter)? Fonds");
+        final var type = new DocumentType("Ertragsmitteilung \\- (aussch.ttender\\/teil)?thesaurierender( (transparenter|intransparenter))? Fonds");
         this.addDocumentTyp(type);
 
         var pdfTransaction = new Transaction<AccountTransaction>();
 
-        var firstRelevantLine = new Block("^Ertragsmitteilung \\- (aussch.ttender\\/teil)?thesaurierender( transparenter)? Fonds$");
+        var firstRelevantLine = new Block("^Ertragsmitteilung \\- (aussch.ttender\\/teil)?thesaurierender( (transparenter|intransparenter))? Fonds$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
@@ -1766,24 +1774,10 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
 
         this.addDocumentTyp(type);
 
-        // @formatter:off
-        // 29.01.     29.01.  Überweisung                                       1.100,00+
-        // 19.11.     19.11.  Lastschrift                                          50,00+
-        // 10.02.     10.02.  CASH / 0/377366                                   1.300,00+
-        // 01.10.     01.10.  EINZAHLUNG 4 FLATEX / 0/16765097                  2.000,00+
-        // 19.11.     19.11.  R-Transaktion                                       -53,00-
-        // 07.04.     07.04.  /REC/FC:MAX                                       2.250,00+
-        //                    MUSTERMANN,//MUSTERSTR 2 MUSTERHAUSEN GERMANY /
-        //                    SOGEFRPPHCM/
-        // 10.12.     07.12.  Prämie für die Teilnahme an der Morgan                6,00+
-        //                    Stanley-Aktion
-        // 13.02.     13.02.  Gutschrift aus Kulanz                                 1,88+
-        // 05.11. 05.11. fs939468989892221962 150,00+
-        // @formatter:on
-        var depositRemovalblock = new Block("^[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}" //
+        var depositRemovalblock_Format01 = new Block("^[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}" //
                         + "(.berweisung" //
                         + "|Lastschrift" //
-                        + "|[A-Za-z]{2}[A-Z0-9]{11,30}" //
+                        + "|[A-Za-z0-9]{10,30}" //
                         + "|CASH .*" //
                         + "|EINZAHLUNG .*" //
                         + "|\\/REC\\/.*" //
@@ -1791,8 +1785,104 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                         + "|R\\-Transaktion" //
                         + "|Gutschrift aus Kulanz)" //
                         + "[\\s]{1,}[\\-\\.,\\d]+[\\+|\\-].*$");
-        type.addBlock(depositRemovalblock);
-        depositRemovalblock.set(new Transaction<AccountTransaction>()
+        type.addBlock(depositRemovalblock_Format01);
+        depositRemovalblock_Format01.setMaxSize(2);
+        depositRemovalblock_Format01.set(new Transaction<AccountTransaction>()
+
+                        .subject(() -> {
+                            var accountTransaction = new AccountTransaction();
+                            accountTransaction.setType(AccountTransaction.Type.DEPOSIT);
+                            return accountTransaction;
+                        })
+
+                        .oneOf( //
+                                        // @formatter:off
+                                        // 07.10. 07.10. qoPYsm1pGTT 1.000,00+
+                                        // Iz840881600557395584
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("date", "note", "amount", "type") //
+                                                        .documentContext("year", "currency") //
+                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}" //
+                                                                        + "(?<date>[\\d]{2}\\.[\\d]{2}\\.)[\\s]{1,}" //
+                                                                        + "[A-Za-z0-9]{10,30}[\\s]{1,}" //
+                                                                        + "(?<amount>[\\-\\.,\\d]+)" //
+                                                                        + "(?<type>[\\+|\\-]).*$") //
+                                                        .match("(?<note>[A-Za-z0-9]{10,30})$") //
+                                                        .assign((t, v) -> {
+                                                            // Is type --> "-" change from DEPOSIT to REMOVAL
+                                                            if ("-".equals(v.get("type")))
+                                                                t.setType(AccountTransaction.Type.REMOVAL);
+
+                                                            t.setDateTime(asDate(v.get("date") + v.get("year")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                            t.setCurrencyCode(v.get("currency"));
+
+                                                            // Formatting some notes
+                                                            if (v.get("note").startsWith("Prämie"))
+                                                                v.put("note", "Prämie");
+
+                                                            t.setNote(trim(v.get("note")));
+                                                        }),
+                                        // @formatter:off
+                                        // 29.01.     29.01.  Überweisung                                       1.100,00+
+                                        // 19.11.     19.11.  Lastschrift                                          50,00+
+                                        // 10.02.     10.02.  CASH / 0/377366                                   1.300,00+
+                                        // 01.10.     01.10.  EINZAHLUNG 4 FLATEX / 0/16765097                  2.000,00+
+                                        // 19.11.     19.11.  R-Transaktion                                       -53,00-
+                                        // 07.04.     07.04.  /REC/FC:MAX                                       2.250,00+
+                                        //                    MUSTERMANN,//MUSTERSTR 2 MUSTERHAUSEN GERMANY /
+                                        //                    SOGEFRPPHCM/
+                                        // 10.12.     07.12.  Prämie für die Teilnahme an der Morgan                6,00+
+                                        //                    Stanley-Aktion
+                                        // 13.02.     13.02.  Gutschrift aus Kulanz                                 1,88+
+                                        // 05.11. 05.11. fs939468989892221962 150,00+
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("date", "note", "amount", "type") //
+                                                        .documentContext("year", "currency") //
+                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}" //
+                                                                        + "(?<date>[\\d]{2}\\.[\\d]{2}\\.)[\\s]{1,}" //
+                                                                        + "(?<note>(.berweisung" //
+                                                                        + "|Lastschrift" //
+                                                                        + "|[A-Za-z0-9]{10,30}" //
+                                                                        + "|CASH .*" //
+                                                                        + "|EINZAHLUNG .*" //
+                                                                        + "|AUSZAHLUNG .*" //
+                                                                        + "|\\/REC\\/.*" //
+                                                                        + "|Pr.mie .*" //
+                                                                        + "|R\\-Transaktion"
+                                                                        + "|Gutschrift aus Kulanz))" //
+                                                                        + "[\\s]{1,}" //
+                                                                        + "(?<amount>[\\-\\.,\\d]+)" //
+                                                                        + "(?<type>[\\+|\\-]).*$") //
+                                                        .assign((t, v) -> {
+                                                            // Is type --> "-" change from DEPOSIT to REMOVAL
+                                                            if ("-".equals(v.get("type")))
+                                                                t.setType(AccountTransaction.Type.REMOVAL);
+
+                                                            t.setDateTime(asDate(v.get("date") + v.get("year")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                            t.setCurrencyCode(v.get("currency"));
+
+                                                            // Formatting some notes
+                                                            if (v.get("note").startsWith("Prämie"))
+                                                                v.put("note", "Prämie");
+
+                                                            t.setNote(trim(v.get("note")));
+                                                        }))
+
+                        .wrap(TransactionItem::new));
+
+        // @formatter:off
+        // 01.10. 01.10. BIIWATWWXXX
+        // Mn132692519750748439 3.000,00-
+        // HEoVS yjYhmWXs
+        // @formatter:on
+        var depositRemovalblock_Format02 = new Block("^[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}[A-Za-z0-9]{10,30}$");
+        type.addBlock(depositRemovalblock_Format02);
+        depositRemovalblock_Format02.setMaxSize(2);
+        depositRemovalblock_Format02.set(new Transaction<AccountTransaction>()
 
                         .subject(() -> {
                             var accountTransaction = new AccountTransaction();
@@ -1802,17 +1892,15 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
 
                         .section("date", "note", "amount", "type") //
                         .documentContext("year", "currency") //
-                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}" //
-                                        + "(?<date>[\\d]{2}\\.[\\d]{2}\\.)[\\s]{1,}" //
-                                        + "(?<note>(.berweisung" //
+                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}(?<date>[\\d]{2}\\.[\\d]{2}\\.)[\\s]{1,}[A-Za-z0-9]{10,12}$") //
+                        .match("(?<note>(.berweisung" //
                                         + "|Lastschrift" //
-                                        + "|[A-Za-z]{2}[A-Z0-9]{11,30}" //
+                                        + "|[A-Za-z0-9]{10,30}" //
                                         + "|CASH .*" //
                                         + "|EINZAHLUNG .*" //
                                         + "|AUSZAHLUNG .*" //
                                         + "|\\/REC\\/.*" //
                                         + "|Pr.mie .*" //
-                                        + "|[\\w]+\\-[\\w]+\\-[\\w]+\\-[\\w]+\\-[\\w]+" //
                                         + "|R\\-Transaktion"
                                         + "|Gutschrift aus Kulanz))" //
                                         + "[\\s]{1,}" //
@@ -1932,11 +2020,11 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                                                             t.setCurrencyCode(v.get("currency"));
                                                             t.setNote(concatenate(v.get("note"), v.get("isin"), " "));
                                                         }))
-                        .wrap(t -> {
+                        .wrap((t, ctx) -> {
                             var item = new TransactionItem(t);
 
                             if (t.getCurrencyCode() != null && t.getAmount() == 0)
-                                item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
+                                ctx.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                             return item;
                         }));
@@ -2000,11 +2088,11 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                                                             t.setNote(trim(v.get("note")));
                                                         }))
 
-                        .wrap(t -> {
+                        .wrap((t, ctx) -> {
                             var item = new TransactionItem(t);
 
                             if (t.getCurrencyCode() != null && t.getAmount() == 0)
-                                item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
+                                ctx.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                             return item;
                         }));
@@ -2035,7 +2123,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                                 t.setType(AccountTransaction.Type.INTEREST);
 
                             // Set transaction cancellation
-                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionTypeNotSupported);
+                            v.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                             t.setDateTime(asDate(v.get("date") + v.get("year")));
                             t.setAmount(asAmount(v.get("amount")));
@@ -2043,14 +2131,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                             t.setNote(replaceMultipleBlanks(v.get("note")));
                         })
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
-                        }));
+                        .wrap(TransactionItem::new));
 
         var taxesBlock = new Block("^[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}[\\d]{2}\\.[\\d]{2}\\.[\\s]{1,}(Steuertopfoptimierung|Steuerkorrektur) .*$");
         type.addBlock(taxesBlock);
@@ -2499,13 +2580,11 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                                                         .match("^[\\s]*(?<note2>[\\d]+).*$") //
                                                         .assign((t, v) -> t.setNote(trim(v.get("note1")) + " " + v.get("note2"))))
 
-                        .wrap(t -> {
-                            var item = new TransactionItem(t);
-
+                        .wrap((t, ctx) -> {
                             if (t.getAmount() == 0)
-                                item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
+                                ctx.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
-                            return item;
+                            return new TransactionItem(t);
                         });
     }
 
@@ -2560,10 +2639,10 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                         .match("^.* (?<note1>Depotservicegeb.hr) .* ISIN (?<note2>[A-Z]{2}[A-Z0-9]{9}[0-9])$") //
                         .assign((t, v) -> t.setNote(concatenate(v.get("note1"), v.get("note2"), " ")))
 
-                        .wrap(t -> {
+                        .wrap((t, ctx) -> {
                             var item = new TransactionItem(t);
 
-                            item.setFailureMessage(Messages.PDFMsgErrorDoNotProcessMissingExchangeRateIfInForex);
+                            ctx.markAsFailure(Messages.MsgErrorTransactionMissingExchangeRateIfInForex);
 
                             return item;
                         });
@@ -3627,7 +3706,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                                                         .match("^Verrechnung .ber Ihr Konto: .* (?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
                                                         .assign((t, v) -> {
 
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorSplitTransactionsNotSupported);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionSplitUnsupported);
 
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
@@ -3650,7 +3729,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                                                         .match("^Verrechnung .ber Ihr Konto: .* (?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
                                                         .assign((t, v) -> {
 
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorSplitTransactionsNotSupported);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionSplitUnsupported);
 
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
@@ -3660,14 +3739,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
                                                             t.setAmount(asAmount(v.get("amount")));
                                                         }))
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
-                        });
+                        .wrap(TransactionItem::new);
     }
 
     private <T extends Transaction<?>> void addTaxesSectionsTransaction(T transaction, DocumentType type)
@@ -3703,7 +3775,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
 
                                 if (!tax.isZero() && !tax.getCurrencyCode().equals(transactionCurrency) && type.getCurrentContext().getType(ExtrExchangeRate.class).isEmpty())
                                 {
-                                    v.getTransactionContext().put(FAILURE, Messages.PDFMsgErrorDoNotProcessMissingExchangeRateIfInForex);
+                                    v.markAsFailure(Messages.MsgErrorTransactionMissingExchangeRateIfInForex);
                                     return;
                                 }
 
@@ -3728,7 +3800,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
 
                                 if (!tax.isZero() && !tax.getCurrencyCode().equals(transactionCurrency) && type.getCurrentContext().getType(ExtrExchangeRate.class).isEmpty())
                                 {
-                                    v.getTransactionContext().put(FAILURE, Messages.PDFMsgErrorDoNotProcessMissingExchangeRateIfInForex);
+                                    v.markAsFailure(Messages.MsgErrorTransactionMissingExchangeRateIfInForex);
                                     return;
                                 }
 
@@ -3752,7 +3824,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
 
                                 if (!tax.isZero() && !tax.getCurrencyCode().equals(transactionCurrency) && type.getCurrentContext().getType(ExtrExchangeRate.class).isEmpty())
                                 {
-                                    v.getTransactionContext().put(FAILURE, Messages.PDFMsgErrorDoNotProcessMissingExchangeRateIfInForex);
+                                    v.markAsFailure(Messages.MsgErrorTransactionMissingExchangeRateIfInForex);
                                     return;
                                 }
 
@@ -3776,7 +3848,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
 
                                 if (!tax.isZero() && !tax.getCurrencyCode().equals(transactionCurrency) && type.getCurrentContext().getType(ExtrExchangeRate.class).isEmpty())
                                 {
-                                    v.getTransactionContext().put(FAILURE, Messages.PDFMsgErrorDoNotProcessMissingExchangeRateIfInForex);
+                                    v.markAsFailure(Messages.MsgErrorTransactionMissingExchangeRateIfInForex);
                                     return;
                                 }
 
@@ -3800,7 +3872,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
 
                                 if (!tax.isZero() && !tax.getCurrencyCode().equals(transactionCurrency) && type.getCurrentContext().getType(ExtrExchangeRate.class).isEmpty())
                                 {
-                                    v.getTransactionContext().put(FAILURE, Messages.PDFMsgErrorDoNotProcessMissingExchangeRateIfInForex);
+                                    v.markAsFailure(Messages.MsgErrorTransactionMissingExchangeRateIfInForex);
                                     return;
                                 }
 
@@ -3824,7 +3896,7 @@ public class FinTechGroupBankPDFExtractor extends AbstractPDFExtractor
 
                                 if (!tax.isZero() && !tax.getCurrencyCode().equals(transactionCurrency) && type.getCurrentContext().getType(ExtrExchangeRate.class).isEmpty())
                                 {
-                                    v.getTransactionContext().put(FAILURE, Messages.PDFMsgErrorDoNotProcessMissingExchangeRateIfInForex);
+                                    v.markAsFailure(Messages.MsgErrorTransactionMissingExchangeRateIfInForex);
                                     return;
                                 }
 

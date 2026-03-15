@@ -37,6 +37,26 @@ public class QuoteRangeColumn extends Column implements Column.CacheInvalidation
         }
 
         @Override
+        public String getText(Object element)
+        {
+            // used when exporting the column to CSV
+
+            var range = valueProvider.apply(element, getOption());
+            if (range == null || range.getLow() == null || range.getHigh() == null)
+                return null;
+            var value = range.getRelLowDistance();
+
+            return String.format("%s +%.2f%% (%s) | %s -%.2f%% (%s)", //$NON-NLS-1$
+                            Values.Quote.format(range.getLow()), //
+                            value * 100, //
+                            Values.Date.format(range.getLowDate()), //
+                            Values.Quote.format(range.getHigh()), //
+                            (1 - value) * 100, //
+                            Values.Date.format(range.getHighDate()) //
+            );
+        }
+
+        @Override
         public String getToolTipText(Object e)
         {
             var range = valueProvider.apply(e, getOption());
@@ -70,7 +90,7 @@ public class QuoteRangeColumn extends Column implements Column.CacheInvalidation
             double pos = value;
 
             // Leave some space in case 2 such columns go side by side
-            int width = getTableColumn().getWidth() - 2;
+            int width = (getTableColumn() != null ? getTableColumn().getWidth() : getTreeColumn().getWidth()) - 2;
             int yOff = (event.height - BAR_HEIGHT) / 2;
 
             event.gc.setForeground(Colors.theme().defaultForeground());

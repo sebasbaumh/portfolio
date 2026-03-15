@@ -8,18 +8,24 @@ import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasForexGros
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasGrossValue;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasIsin;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasName;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasNote;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasSecurity;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasShares;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasSource;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasTaxes;
+import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasTicker;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.purchase;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.sale;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.security;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countAccountTransactions;
+import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countAccountTransfers;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countBuySell;
+import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countItemsWithFailureMessage;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countSecurities;
+import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countSkippedItems;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static org.junit.Assert.assertNull;
 
@@ -64,6 +70,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(1));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -94,6 +106,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug02.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(5L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(7));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -175,6 +193,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug03.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(3L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(12L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(15));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -346,6 +370,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug04.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(1));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -370,6 +400,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug05.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(5L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(33L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(38));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -461,6 +497,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug06.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(3L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(4));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -500,6 +542,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug07.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(34L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(35));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -529,6 +577,12 @@ public class DegiroPDFExtractorTest
                         PDFInputFile.loadTestCase(getClass(), "Kontoauszug08_extract_two_currencies.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(2L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(4));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -574,6 +628,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug08.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(52L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(137L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(2L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(189));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -816,7 +876,7 @@ public class DegiroPDFExtractorTest
                         .filter(TransactionItem.class::isInstance) //
                         .findFirst().orElseThrow(IllegalArgumentException::new);
 
-        assertThat(cancellation.getFailureMessage(), is(Messages.MsgErrorOrderCancellationUnsupported));
+        assertThat(cancellation.getFailureMessage(), is(Messages.MsgErrorTransactionOrderCancellationUnsupported));
         assertThat(cancellation.getSource(), is("Kontoauszug08.txt"));
 
         // check 2nd cancellation (Storno) transaction
@@ -825,7 +885,7 @@ public class DegiroPDFExtractorTest
                         .filter(TransactionItem.class::isInstance) //
                         .skip(1).findFirst().orElseThrow(IllegalArgumentException::new);
 
-        assertThat(cancellation.getFailureMessage(), is(Messages.MsgErrorOrderCancellationUnsupported));
+        assertThat(cancellation.getFailureMessage(), is(Messages.MsgErrorTransactionOrderCancellationUnsupported));
         assertThat(cancellation.getSource(), is("Kontoauszug08.txt"));
     }
 
@@ -839,6 +899,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug09.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(4L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(4L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(8));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -933,6 +999,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug10.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(12L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(19L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(31));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -1023,6 +1095,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug11.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(11L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(21L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(1L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(32));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -1101,6 +1179,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug12.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(17L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(19));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -1305,6 +1389,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug13.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(4L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(6));
         new AssertImportActions().check(results, "CHF");
 
@@ -1363,6 +1453,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug14.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(8L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(12L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(20));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -1610,6 +1706,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug15.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(25L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(30L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(55));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -2289,6 +2391,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(3L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(3));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -2330,6 +2438,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(4L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(4));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -2380,6 +2494,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -2417,6 +2537,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -2465,6 +2591,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(1));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -2502,6 +2634,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(1));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -2535,6 +2673,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(3L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(45L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(48));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -3259,6 +3403,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "AccountStatement01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(4L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(5L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(9));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -3371,6 +3521,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(17L));
+        assertThat(countBuySell(results), is(32L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(49));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -3488,6 +3644,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(3L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(4));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -3567,6 +3729,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(4L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(6));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -3660,6 +3828,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(2L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(3));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -3726,6 +3900,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(66L));
+        assertThat(countBuySell(results), is(95L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(161));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -3837,6 +4017,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(17L));
+        assertThat(countBuySell(results), is(36L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(53));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -3927,6 +4113,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(2L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(4));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -3991,6 +4183,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(11L));
+        assertThat(countBuySell(results), is(21L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(32));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4058,6 +4256,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(3L));
+        assertThat(countBuySell(results), is(4L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(7));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4159,6 +4363,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(3L));
+        assertThat(countBuySell(results), is(4L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(7));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4266,6 +4476,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4307,6 +4523,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(7L));
+        assertThat(countBuySell(results), is(7L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(14));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4468,6 +4690,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(6L));
+        assertThat(countBuySell(results), is(9L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(15));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4531,6 +4759,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(8L));
+        assertThat(countBuySell(results), is(12L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(20));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4572,6 +4806,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(2L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(4));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4632,6 +4872,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(186L));
+        assertThat(countBuySell(results), is(471L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(657));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4717,6 +4963,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(11L));
+        assertThat(countBuySell(results), is(20L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(31));
         new AssertImportActions().check(results, "CHF");
 
@@ -4856,6 +5108,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(2L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(4));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -4922,6 +5180,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(7L));
+        assertThat(countBuySell(results), is(14L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(21));
         new AssertImportActions().check(results, "CHF");
 
@@ -5246,6 +5510,12 @@ public class DegiroPDFExtractorTest
                         errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(18L));
+        assertThat(countBuySell(results), is(61L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(79));
         new AssertImportActions().check(results, "CHF");
 
@@ -5561,6 +5831,283 @@ public class DegiroPDFExtractorTest
         assertThat(entry.getPortfolioTransaction().getUnitSum(Unit.Type.FEE),
                         is(Money.of("CHF", Values.Amount.factorize(2.25))));
     }
+    
+    @Test
+    public void testTransaktionsuebersicht21()
+    {
+        var extractor = new DegiroPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transaktionsuebersicht21.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(4L));
+        assertThat(countBuySell(results), is(11L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
+        assertThat(results.size(), is(15));
+        new AssertImportActions().check(results, "EUR");
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE0007472060"), hasTicker(null), //
+                        hasName("WIRECARD AG"), //
+                        hasCurrencyCode("EUR"))));
+        
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE000A0D8Q49"), hasTicker(null), //
+                        hasName("ISHARES DOW JONES U.S."), //
+                        hasCurrencyCode("EUR"))));
+        
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE000C5F3ZF0"), hasTicker(null), //
+                        hasName("ODX1 C12700.00 05JUN20"), //
+                        hasCurrencyCode("EUR"))));
+        
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE000C5F3ZG8"), hasTicker(null), //
+                        hasName("ODX1 P12700.00 05JUN20"), //
+                        hasCurrencyCode("EUR"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE0007472060")), //
+                        hasDate("2021-01-07T20:36"), hasShares(90), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 97.92), hasGrossValue("EUR", 97.92), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.00))));
+        
+        // check buy sell transaction
+        assertThat(results, hasItem(sale( //
+                        hasSecurity(hasIsin("DE0007472060")), //
+                        hasDate("2021-01-07T20:36"), hasShares(90), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 97.92), hasGrossValue("EUR", 97.92), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.00))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE0007472060")), //
+                        hasDate("2020-06-24T16:26"), hasShares(30), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 347.06), hasGrossValue("EUR", 345.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 2.06))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE0007472060")), //
+                        hasDate("2020-06-19T11:24"), hasShares(20), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 442.08), hasGrossValue("EUR", 440.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 2.08))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE0007472060")), //
+                        hasDate("2020-06-18T14:04"), hasShares(10), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 452.08), hasGrossValue("EUR", 450.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 2.08))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE0007472060")), //
+                        hasDate("2020-06-18T10:57"), hasShares(18), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 1074.27), hasGrossValue("EUR", 1072.08), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 2.19))));
+        
+        assertThat(results, hasItem(sale( //
+                        hasSecurity(hasIsin("DE000C5F3ZF0")), //
+                        hasDate("2020-06-05T13:30"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 0.00), hasGrossValue("EUR", 0.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.00))));
+        
+        assertThat(results, hasItem(sale( //
+                        hasSecurity(hasIsin("DE000C5F3ZG8")), //
+                        hasDate("2020-06-05T11:32"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 499.25), hasGrossValue("EUR", 500.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.75))));
+                
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE000C5F3ZG8")), //
+                        hasDate("2020-06-05T10:43"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 150.75), hasGrossValue("EUR", 150.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.75))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE000C5F3ZF0")), //
+                        hasDate("2020-06-05T10:22"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht21.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 150.75), hasGrossValue("EUR", 150.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.75))));
+    }
+    
+    @Test
+    public void testTransaktionsuebersicht22()
+    {
+        var extractor = new DegiroPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transaktionsuebersicht22.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(6L));
+        assertThat(countBuySell(results), is(13L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
+        assertThat(results.size(), is(19));
+        new AssertImportActions().check(results, "EUR");
+        
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin("US88160R1014"), hasTicker(null), //
+                        hasName("TESLA INC"), //
+                        hasCurrencyCode("USD"))));
+        
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE000C34JCK6"), hasTicker(null), //
+                        hasName("ODX1 P12300.00 03MAY19"), //
+                        hasCurrencyCode("EUR"))));
+        
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE000C3311N4"), hasTicker(null), //
+                        hasName("ODX4 C12300.00 26APR19"), //
+                        hasCurrencyCode("EUR"))));
+        
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE000C3311K0"), hasTicker(null), //
+                        hasName("ODX4 P12200.00 26APR19"), //
+                        hasCurrencyCode("EUR"))));
+        
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE000C3311P9"), hasTicker(null), //
+                        hasName("ODX4 P12300.00 26APR19"), //
+                        hasCurrencyCode("EUR"))));
+        
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE000C34JCJ8"), hasTicker(null), //
+                        hasName("ODX1 C12300.00 03MAY19"), //
+                        hasCurrencyCode("EUR"))));
+        
+
+        // check buy sell transaction
+        assertThat(results, hasItem(purchase( //
+                        hasDate("2019-04-26T17:52"), hasShares(2), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 430.77), hasGrossValue("EUR", 430.26), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.51))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasDate("2019-04-26T20:23"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 210.21), hasGrossValue("EUR", 209.71), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.50))));
+        
+        assertThat(results, hasItem(sale( //
+                        hasDate("2019-04-29T16:11"), hasShares(3), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 645.18), hasGrossValue("EUR", 645.69), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.51))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE000C34JCK6")), //
+                        hasDate("2019-04-29T09:16"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 250.90), hasGrossValue("EUR", 250.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.90))));
+        
+        assertThat(results, hasItem(sale( //
+                        hasSecurity(hasIsin("DE000C3311N4")), //
+                        hasDate("2019-04-26T13:39"), hasShares(5), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 89.00), hasGrossValue("EUR", 89.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.00))));
+        
+        assertThat(results, hasItem(sale( //
+                        hasSecurity(hasIsin("DE000C3311K0")), //
+                        hasDate("2019-04-26T13:39"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 0.00), hasGrossValue("EUR", 0.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.00))));
+        
+        assertThat(results, hasItem(sale( //
+                        hasSecurity(hasIsin("DE000C3311P9")), //
+                        hasDate("2019-04-26T13:39"), hasShares(4), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 0.00), hasGrossValue("EUR", 0.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.00))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE000C34JCK6")), //
+                        hasDate("2019-04-26T13:01"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 375.90), hasGrossValue("EUR", 375.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.90))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE000C34JCJ8")), //
+                        hasDate("2019-04-26T13:01"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null),
+                        hasAmount("EUR", 375.90), hasGrossValue("EUR", 375.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.90))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE000C3311P9")), //
+                        hasDate("2019-04-26T12:30"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 50.90), hasGrossValue("EUR", 50.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.90))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE000C3311N4")), //
+                        hasDate("2019-04-26T10:40"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 25.90), hasGrossValue("EUR", 25.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.90))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE000C3311P9")), //
+                        hasDate("2019-04-26T10:00"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 100.90), hasGrossValue("EUR", 100.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.90))));
+        
+        assertThat(results, hasItem(purchase( //
+                        hasSecurity(hasIsin("DE000C3311N4")), //
+                        hasDate("2019-04-26T09:11"), hasShares(1), //
+                        hasSource("Transaktionsuebersicht22.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 50.90), hasGrossValue("EUR", 50.00), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.90))));
+    }
 
     @Test
     public void testTransacties01()
@@ -5572,6 +6119,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transacties01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(3L));
+        assertThat(countBuySell(results), is(3L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(6));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -5662,6 +6215,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transacciones01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(4L));
+        assertThat(countBuySell(results), is(4L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(8));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -5760,6 +6319,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transacciones02.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(2L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(4));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -5822,6 +6387,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transacciones03.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(4L));
+        assertThat(countBuySell(results), is(7L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(11));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -5979,6 +6550,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transacciones04.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -6023,6 +6600,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transactions_english01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(12L));
+        assertThat(countBuySell(results), is(12L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(24));
         new AssertImportActions().check(results, "CHF");
 
@@ -6242,6 +6825,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transakcje01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(55L));
+        assertThat(countBuySell(results), is(187L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(242));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -6326,6 +6915,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transakcje02.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(95L));
+        assertThat(countBuySell(results), is(723L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(818));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -6454,6 +7049,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transakcje03.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(108L));
+        assertThat(countBuySell(results), is(1126L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(1234));
 
         // check security
@@ -6550,6 +7151,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "EstrattoConto01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(7L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(7));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -6620,6 +7227,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "EstrattoConto02.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(49L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(51));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -7163,6 +7776,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "EstrattoConto03.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -7200,6 +7819,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Operazioni01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(2L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(3));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -7263,6 +7888,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Dividende01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -7302,6 +7933,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transactions_french01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(62L));
+        assertThat(countBuySell(results), is(246L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(308));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -7426,6 +8063,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transakce01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(55L));
+        assertThat(countBuySell(results), is(90L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(145));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -7499,6 +8142,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "EstadoDeCuenta01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(7L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(47L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(1L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(54));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 
@@ -7764,7 +8413,7 @@ public class DegiroPDFExtractorTest
                         .filter(TransactionItem.class::isInstance) //
                         .findFirst().orElseThrow(IllegalArgumentException::new);
 
-        assertThat(cancellation.getFailureMessage(), is(Messages.MsgErrorOrderCancellationUnsupported));
+        assertThat(cancellation.getFailureMessage(), is(Messages.MsgErrorTransactionOrderCancellationUnsupported));
         assertThat(cancellation.getSource(), is("EstadoDeCuenta01.txt"));
 
         // check 1st dividende transaction
@@ -8114,6 +8763,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Prehleductu01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(43L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(44));
 
         // check security
@@ -8794,6 +9449,12 @@ public class DegiroPDFExtractorTest
         List<Item> results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Transacoes01.txt"), errors);
 
         assertThat(errors, empty());
+        assertThat(countSecurities(results), is(2L));
+        assertThat(countBuySell(results), is(2L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(4));
         new AssertImportActions().check(results, CurrencyUnit.EUR);
 

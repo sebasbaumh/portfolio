@@ -265,9 +265,6 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                         .wrap((t, ctx) -> {
                             var item = new BuySellEntryItem(t);
 
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
                             // @formatter:off
                             // Handshake for tax lost adjustment transaction
                             // Also use number for that is also used to (later) convert it back to a number
@@ -538,7 +535,7 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                                         + "(?<type>[\\-|\\+])(?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3}).*$") //
                         .assign((t, v) -> {
                          // Is type --> "-" change from TAXES to TAX_REFUND
-                            if ("-".equals(trim(v.get("type"))))
+                            if ("-".equals(v.get("type")))
                                 t.setType(AccountTransaction.Type.TAX_REFUND);
 
                             t.setDateTime(asDate(v.get("date")));
@@ -566,10 +563,10 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}).*" //
                                         + "(?<type>[\\-|\\+])(?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3}).*$") //
                         .assign((t, v) -> {
-                         v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                         v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
 
                          // Is type --> "-" change from INTEREST to INTEREST_CHARGE
-                            if ("-".equals(trim(v.get("type"))))
+                            if ("-".equals(v.get("type")))
                                 t.setType(AccountTransaction.Type.INTEREST_CHARGE);
 
                             t.setDateTime(asDate(v.get("date")));
@@ -577,14 +574,7 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                             t.setAmount(asAmount(v.get("amount")));
                         })
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
-                        }));
+                        .wrap(TransactionItem::new));
     }
 
     private void addTaxAdjustmentTransaction()
@@ -638,7 +628,7 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
 
         var pdfTransaction = new Transaction<AccountTransaction>();
 
-        var firstRelevantLine = new Block("^.*(Seite|Pagina) 1 \\/ [\\d]$");
+        var firstRelevantLine = new Block("^.*(Seite|Pagina|Page) 1 \\/ [\\d]$");
         type.addBlock(firstRelevantLine);
         firstRelevantLine.set(pdfTransaction);
 
@@ -657,20 +647,36 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                         .match("^f.r (?<name>.*) \\((?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])\\)[\\s]*$") //
                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v)))
 
+
+                        .oneOf(
                         // @formatter:off
-                        // Berechtigte Anzahl 1 Angefallen im
-                        // @formatter:on
-                        .section("shares") //
-                        .match("^Berechtigte Anzahl (?<shares>[\\.,\\d]+) .*$") //
-                        .assign((t, v) -> t.setShares(asShares(v.get("shares"))))
+                                        // Berechtigte Anzahl 1 Angefallen im
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^Berechtigte Anzahl (?<shares>[\\.,\\d]+) .*$") //
+                                                        .assign((t, v) -> t.setShares(asShares(v.get(
+                                                                        "shares")))),
+
+                                        // @formatter:off
+                                        // Entitled quantity 613 Considered year 2025
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^Entitled quantity (?<shares>[\\.,\\d]+) .*$") //
+                                                        .assign((t, v) -> t.setShares(asShares(v.get(
+                                                                        "shares"))))
+                        )
+
 
                         .oneOf( //
                         // @formatter:off
                                         // 24.01.2026 02.01.2026 Steuerabbuchung 0,09 EUR 0,01 EUR
+                                        // 24.01.2026 02.01.2026 Tax deduction 596.41 EUR 110.11 EUR
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("date") //
-                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) Steuerabbuchung .*$") //
+                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) (Steuerabbuchung|Tax deduction) .*$") //
                                                         .assign((t, v) -> t.setDateTime(asDate(v.get("date")))),
 
                                         // @formatter:off
@@ -685,10 +691,11 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                         .oneOf( //
                         // @formatter:off
                                         // 24.01.2026 02.01.2026 Steuerabbuchung 0,09 EUR 0,01 EUR
+                                        // 24.01.2026 02.01.2026 Tax deduction 596.41 EUR 110.11 EUR
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("amount", "currency") //
-                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} [\\d]{2}\\.[\\d]{2}\\.[\\d]{4} Steuerabbuchung [\\.,\\d]+ [A-Z]{3} (?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})[\\s]*$") //
+                                                        .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} [\\d]{2}\\.[\\d]{2}\\.[\\d]{4} (Steuerabbuchung|Tax deduction) [\\.,\\d]+ [A-Z]{3} (?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})[\\s]*$") //
                                                         .assign((t, v) -> {
                                                             t.setAmount(asAmount(v.get("amount")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
@@ -706,11 +713,11 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                                                         })
                         )
 
-                        .wrap(t -> {
+                        .wrap((t, ctx) -> {
                             var item = new TransactionItem(t);
 
                             if (t.getCurrencyCode() != null && t.getAmount() == 0)
-                                item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
+                                return new SkippedItem(item, Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                             return item;
                         });
@@ -749,6 +756,11 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                         .wrap(t -> {
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
                                 return new TransactionItem(t);
+
+                            // We have the option to return a SkippedItem here.
+                            // However, there is no test case. And with only one
+                            // optional section, returning a SkippedItem could
+                            // prevent parsing by other sections.
                             return null;
                         });
     }
@@ -813,6 +825,26 @@ public class ScalableCapitalPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("tax", "currency").optional() //
                         .match("^Belastingen op financi.le transacties \\+(?<tax>[\\.,\\d]+) (?<currency>[A-Z]{3}).*$") //
+                        .assign((t, v) -> {
+                            if (!type.getCurrentContext().getBoolean("positive"))
+                                processTaxEntries(t, v, type);
+                        })
+
+                        // @formatter:off
+                        // Capital gains tax 24.89 EUR
+                        // @formatter:on
+                        .section("tax", "currency").optional() //
+                        .match("^Capital gains tax (?<tax>[\\.,\\d]+) (?<currency>[A-Z]{3}).*$") //
+                        .assign((t, v) -> {
+                            if (!type.getCurrentContext().getBoolean("positive"))
+                                processTaxEntries(t, v, type);
+                        })
+
+                        // @formatter:off
+                        // Solidarity surcharge 1.37 EUR
+                        // @formatter:on
+                        .section("tax", "currency").optional() //
+                        .match("^Solidarity surcharge (?<tax>[\\.,\\d]+) (?<currency>[A-Z]{3}).*$") //
                         .assign((t, v) -> {
                             if (!type.getCurrentContext().getBoolean("positive"))
                                 processTaxEntries(t, v, type);

@@ -6,9 +6,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
-import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.TreeItem;
 
 import name.abuchen.portfolio.PortfolioLog;
 
@@ -47,11 +46,24 @@ public class ParameterizedOwnerDrawLabelProvider<O> extends ParameterizedColumnL
     @Override
     public void handleEvent(Event event)
     {
-        TableItem item = (TableItem) event.item;
-        Table table = item.getParent();
-        TableColumn tColumn = table.getColumn(event.index);
-        if (tColumn != getTableColumn())
+        if (event.item instanceof TableItem tableItem)
+        {
+            var table = tableItem.getParent();
+            var tableColumn = table.getColumn(event.index);
+            if (tableColumn != getTableColumn())
+                return;
+        }
+        else if (event.item instanceof TreeItem treeItem)
+        {
+            var tree = treeItem.getParent();
+            var treeColumn = tree.getColumn(event.index);
+            if (treeColumn != getTreeColumn())
+                return;
+        }
+        else
+        {
             return;
+        }
 
         switch (event.type)
         {
