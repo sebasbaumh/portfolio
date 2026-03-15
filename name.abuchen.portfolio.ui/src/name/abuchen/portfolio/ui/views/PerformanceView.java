@@ -60,7 +60,6 @@ import name.abuchen.portfolio.ui.UIConstants;
 import name.abuchen.portfolio.ui.selection.SecuritySelection;
 import name.abuchen.portfolio.ui.selection.SelectionService;
 import name.abuchen.portfolio.ui.util.ClientFilterDropDown;
-import name.abuchen.portfolio.ui.util.Colors;
 import name.abuchen.portfolio.ui.util.DropDown;
 import name.abuchen.portfolio.ui.util.LabelOnly;
 import name.abuchen.portfolio.ui.util.LogoManager;
@@ -68,6 +67,7 @@ import name.abuchen.portfolio.ui.util.MoneyTrailDataSource;
 import name.abuchen.portfolio.ui.util.SimpleAction;
 import name.abuchen.portfolio.ui.util.TableViewerCSVExporter;
 import name.abuchen.portfolio.ui.util.TreeViewerCSVExporter;
+import name.abuchen.portfolio.ui.util.ValueColorScheme;
 import name.abuchen.portfolio.ui.util.viewers.Column;
 import name.abuchen.portfolio.ui.util.viewers.ColumnEditingSupport;
 import name.abuchen.portfolio.ui.util.viewers.ColumnEditingSupport.MarkDirtyClientListener;
@@ -217,11 +217,11 @@ public class PerformanceView extends AbstractHistoricView
         createCalculationItem(folder, Messages.PerformanceTabCalculation);
 
         snapshotStart = createStatementOfAssetsItem(folder, Messages.PerformanceTabAssetsAtStart);
-        snapshotStart.getTableViewer().addSelectionChangedListener(
+        snapshotStart.getTreeViewer().addSelectionChangedListener(
                         e -> setInformationPaneInput(e.getStructuredSelection().getFirstElement()));
 
         snapshotEnd = createStatementOfAssetsItem(folder, Messages.PerformanceTabAssetsAtEnd);
-        snapshotEnd.getTableViewer().addSelectionChangedListener(
+        snapshotEnd.getTreeViewer().addSelectionChangedListener(
                         e -> setInformationPaneInput(e.getStructuredSelection().getFirstElement()));
 
         earnings = createTransactionViewer(folder, Messages.PerformanceTabEarnings);
@@ -1003,11 +1003,11 @@ public class PerformanceView extends AbstractHistoricView
 
             manager.add(new SimpleAction(
                             MessageFormat.format(Messages.LabelExport, Messages.PerformanceTabAssetsAtStart),
-                            a -> new TableViewerCSVExporter(snapshotStart.getTableViewer())
+                            a -> new TreeViewerCSVExporter(snapshotStart.getTreeViewer()).withFlatTable()
                                             .export(Messages.PerformanceTabAssetsAtStart + fileSuffix)));
 
             manager.add(new SimpleAction(MessageFormat.format(Messages.LabelExport, Messages.PerformanceTabAssetsAtEnd),
-                            a -> new TableViewerCSVExporter(snapshotEnd.getTableViewer())
+                            a -> new TreeViewerCSVExporter(snapshotEnd.getTreeViewer()).withFlatTable()
                                             .export(Messages.PerformanceTabAssetsAtEnd + fileSuffix)));
 
             manager.add(new SimpleAction(MessageFormat.format(Messages.LabelExport, Messages.PerformanceTabEarnings),
@@ -1033,14 +1033,15 @@ public class PerformanceView extends AbstractHistoricView
         TransactionPair<?> tx = (TransactionPair<?>) element;
         if (tx.getTransaction() instanceof AccountTransaction)
         {
-            return ((AccountTransaction) tx.getTransaction()).getType().isCredit() ? Colors.theme().greenForeground()
-                            : Colors.theme().redForeground();
+            return ((AccountTransaction) tx.getTransaction()).getType().isCredit()
+                            ? ValueColorScheme.current().positiveForeground()
+                            : ValueColorScheme.current().negativeForeground();
         }
         else
         {
             return ((PortfolioTransaction) tx.getTransaction()).getType().isPurchase()
-                            ? Colors.theme().greenForeground()
-                            : Colors.theme().redForeground();
+                            ? ValueColorScheme.current().positiveForeground()
+                            : ValueColorScheme.current().negativeForeground();
         }
     }
 }

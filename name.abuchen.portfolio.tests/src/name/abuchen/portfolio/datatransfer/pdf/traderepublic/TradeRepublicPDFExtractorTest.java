@@ -1239,9 +1239,13 @@ public class TradeRepublicPDFExtractorTest
 
         var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "CryptoKauf04.txt"), errors);
 
+        assertThat(errors, empty());
         assertThat(countSecurities(results), is(1L));
         assertThat(countBuySell(results), is(1L));
         assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, "EUR");
 
@@ -1269,9 +1273,13 @@ public class TradeRepublicPDFExtractorTest
 
         var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "CryptoKauf05.txt"), errors);
 
+        assertThat(errors, empty());
         assertThat(countSecurities(results), is(1L));
         assertThat(countBuySell(results), is(1L));
         assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, "EUR");
 
@@ -1299,9 +1307,13 @@ public class TradeRepublicPDFExtractorTest
 
         var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "CryptoKauf06.txt"), errors);
 
+        assertThat(errors, empty());
         assertThat(countSecurities(results), is(1L));
         assertThat(countBuySell(results), is(1L));
         assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, "EUR");
 
@@ -1329,9 +1341,13 @@ public class TradeRepublicPDFExtractorTest
 
         var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "CryptoKauf07.txt"), errors);
 
+        assertThat(errors, empty());
         assertThat(countSecurities(results), is(1L));
         assertThat(countBuySell(results), is(1L));
         assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, "EUR");
 
@@ -1359,9 +1375,13 @@ public class TradeRepublicPDFExtractorTest
 
         var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "CryptoKauf08.txt"), errors);
 
+        assertThat(errors, empty());
         assertThat(countSecurities(results), is(1L));
         assertThat(countBuySell(results), is(1L));
         assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, "EUR");
 
@@ -1389,9 +1409,13 @@ public class TradeRepublicPDFExtractorTest
 
         var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "CryptoKauf09.txt"), errors);
 
+        assertThat(errors, empty());
         assertThat(countSecurities(results), is(1L));
         assertThat(countBuySell(results), is(1L));
         assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
         assertThat(results.size(), is(2));
         new AssertImportActions().check(results, "EUR");
 
@@ -3967,7 +3991,6 @@ public class TradeRepublicPDFExtractorTest
         new AssertImportActions().check(results, "EUR");
 
         // assert transaction
-
         assertThat(results, hasItem(deposit(hasDate("2025-11-21"), hasAmount("EUR", 58.36),
                         hasSource("Kontoauszug36.txt"), hasNote("Crypto one percent bonus compensation for orderId: 0a000a0a-a000-000a-a000-00a000a0a0a0"))));
 
@@ -3998,10 +4021,8 @@ public class TradeRepublicPDFExtractorTest
         new AssertImportActions().check(results, "EUR");
 
         // assert transaction
-
         assertThat(results, hasItem(deposit(hasDate("2025-12-01"), hasAmount("EUR", 4.71),
                         hasSource("Kontoauszug37.txt"), hasNote("Cash reward allocation"))));
-
 
         assertThat(results, hasItem(removal(hasDate("2025-12-31"), hasAmount("EUR", 1800.00),
                         hasSource("Kontoauszug37.txt"), hasNote("Outgoing transfer for Vorname Nachname (DE00000000000000000000)"))));
@@ -4027,7 +4048,6 @@ public class TradeRepublicPDFExtractorTest
         new AssertImportActions().check(results, "EUR");
 
         // assert transaction
-
         assertThat(results, hasItem(deposit(hasDate("2025-12-01"), hasAmount("EUR", 0.06),
                         hasSource("Kontoauszug38.txt"), hasNote("Cash reward allocation"))));
 
@@ -4035,6 +4055,63 @@ public class TradeRepublicPDFExtractorTest
                         Messages.MsgErrorTransactionAlternativeDocumentRequired, //
                         interest(hasDate("2025-12-01"), hasAmount("EUR", 1.17), //
                                         hasSource("Kontoauszug38.txt"), hasNote(null)))));
+    }
+
+    @Test
+    public void testKontoauszug39()
+    {
+        var extractor = new TradeRepublicPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug39.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(1L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
+        assertThat(results.size(), is(1));
+        new AssertImportActions().check(results, "EUR");
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2026-01-02"), hasAmount("EUR", 50.00),
+                        hasSource("Kontoauszug39.txt"), hasNote("Incoming transfer from Vorname Nachname (DE00000000000000000000)"))));
+    }
+
+    @Test
+    public void testKontoauszug40()
+    {
+        var extractor = new TradeRepublicPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug40.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(3L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(1L));
+        assertThat(countSkippedItems(results), is(0L));
+        assertThat(results.size(), is(3));
+        new AssertImportActions().check(results, "EUR");
+
+        assertThat(results, hasItem(withFailureMessage( //
+                        Messages.MsgErrorTransactionAlternativeDocumentRequired, //
+                        interest(hasDate("2025-12-01"), hasAmount("EUR", 30.40), //
+                                        hasSource("Kontoauszug40.txt"), hasNote(null)))));
+
+        // assert transaction
+        assertThat(results, hasItem(removal(hasDate("2025-12-03"), hasAmount("EUR", 280.00),
+                        hasSource("Kontoauszug40.txt"), hasNote("Outgoing transfer for name surname (DE987654321)"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2025-12-12"), hasAmount("EUR", 3950.00),
+                        hasSource("Kontoauszug40.txt"), hasNote("Incoming transfer from name surname (DE987654321)"))));
     }
 
     @Test
@@ -5530,7 +5607,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorOrderCancellationUnsupported, //
+                        Messages.MsgErrorTransactionOrderCancellationUnsupported, //
                         taxRefund( //
                                         hasDate("2023-11-02T00:00"), hasShares(38.4597), //
                                         hasSource("StornoSteuerkorrektur01.txt"), //
@@ -5567,7 +5644,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorOrderCancellationUnsupported, //
+                        Messages.MsgErrorTransactionOrderCancellationUnsupported, //
                         taxRefund( //
                                         hasDate("2023-11-02T00:00"), hasShares(38.4597), //
                                         hasSource("StornoSteuerkorrektur01.txt"), //
@@ -6155,7 +6232,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check buy sell transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorOrderCancellationUnsupported, //
+                        Messages.MsgErrorTransactionOrderCancellationUnsupported, //
                         sale( //
                                         hasDate("2025-01-17T16:05"), hasShares(200.00), //
                                         hasSource("Verkauf11.txt"), //
@@ -6415,6 +6492,40 @@ public class TradeRepublicPDFExtractorTest
     }
 
     @Test
+    public void testTilgung03()
+    {
+        var extractor = new TradeRepublicPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Tilgung03.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(1L));
+        assertThat(countBuySell(results), is(1L));
+        assertThat(countAccountTransactions(results), is(0L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
+        assertThat(results.size(), is(2));
+        new AssertImportActions().check(results, "EUR");
+
+        // check security
+        assertThat(results, hasItem(security( //
+                        hasIsin("DE000HT7LYD5"), hasWkn(null), hasTicker(null), //
+                        hasName("SMA Solar Technology Open End Turbo"), //
+                        hasCurrencyCode("EUR"))));
+
+        // check buy sell transaction
+        assertThat(results, hasItem(sale( //
+                        hasDate("2025-09-15T00:00"), hasShares(500.00), //
+                        hasSource("Tilgung03.txt"), //
+                        hasNote(null), //
+                        hasAmount("EUR", 0.50), hasGrossValue("EUR", 0.50), //
+                        hasTaxes("EUR", 0.00), hasFees("EUR", 0.00))));
+    }
+
+    @Test
     public void testAusbuchung01()
     {
         var extractor = new TradeRepublicPDFExtractor(new Client());
@@ -6475,7 +6586,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check dividends transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorOrderCancellationUnsupported, //
+                        Messages.MsgErrorTransactionOrderCancellationUnsupported, //
                         dividend( //
                                         hasDate("2020-02-26T00:00"), hasShares(200), //
                                         hasSource("DividendeStorno01.txt"), //
@@ -6486,7 +6597,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check tax refund transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorOrderCancellationUnsupported, //
+                        Messages.MsgErrorTransactionOrderCancellationUnsupported, //
                         taxRefund( //
                                         hasDate("2020-02-26T00:00"), hasShares(200), //
                                         hasSource("DividendeStorno01.txt"), //
@@ -6523,7 +6634,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check dividends transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorOrderCancellationUnsupported, //
+                        Messages.MsgErrorTransactionOrderCancellationUnsupported, //
                         dividend( //
                                         hasDate("2020-02-26T00:00"), hasShares(200), //
                                         hasSource("DividendeStorno01.txt"), //
@@ -6533,7 +6644,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check tax refund transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorOrderCancellationUnsupported, //
+                        Messages.MsgErrorTransactionOrderCancellationUnsupported, //
                         taxRefund( //
                                         hasDate("2020-02-26T00:00"), hasShares(200), //
                                         hasSource("DividendeStorno01.txt"), //
@@ -6577,7 +6688,7 @@ public class TradeRepublicPDFExtractorTest
                         .findFirst().orElseThrow(IllegalArgumentException::new);
 
         assertThat(((AccountTransaction) cancellation.getSubject()).getType(), is(AccountTransaction.Type.DIVIDENDS));
-        assertThat(cancellation.getFailureMessage(), is(Messages.MsgErrorOrderCancellationUnsupported));
+        assertThat(cancellation.getFailureMessage(), is(Messages.MsgErrorTransactionOrderCancellationUnsupported));
 
         assertThat(((Transaction) cancellation.getSubject()).getDateTime(),
                         is(LocalDateTime.parse("2021-05-25T00:00")));
@@ -6626,7 +6737,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check dividends transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorOrderCancellationUnsupported, //
+                        Messages.MsgErrorTransactionOrderCancellationUnsupported, //
                         dividend( //
                                         hasDate("2024-01-01T00:00"), hasShares(1.525759), //
                                         hasSource("DividendeStorno03.txt"), //
@@ -9444,7 +9555,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         inboundDelivery( //
                                         hasDate("2021-07-02T00:00"), hasShares(130.00), //
                                         hasSource("KapitalerhoehungGegenBar01.txt"), //
@@ -9480,7 +9591,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         inboundDelivery( //
                                         hasDate("2022-11-08T00:00"), hasShares(13.00), //
                                         hasSource("DepotuebertragEingehend.txt"), //
@@ -9516,7 +9627,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         inboundDelivery( //
                                         hasDate("2023-11-03T00:00"), hasShares(2.564), //
                                         hasSource("SpinOff01.txt"), //
@@ -9552,7 +9663,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         inboundDelivery( //
                                         hasDate("2021-07-20T00:00"), hasShares(129.25), //
                                         hasSource("Umtausch01.txt"), //
@@ -9588,7 +9699,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         inboundDelivery( //
                                         hasDate("2021-07-20T00:00"), hasShares(47.00), //
                                         hasSource("Umtausch02.txt"), //
@@ -9669,7 +9780,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check taxes transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         taxes( //
                                         hasDate("2024-01-15T00:00"), hasShares(5.598), //
                                         hasSource("Vorabpauschale02.txt"), //
@@ -10368,7 +10479,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         outboundDelivery( //
                                         hasDate("2021-07-27T00:00"), hasShares(10.00), //
                                         hasSource("Fusion01.txt"), //
@@ -10378,7 +10489,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         inboundDelivery( //
                                         hasDate("2021-07-27T00:00"), hasShares(0.776), //
                                         hasSource("Fusion01.txt"), //
@@ -10414,7 +10525,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorSplitTransactionsNotSupported, //
+                        Messages.MsgErrorTransactionSplitUnsupported, //
                         inboundDelivery( //
                                         hasDate("2022-06-04T00:00"), hasShares(17.4743), //
                                         hasSource("Split01.txt"), //
@@ -10524,7 +10635,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         outboundDelivery( //
                                         hasDate("2023-12-07T00:00"), hasShares(50.00), //
                                         hasSource("SteuerlicherUmtausch01.txt"), //
@@ -10560,7 +10671,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         inboundDelivery( //
                                         hasDate("2023-12-07T00:00"), hasShares(67.541), //
                                         hasSource("SteuerlicherUmtausch02.txt"), //
@@ -10601,7 +10712,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         outboundDelivery( //
                                         hasDate("2022-01-27T00:00"), hasShares(8.00), //
                                         hasSource("Vergleichsverfahren01.txt"), //
@@ -10611,7 +10722,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         inboundDelivery( //
                                         hasDate("2022-01-27T00:00"), hasShares(8.00), //
                                         hasSource("Vergleichsverfahren01.txt"), //
@@ -10652,7 +10763,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         outboundDelivery( //
                                         hasDate("2022-02-01T00:00"), hasShares(25.00), //
                                         hasSource("Titelumtausch01.txt"), //
@@ -10662,7 +10773,7 @@ public class TradeRepublicPDFExtractorTest
 
         // check unsupported transaction
         assertThat(results, hasItem(withFailureMessage( //
-                        Messages.MsgErrorTransactionTypeNotSupported, //
+                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired, //
                         inboundDelivery( //
                                         hasDate("2022-02-01T00:00"), hasShares(25.00), //
                                         hasSource("Titelumtausch01.txt"), //

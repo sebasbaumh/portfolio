@@ -261,9 +261,10 @@ public class TradegateAGPDFExtractor extends AbstractPDFExtractor
 
                         // @formatter:off
                         // Ausmachender Betrag 0,00 EUR
+                        // Ausmachender Betrag -18,28 EUR
                         // @formatter:on
                         .section("amount", "currency") //
-                        .match("^Ausmachender Betrag (?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
+                        .match("^Ausmachender Betrag \\-?(?<amount>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
                         .assign((t, v) -> {
                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                             t.setAmount(asAmount(v.get("amount")));
@@ -276,11 +277,11 @@ public class TradegateAGPDFExtractor extends AbstractPDFExtractor
                         .match("^.*(?<note>Order\\-\\/Ref\\.nr\\. .*)$")
                         .assign((t, v) -> t.setNote(trim(v.get("note"))))
 
-                        .wrap(t -> {
+                        .wrap((t, ctx) -> {
                             var item = new TransactionItem(t);
 
                             if (t.getAmount() == 0)
-                                item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
+                                ctx.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                             return item;
                         });

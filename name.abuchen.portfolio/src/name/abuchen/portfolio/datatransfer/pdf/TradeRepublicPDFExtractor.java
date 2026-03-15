@@ -136,7 +136,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("type").optional() //
                         .match("^(?<type>Korrektur des Beleg).*$") //
-                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported))
+                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported))
 
                         .oneOf( //
                                         // @formatter:off
@@ -182,6 +182,16 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .match("^(?<nameContinued>.*)$")
                                                         .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$")
                                                         .match("^[\\d] (Barausgleich|Kurswert|Market value) [\\.,\\d]+ (?<currency>[A-Z]{3})$") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
+                                        // Short @19.32 € SMA Solar Technology Open End Turbo
+                                        // 1 Ausbuchung 500 Stücke
+                                        // DE000HT7LYD5
+                                        section -> section //
+                                                        .attributes("currency", "name", "isin") //
+                                                        .match("^.* .[\\.,\\d]+ (?<currency>\\p{Sc}) (?<name>.*)$")
+                                                        .match("^[\\d] (Ausbuchung|Tilgung|Repayment) [\\.,\\d]+ St.cke$")
+                                                        .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$")
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
                                         // @formatter:off
                                         // Bundesrep.Deutschland 1.019 EUR 98,05 % 999,13 EUR
@@ -284,6 +294,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         section -> section //
                                                         .attributes("shares") //
                                                         .match("^[\\d] Ausbuchung .*[A-Z]{2}[A-Z0-9]{9}[0-9] (?<shares>[\\.,\\d]+) St.cke$") //
+                                                        .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
+                                        // @formatter:off
+                                        // 1 Ausbuchung 500 Stücke
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^[\\d] Ausbuchung (?<shares>[\\.,\\d]+) St.cke$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
                                         // @formatter:off
                                         // Clinuvel Pharmaceuticals Ltd. 80 Stk. 22,82 EUR 1.825,60 EUR
@@ -783,16 +800,11 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         })
 
                         .wrap((t, ctx) -> {
-                            var item = new BuySellEntryItem(t);
-
                             // If we have multiple entries in the document,
                             // then the "negative" flag must be removed.
                             type.getCurrentContext().remove("negative");
 
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
+                            return new BuySellEntryItem(t);
                         });
 
         addTaxesSectionsTransaction(pdfTransaction, type);
@@ -829,7 +841,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("type").optional() //
                         .match("^(?<type>Korrektur des Beleg).*$") //
-                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported))
+                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported))
 
                         .oneOf( //
                                         // @formatter:off
@@ -958,14 +970,9 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         })
 
                         .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
                             // If we have multiple entries in the document,
                             // then the "negative" flag must be removed.
                             type.getCurrentContext().remove("negative");
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
 
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
                                 return new TransactionItem(t);
@@ -1271,14 +1278,14 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         section -> section //
                                                         .attributes("type") //
                                                         .match("^(?<type>Storno) der Dividende .*$") //
-                                                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported)),
+                                                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported)),
                                         // @formatter:off
                                         // STORNIERUNG DER DIVIDENDE
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("type") //
                                                         .match("^(?<type>STORNIERUNG) DER DIVIDENDE$") //
-                                                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported)))
+                                                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported)))
 
                         .oneOf( //
                                         // @formatter:off
@@ -1625,7 +1632,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         .assign((t, v) -> {
                             var tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("amount")));
 
-                            if (v.getTransactionContext().getString(FAILURE) == null)
+                            if (v.getTransactionContext().getFailureReason() == null)
                                 t.setMonetaryAmount(t.getMonetaryAmount().subtract(tax));
                         })
 
@@ -1637,7 +1644,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         .assign((t, v) -> {
                             var tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("amount")));
 
-                            if (v.getTransactionContext().getString(FAILURE) == null)
+                            if (v.getTransactionContext().getFailureReason() == null)
                                 t.setMonetaryAmount(t.getMonetaryAmount().subtract(tax));
                         })
 
@@ -1649,7 +1656,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         .assign((t, v) -> {
                             var tax = Money.of(asCurrencyCode(v.get("currency")), asAmount(v.get("amount")));
 
-                            if (v.getTransactionContext().getString(FAILURE) == null)
+                            if (v.getTransactionContext().getFailureReason() == null)
                                 t.setMonetaryAmount(t.getMonetaryAmount().subtract(tax));
                         })
 
@@ -1658,11 +1665,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         .wrap((t, ctx) -> {
                             var item = new TransactionItem(t);
 
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
                             if (t.getCurrencyCode() != null && t.getAmount() == 0)
-                                item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
+                                ctx.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                             return item;
                         });
@@ -1763,19 +1767,12 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                             {
                                 t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                 t.setAmount(0L);
-                                v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionTypeNotSupported);
+                                v.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
                             }
                             t.setNote(v.get("note"));
                         })
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
-                        });
+                        .wrap(TransactionItem::new);
     }
 
     private void addExAnteFeeTransaction()
@@ -1982,17 +1979,12 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                             t.setDateTime(asDate(v.get("date")));
                             t.setCurrencyCode(v.get("currency"));
                             t.setAmount(asAmount(v.get("amount")));
-                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
                         })
 
                         .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
-                                return item;
+                                return new TransactionItem(t);
                             return null;
                         }));
     }
@@ -2481,7 +2473,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // Bonifico Incoming transfer from eraE IQRKrwr 3.000,00 € 4.305,56 €
                                         // 2025
                                         //
-                                        // 01 Dez. 
+                                        // 01 Dez.
                                         // Bonus Cash reward allocation 0,06 € 659,83 €
                                         // 2025
                                         // @formatter:on
@@ -2627,6 +2619,42 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setNote(trim(v.get("note")));
                                                         }),
                                         // @formatter:off
+                                        // 02 Jan. Incoming transfer from Vorname Nachname
+                                        // Überweisung 50,00 € 361,83 €
+                                        // 2026 (DE00000000000000000000)
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("date", "amount", "currency", "amountAfter", "currencyAfter", "note0", "year", "note1") //
+                                                        .match("^(?<date>[\\d]{2} [\\p{L}]{3,4}([\\.]{1})?) (?<note0>(Incoming transfer from) .*)$") //
+                                                        .match("^(.berweisung) (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) (?<amountAfter>[\\.,\\d]+) (?<currencyAfter>\\p{Sc})$") //
+                                                        .match("^(?<year>[\\d]{4}) (?<note1>(.*))$") //
+                                                        .assign((t, v) -> {
+                                                            t.setType(AccountTransaction.Type.DEPOSIT);
+
+                                                            t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
+                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                            t.setNote(trim(v.get("note0") + v.get("note1")));
+                                                        }),
+                                        // @formatter:off
+                                        // 03 Dez. Outgoing transfer for name surname
+                                        // Überweisung 280,00 € 17.887,78 €
+                                        // 2025 (DE987654321)
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("date", "amount", "currency", "amountAfter", "currencyAfter", "note0", "year", "note1") //
+                                                        .match("^(?<date>[\\d]{2} [\\p{L}]{3,4}([\\.]{1})?) (?<note0>(Outgoing transfer for) .*)$") //
+                                                        .match("^(.berweisung) (?<amount>[\\.,\\d]+) (?<currency>\\p{Sc}) (?<amountAfter>[\\.,\\d]+) (?<currencyAfter>\\p{Sc})$") //
+                                                        .match("^(?<year>[\\d]{4}) (?<note1>(.*))$") //
+                                                        .assign((t, v) -> {
+                                                            t.setType(AccountTransaction.Type.REMOVAL);
+
+                                                            t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
+                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                            t.setNote(trim(v.get("note0") + v.get("note1")));
+                                                        }),
+                                        // @formatter:off
                                         // 20 Mai
                                         // 2024 Überweisung PayOut to transit 18.085,60 € 18.939,80 €
                                         //
@@ -2718,7 +2746,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // Juni Prämie Your Saveback payment 5,18 € 3.484,00 €
                                         // 2024
                                         //
-                                        // 01 
+                                        // 01
                                         // Dez. Bonus Cash reward allocation 4,71 € 10.004,74 €
                                         // 2025
                                         //
@@ -2881,20 +2909,20 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setNote(trim(v.get("note")));
                                                         }),
                                         // @formatter:off
-                                        // 28 
-                                        // Incoming transfer from Vorname Nachname 
+                                        // 28
+                                        // Incoming transfer from Vorname Nachname
                                         // Nov. Überweisung 2.000,00 € 9.066,90 €
                                         // (DE00000000000000000000)
                                         // 2025
                                         //
-                                        // 21 
+                                        // 21
                                         // Crypto one percent bonus compensation for orderId: 0a000a0a-
                                         // Nov. Belohnung 58,36 € 6.235,94 €
                                         // a000-000a-a000-00a000a0a0a0
                                         // 2025
                                         //
-                                        // 26 
-                                        // Crypto one percent bonus compensation for orderId: 
+                                        // 26
+                                        // Crypto one percent bonus compensation for orderId:
                                         // Nov. Belohnung 93,99 € 6.329.93 €
                                         // 0a00000a-a000-000a-a000-00a000a0a0a0
                                         // 2025
@@ -2916,8 +2944,8 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setNote(v.get("note0") + v.get("note1"));
                                                         }),
                                         // @formatter:off
-                                        // 31 
-                                        // Outgoing transfer for Vorname Nachname 
+                                        // 31
+                                        // Outgoing transfer for Vorname Nachname
                                         // Dez. Überweisung 1.800,00 € 8.204,71 €
                                         // (DE00000000000000000000)
                                         // 2025
@@ -3137,17 +3165,12 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                             t.setAmount(asAmount(v.get("amount")));
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
                                                         }))
 
                         .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
-                                return item;
+                                return new TransactionItem(t);
                             return null;
                         }));
 
@@ -3185,7 +3208,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                             t.setAmount(asAmount(v.get("amount")));
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
                                                         }),
                                         // @formatter:off
                                         // 01 nov Pago de
@@ -3205,7 +3228,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                             t.setAmount(asAmount(v.get("amount")));
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
                                                         }),
                                         // @formatter:off
                                         // 01
@@ -3225,7 +3248,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                             t.setAmount(asAmount(v.get("amount")));
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
                                                         }),
                                         // @formatter:off
                                         // 01 Dez.
@@ -3236,7 +3259,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         // Pago de intereses Interest payment 47,64 € 34.107,54 €
                                         // 2025
                                         //
-                                        // 01 Dez. 
+                                        // 01 Dez.
                                         // Zinsen Interest payment 1,17 € 661,00 €
                                         // 2025
                                         // @formatter:on
@@ -3249,16 +3272,11 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setDateTime(asDate(v.get("date") + " " + v.get("year")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                             t.setAmount(asAmount(v.get("amount")));
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
                                                         }))
                         .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
-                                return item;
+                                return new TransactionItem(t);
                             return null;
                         }));
 
@@ -3288,7 +3306,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setDateTime(asDate(v.get("day") + " " + v.get("month") + " " + v.get("year")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                             t.setAmount(asAmount(v.get("amount")));
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
                                                         }),
                                         // @formatter:off
                                         // 01
@@ -3308,17 +3326,12 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setDateTime(asDate(v.get("day") + " " + v.get("month") + " " + v.get("year")));
                                                             t.setCurrencyCode(asCurrencyCode(v.get("currency")));
                                                             t.setAmount(asAmount(v.get("amount")));
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
                                                         }))
 
                         .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
                             if (t.getCurrencyCode() != null && t.getAmount() != 0)
-                                return item;
+                                return new TransactionItem(t);
                             return null;
                         }));
 
@@ -3458,7 +3471,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                         // @formatter:on
                         .section("type").optional() //
                         .match("^(?<type>STORNO) STEUERKORREKTUR$") //
-                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported))
+                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported))
 
                         .optionalOneOf( //
                                         // @formatter:off
@@ -3597,14 +3610,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             checkAndSetGrossUnit(gross, fxGross, t, type.getCurrentContext());
                                                         }))
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
-                        });
+                        .wrap(TransactionItem::new);
     }
 
     private void addTaxDistributionEquivalentIncomeTransaction()
@@ -3658,7 +3664,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9]) . .*(?<type>[\\s|\\-]{1,})(?<amount>[\\.,\\d]+) (?<currency>\\p{Sc})$") //
                                                         .assign((t, v) -> {
                                                             // @formatter:off
-                                                            // Is sign --> "-" change from TAX_REFUND to TAXES
+                                                            // Is type --> "-" change from TAX_REFUND to TAXES
                                                             // @formatter:on
                                                             if ("-".equals(trim(v.get("type"))))
                                                                 t.setType(AccountTransaction.Type.TAXES);
@@ -3667,14 +3673,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setAmount(asAmount(v.get("amount")));
                                                         }))
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
-                        });
+                        .wrap(TransactionItem::new);
     }
 
     private void addDepositStatementTransaction()
@@ -4133,9 +4132,9 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                                 t.setType(PortfolioTransaction.Type.DELIVERY_OUTBOUND);
 
                                                             if ("SPLIT".equals(v.get("transaction")))
-                                                                v.getTransactionContext().put(FAILURE, Messages.MsgErrorSplitTransactionsNotSupported);
+                                                                v.markAsFailure(Messages.MsgErrorTransactionSplitUnsupported);
                                                             else
-                                                                v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionTypeNotSupported);
+                                                                v.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
@@ -4163,20 +4162,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                             t.setShares(asShares(v.get("shares")));
                                                             t.setSecurity(getOrCreateSecurity(v));
 
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionTypeNotSupported);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                                                             t.setCurrencyCode(asCurrencyCode(t.getSecurity().getCurrencyCode()));
                                                             t.setAmount(0L);
                                                         }))
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
-                        });
+                        .wrap(TransactionItem::new);
     }
 
     private void addBuySellTaxReturnBlock(DocumentType type)
@@ -4239,6 +4231,16 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                                         .match("^(?<nameContinued>.*)$")
                                                         .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$")
                                                         .match("^[\\d] (Barausgleich|Kurswert|Market value) [\\.,\\d]+ (?<currency>[A-Z]{3})$") //
+                                                        .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
+                                        // @formatter:off
+                                        // Short @19.32 € SMA Solar Technology Open End Turbo
+                                        // 1 Ausbuchung 500 Stücke
+                                        // DE000HT7LYD5
+                                        section -> section //
+                                                        .attributes("currency", "name", "isin") //
+                                                        .match("^.* .[\\.,\\d]+ (?<currency>\\p{Sc}) (?<name>.*)$")
+                                                        .match("^[\\d] (Ausbuchung|Tilgung|Repayment) [\\.,\\d]+ St.cke$")
+                                                        .match("^(?<isin>[A-Z]{2}[A-Z0-9]{9}[0-9])$")
                                                         .assign((t, v) -> t.setSecurity(getOrCreateSecurity(v))),
                                         // @formatter:off
                                         // Bundesrep.Deutschland 1.019 EUR 98,05 % 999,13 EUR
@@ -4341,6 +4343,13 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         section -> section //
                                                         .attributes("shares") //
                                                         .match("^[\\d] Ausbuchung .*[A-Z]{2}[A-Z0-9]{9}[0-9] (?<shares>[\\.,\\d]+) St.cke$") //
+                                                        .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
+                                        // @formatter:off
+                                        // 1 Ausbuchung 500 Stücke
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("shares") //
+                                                        .match("^[\\d] Ausbuchung (?<shares>[\\.,\\d]+) St.cke$") //
                                                         .assign((t, v) -> t.setShares(asShares(v.get("shares")))),
                                         // @formatter:off
                                         // Clinuvel Pharmaceuticals Ltd. 80 Stk. 22,82 EUR 1.825,60 EUR
@@ -4558,14 +4567,14 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                                         section -> section //
                                                         .attributes("type") //
                                                         .match("^(?<type>Storno) der Dividende .*$") //
-                                                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported)),
+                                                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported)),
                                         // @formatter:off
                                         // STORNIERUNG DER DIVIDENDE
                                         // @formatter:on
                                         section -> section //
                                                         .attributes("type") //
                                                         .match("^(?<type>STORNIERUNG) DER DIVIDENDE$") //
-                                                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported)))
+                                                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported)))
 
                         .oneOf( //
                                         // @formatter:off
@@ -4883,16 +4892,11 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
                             }
                         })
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
+                        .wrap(t -> {
                             if (t.getCurrencyCode() != null && t.getAmount() == 0)
                                 return null;
 
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
+                            return new TransactionItem(t);
                         });
     }
 

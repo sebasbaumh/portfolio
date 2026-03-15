@@ -20,7 +20,6 @@ import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.hasWkn;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.interest;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.removal;
 import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.security;
-import static name.abuchen.portfolio.datatransfer.ExtractorMatchers.taxes;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countAccountTransactions;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countAccountTransfers;
 import static name.abuchen.portfolio.datatransfer.ExtractorTestUtilities.countBuySell;
@@ -468,20 +467,20 @@ public class SantanderConsumerBankPDFExtractorTest
         assertThat(errors, empty());
         assertThat(countSecurities(results), is(0L));
         assertThat(countBuySell(results), is(0L));
-        assertThat(countAccountTransactions(results), is(5L));
+        assertThat(countAccountTransactions(results), is(4L));
         assertThat(countAccountTransfers(results), is(0L));
         assertThat(countItemsWithFailureMessage(results), is(0L));
         assertThat(countSkippedItems(results), is(0L));
-        assertThat(results.size(), is(5));
+        assertThat(results.size(), is(4));
         new AssertImportActions().check(results, "EUR");
 
         // assert transaction
-        assertThat(results, hasItem(taxes(hasDate("2023-05-31"), hasAmount("EUR", 1.66), //
-                        hasSource("Kontoauszug01.txt"), hasNote(null))));
-
-        // assert transaction
-        assertThat(results, hasItem(interest(hasDate("2023-05-31"), hasAmount("EUR", 6.63), //
-                        hasSource("Kontoauszug01.txt"), hasNote("Habenzinsen"))));
+        assertThat(results, hasItem(interest( //
+                        hasDate("2023-05-31"), hasShares(0), //
+                        hasSource("Kontoauszug01.txt"), //
+                        hasNote("Habenzinsen"), //
+                        hasAmount("EUR", 4.97), hasGrossValue("EUR", 6.63), //
+                        hasTaxes("EUR", 1.66), hasFees("EUR", 0.00))));
 
         // assert transaction
         assertThat(results, hasItem(removal(hasDate("2023-05-20"), hasAmount("EUR", 1), //
@@ -635,4 +634,99 @@ public class SantanderConsumerBankPDFExtractorTest
 
     }
 
+    @Test
+    public void testKontoauszug05()
+    {
+        var extractor = new SantanderConsumerBankPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug05.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(5L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
+        assertThat(results.size(), is(5));
+        new AssertImportActions().check(results, "EUR");
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2025-11-21"), hasAmount("EUR", 263.22), //
+                        hasSource("Kontoauszug05.txt"), hasNote("Einzahlung von Konto bK553176205628587457"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2025-11-24"), hasAmount("EUR", 38000.0), //
+                        hasSource("Kontoauszug05.txt"), hasNote("Einzahlung von Konto mI079617074233785537"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2025-11-24"), hasAmount("EUR", 8.5), //
+                        hasSource("Kontoauszug05.txt"), hasNote("Einzahlung von Konto Lr976088571958963679"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2025-11-27"), hasAmount("EUR", 6000.0), //
+                        hasSource("Kontoauszug05.txt"), hasNote("Einzahlung von Konto UH251100718800015609"))));
+
+        // assert transaction
+        assertThat(results, hasItem(interest( //
+                        hasDate("2025-11-30"), hasShares(0), //
+                        hasSource("Kontoauszug05.txt"), //
+                        hasNote("Habenzinsen"), //
+                        hasAmount("EUR", 13.72), hasGrossValue("EUR", 18.29), //
+                        hasTaxes("EUR", 4.57), hasFees("EUR", 0.00))));
+    }
+
+    @Test
+    public void testKontoauszug06()
+    {
+        var extractor = new SantanderConsumerBankPDFExtractor(new Client());
+
+        List<Exception> errors = new ArrayList<>();
+
+        var results = extractor.extract(PDFInputFile.loadTestCase(getClass(), "Kontoauszug06.txt"), errors);
+
+        assertThat(errors, empty());
+        assertThat(countSecurities(results), is(0L));
+        assertThat(countBuySell(results), is(0L));
+        assertThat(countAccountTransactions(results), is(7L));
+        assertThat(countAccountTransfers(results), is(0L));
+        assertThat(countItemsWithFailureMessage(results), is(0L));
+        assertThat(countSkippedItems(results), is(0L));
+        assertThat(results.size(), is(7));
+        new AssertImportActions().check(results, "EUR");
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2026-01-21"), hasAmount("EUR", 10.0), //
+                        hasSource("Kontoauszug06.txt"), hasNote("Einzahlung von Konto AT123456789012345678"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2026-01-21"), hasAmount("EUR", 5000.0), //
+                        hasSource("Kontoauszug06.txt"), hasNote("Einzahlung von Konto AT123456789012345678"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2026-01-21"), hasAmount("EUR", 3700.0), //
+                        hasSource("Kontoauszug06.txt"), hasNote("Einzahlung von Konto AT123456789012345678"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2026-01-22"), hasAmount("EUR", 2518.75), //
+                        hasSource("Kontoauszug06.txt"), hasNote("Einzahlung von Konto AT123456789012345678"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2026-01-26"), hasAmount("EUR", 400.0), //
+                        hasSource("Kontoauszug06.txt"), hasNote("Einzahlung von Konto AT123456789012345678"))));
+
+        // assert transaction
+        assertThat(results, hasItem(deposit(hasDate("2026-01-30"), hasAmount("EUR", 20140.96), //
+                        hasSource("Kontoauszug06.txt"), hasNote("Einzahlung von Konto AT123456789012345678"))));
+
+        // assert transaction
+        assertThat(results, hasItem(interest( //
+                        hasDate("2026-01-31"), hasShares(0), //
+                        hasSource("Kontoauszug06.txt"), //
+                        hasNote("Habenzinsen"), //
+                        hasAmount("EUR", 6.18), hasGrossValue("EUR", 8.24), //
+                        hasTaxes("EUR", 2.06), hasFees("EUR", 0.00))));
+    }
 }

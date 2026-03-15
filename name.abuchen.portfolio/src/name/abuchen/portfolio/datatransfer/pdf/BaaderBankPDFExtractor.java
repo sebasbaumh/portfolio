@@ -485,7 +485,7 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                                         + "|Fondsaussch.ttung" //
                                         + "|Dividende . 27) )?" //
                                         + "(?<type>(STORNO|Reklassifizierung))$") //
-                        .assign((t, v) -> v.getTransactionContext().put(FAILURE, Messages.MsgErrorOrderCancellationUnsupported))
+                        .assign((t, v) -> v.markAsFailure(Messages.MsgErrorTransactionOrderCancellationUnsupported))
 
                         .oneOf( //
                                         // @formatter:off
@@ -630,17 +630,12 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                         .match("^.*(?<note>(Vorgangs\\-Nr|Transaction No)\\.: .*)$") //
                         .assign((t, v) -> t.setNote(trim(v.get("note"))))
 
-                        .wrap((t, ctx) -> {
+                        .wrap(t -> {
                             // If we have multiple entries in the document, then
                             // the "noTax" flag must be removed.
                             type.getCurrentContext().remove("noTax");
 
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
+                            return new TransactionItem(t);
                         });
 
         addTaxesSectionsTransaction(pdfTransaction, type);
@@ -767,14 +762,10 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                         .match("^(?<note>(Zahlungszeitraum|Payment Period): .*)$") //
                         .assign((t, v) -> t.setNote(concatenate(t.getNote(), v.get("note"), " | ")))
 
-                        .wrap(t -> {
-                            var item = new TransactionItem(t);
-
-                            if (t.getCurrencyCode() != null && t.getAmount() == 0)
-                                item.setFailureMessage(Messages.MsgErrorTransactionTypeNotSupported);
-
-                            return item;
-                        });
+                        .wrap(t -> t.getCurrencyCode() != null && t.getAmount() == 0
+                                        ? new SkippedItem(new TransactionItem(t),
+                                                        Messages.MsgErrorTransactionTypeNotSupportedOrRequired)
+                                        : new TransactionItem(t));
     }
 
     private void addTaxAdjustmentTransaction()
@@ -1056,7 +1047,7 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                                                         .assign((t, v) -> {
                                                             t.setType(AccountTransaction.Type.INTEREST_CHARGE);
 
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
 
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setCurrencyCode(v.get("currency"));
@@ -1071,7 +1062,7 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                                                         .documentContext("currency") //
                                                         .match("^[\\d]{2}\\.[\\d]{2}\\.[\\d]{4} (?<note>Rechnungsabschluss) (?<date>[\\d]{2}\\.[\\d]{2}\\.[\\d]{4}) (?<amount>[\\.,\\d]+)$") //
                                                         .assign((t, v) -> {
-                                                            v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionAlternativeDocumentRequired);
+                                                            v.markAsFailure(Messages.MsgErrorTransactionAlternativeDocumentRequired);
 
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setCurrencyCode(v.get("currency"));
@@ -1079,14 +1070,7 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                                                             t.setNote(v.get("note"));
                                                         }))
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
-                        }));
+                        .wrap(TransactionItem::new));
     }
 
     private void addFeesAssetManagerTransaction()
@@ -1172,20 +1156,37 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                             return accountTransaction;
                         })
 
-                        // @formatter:off
-                        // Zinsberechnung: Betrag in EUR
-                        // Gesamtsumme: 1,46
-                        //
-                        // Calculation of Interest: Amount in EUR
-                        // Total Amount: 112.45
-                        // @formatter:on
-                        .section("currency", "amount") //
-                        .match("^(Zinsberechnung|Calculation of Interest): (Betrag|Amount) in (?<currency>[A-Z]{3})$") //
-                        .match("^(Gesamtsumme|Total Amount): (?<amount>[\\.,\\d]+)$") //
-                        .assign((t, v) -> {
-                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
-                            t.setAmount(asAmount(v.get("amount")));
-                        })
+                        .oneOf( //
+                                        // @formatter:off
+                                        // Zinsberechnung: Betrag in EUR
+                                        // Gesamtsumme: 1,46
+                                        //
+                                        // Calculation of Interest: Amount in EUR
+                                        // Total Amount: 112.45
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("currency", "amount") //
+                                                        .match("^(Zinsberechnung|Calculation of Interest): (Betrag|Amount) in (?<currency>[A-Z]{3})$") //
+                                                        .match("^(Gesamtsumme|Total Amount): (?<amount>[\\.,\\d]+)$") //
+                                                        .assign((t, v) -> {
+                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                        }),
+                                        // @formatter:off
+                                        // Zinsberechnung: Betrag in EUR
+                                        // Sollzinsen aus geduldeten Überziehungen (ÜZ) 5,64 -
+                                        // Gesamtsumme: 5,64 -
+                                        // @formatter:on
+                                        section -> section //
+                                                        .attributes("currency", "amount") //
+                                                        .match("^(Zinsberechnung|Calculation of Interest): (Betrag|Amount) in (?<currency>[A-Z]{3})$") //
+                                                        .match("^(Gesamtsumme|Total Amount): (?<amount>[\\.,\\d]+) \\-$") //
+                                                        .assign((t, v) -> {
+                                                            t.setType(AccountTransaction.Type.INTEREST_CHARGE);
+
+                                                            t.setCurrencyCode(asCurrencyCode(v.get("currency")));
+                                                            t.setAmount(asAmount(v.get("amount")));
+                                                        }))
 
                         .optionalOneOf( //
                                         // @formatter:off
@@ -1372,9 +1373,9 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                                                         .match("^(?<nameContinued>.*)$") //
                                                         .assign((t, v) -> {
                                                             if ("Reverse Split".equals(v.get("transaction")) || "Obligatorischer Umtausch".equals(v.get("transaction")))
-                                                                v.getTransactionContext().put(FAILURE, Messages.MsgErrorSplitTransactionsNotSupported);
+                                                                v.markAsFailure(Messages.MsgErrorTransactionSplitUnsupported);
                                                             else
-                                                                v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionTypeNotSupported);
+                                                                v.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
@@ -1400,9 +1401,9 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                                                         .assign((t, v) -> {
 
                                                             if ("Reverse Split".equals(v.get("transaction")) || "Obligatorischer Umtausch".equals(v.get("transaction")))
-                                                                v.getTransactionContext().put(FAILURE, Messages.MsgErrorSplitTransactionsNotSupported);
+                                                                v.markAsFailure(Messages.MsgErrorTransactionSplitUnsupported);
                                                             else
-                                                                v.getTransactionContext().put(FAILURE, Messages.MsgErrorTransactionTypeNotSupported);
+                                                                v.markAsFailure(Messages.MsgErrorTransactionTypeNotSupportedOrRequired);
 
                                                             t.setDateTime(asDate(v.get("date")));
                                                             t.setShares(asShares(v.get("shares")));
@@ -1412,14 +1413,7 @@ public class BaaderBankPDFExtractor extends AbstractPDFExtractor
                                                             t.setAmount(0L);
                                                         }))
 
-                        .wrap((t, ctx) -> {
-                            var item = new TransactionItem(t);
-
-                            if (ctx.getString(FAILURE) != null)
-                                item.setFailureMessage(ctx.getString(FAILURE));
-
-                            return item;
-                        });
+                        .wrap(TransactionItem::new);
     }
 
     private <T extends Transaction<?>> void addTaxesSectionsTransaction(T transaction, DocumentType type)

@@ -190,3 +190,5 @@ gamue
 MK-42
 mschoettle
 otbinary
+dontknower
+manuelseeger
