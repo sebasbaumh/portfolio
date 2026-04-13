@@ -10,6 +10,7 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.e4.core.contexts.ContextInjectionFactory;
 import org.eclipse.e4.core.contexts.EclipseContextFactory;
 import org.eclipse.e4.core.contexts.IEclipseContext;
+import org.eclipse.e4.ui.di.UIEventTopic;
 import org.eclipse.e4.ui.services.IStylingEngine;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.MenuManager;
@@ -111,6 +112,14 @@ public abstract class AbstractFinanceView
         });
     }
 
+    @Inject
+    @org.eclipse.e4.core.di.annotations.Optional
+    public void onValueColorSchemeChanged(
+                    @UIEventTopic(UIConstants.Event.Global.VALUE_COLOR_SCHEME_CHANGED) Object ignored)
+    {
+        onRecalculationNeeded();
+    }
+
     /** called when some other view modifies the model */
     public void notifyModelUpdated()
     {
@@ -175,11 +184,24 @@ public abstract class AbstractFinanceView
         sl.setTag(UIConstants.Tag.INFORMATIONPANE);
         sash.setLayout(sl);
 
-        createBody(sash);
-        sashLayout = sl;
+        // Defer layout until both children (body + information pane) have been
+        // added. Without this, createBody may trigger a layout cascade (e.g.
+        // via setRedraw or updateTitle) while the sash has only one child,
+        // causing TreeColumnLayout to assert on partially initialized columns.
+        sash.setLayoutDeferred(true);
+        try
+        {
+            createBody(sash);
+            sashLayout = sl;
 
-        pane = make(InformationPane.class);
-        pane.createViewControl(sash);
+            pane = make(InformationPane.class);
+            pane.createViewControl(sash);
+        }
+        finally
+        {
+            sash.setLayoutDeferred(false);
+        }
+
         pane.setView(this);
         pane.setLayoutData(new SashLayoutData(-200));
 
