@@ -262,6 +262,7 @@ public class Messages extends NLS
     public static String MsgErrorBaseAndTermCurrencyAreEqualWithInvalidExchangeRate;
     public static String MsgErrorCannotConvertToRequestedCurrency;
     public static String MsgErrorCannotRetrieveExchangeRateForCurrency;
+    public static String MsgErrorCashDividendCorrectionUnmatched;
     public static String MsgErrorDecrypting;
     public static String MsgErrorDownloadECBStatisticalDataWarehouse;
     public static String MsgErrorDownloadEurostatHICP;
@@ -342,6 +343,10 @@ public class Messages extends NLS
     public static String PDFMsgExtracingFiles;
     public static String PDFMsgFileNotSupported;
     public static String QuoteFeedManual;
+    public static String TradeRepublicCSVLabel;
+    public static String TradeRepublicCSVMsgFileNotSupported;
+    public static String TradeRepublicCSVMsgSkippedCoveredByOtherLines;
+    public static String TradeRepublicCSVMsgUnsupportedTransactionType;
     public static String SecurityBasedExchangeRateProvider;
     public static String VINISAppValueCapitalGainsCurrentYear;
     public static String VINISAppValueCapitalGainsLastYear;
