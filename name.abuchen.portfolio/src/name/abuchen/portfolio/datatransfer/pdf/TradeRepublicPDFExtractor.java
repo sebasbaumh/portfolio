@@ -1267,7 +1267,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
     private void addDividendTransaction()
     {
-        final var type = new DocumentType("(?i)(AUSSCH.TTUNG" //
+        final var type = new DocumentType("(?im)^(AUSSCH.TTUNG" //
                         + "|(STORNIERUNG DER )?DIVIDENDE( EN ESP.CES)?" //
                         + "|REINVESTIERUNG" //
                         + "|STORNO DIVIDENDE" //
@@ -1732,7 +1732,7 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
     private void addAdvanceTaxTransaction()
     {
-        final var type = new DocumentType("Vorabpauschale", "KONTO.BERSICHT");
+        final var type = new DocumentType("Vorabpauschale", "KONTO.BERSICHT|WERTPAPIERABRECHNUNG");
         this.addDocumentTyp(type);
 
         var pdfTransaction = new Transaction<AccountTransaction>();
@@ -5033,9 +5033,10 @@ public class TradeRepublicPDFExtractor extends AbstractPDFExtractor
 
                         // @formatter:off
                         // Abwicklungskostenpauschale -1,00 EUR
+                        // Abwicklungspauschale -1,00 EUR
                         // @formatter:on
                         .section("fee", "currency").optional() //
-                        .match("^Abwicklungskostenpauschale \\-(?<fee>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
+                        .match("^Abwicklungs(kosten)?pauschale \\-(?<fee>[\\.,\\d]+) (?<currency>[A-Z]{3})$") //
                         .assign((t, v) -> {
                             if (!type.getCurrentContext().getBoolean("negative"))
                                 processFeeEntries(t, v, type);

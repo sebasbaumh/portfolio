@@ -23,6 +23,7 @@ public class PDFImportAssistant
     private final Client client;
     private final List<File> files;
     private final List<Extractor> extractors = new ArrayList<>();
+    private final Map<File, PDFInputFile> failedInputFiles = new HashMap<>();
 
     public PDFImportAssistant(Client client, List<File> files)
     {
@@ -135,18 +136,22 @@ public class PDFImportAssistant
         extractors.add(new SimpelPDFExtractor(client));
         extractors.add(new SolarisbankAGPDFExtractor(client));
         extractors.add(new StakeshopPtyLtdPDFExtractor(client));
+        extractors.add(new StGallerKantonalbankPDFExtractor(client));
         extractors.add(new SunrisePDFExtractor(client));
         extractors.add(new SuresseDirektBankPDFExtractor(client));
         extractors.add(new SutorBankGmbHPDFExtractor(client));
         extractors.add(new SwissquotePDFExtractor(client));
         extractors.add(new SydbankASPDFExtractor(client));
         extractors.add(new TargobankPDFExtractor(client));
+        extractors.add(new ThurgauerKantonalbankPDFExtractor(client));
         extractors.add(new TigerBrokersPteLtdPDFExtractor(client));
         extractors.add(new TradegateAGPDFExtractor(client));
         extractors.add(new TradeRepublicPDFExtractor(client));
+        extractors.add(new Trading212PDFExtractor(client));
         extractors.add(new UBSAGBankingAGPDFExtractor(client));
         extractors.add(new UmweltbankAGPDFExtractor(client));
         extractors.add(new UnicreditPDFExtractor(client));
+        extractors.add(new UpvestPDFExtractor(client));
         extractors.add(new VanguardGroupEuropePDFExtractor(client));
         extractors.add(new VBankAGPDFExtractor(client));
         extractors.add(new VDKBankNVPDFExtractor(client));
@@ -227,6 +232,15 @@ public class PDFImportAssistant
                     var meaningfulExceptions = warnings.stream().filter(isNotUnsupportedOperation).toList();
 
                     errors.put(inputFile.getFile(), meaningfulExceptions.isEmpty() ? warnings : meaningfulExceptions);
+
+                    // the legacy PDFBox 1 fallback above may have overwritten
+                    // the text with the version 1 conversion; restore the
+                    // PDFBox 3 text so the manual entry view (and any test
+                    // cases derived from it) use the latest conversion
+                    inputFile.convertPDFtoText();
+
+                    if (inputFile.getText() != null)
+                        failedInputFiles.put(inputFile.getFile(), inputFile);
                 }
             }
             catch (IOException e)
@@ -243,5 +257,10 @@ public class PDFImportAssistant
         securityCache.addMissingSecurityItems(itemsByExtractor);
 
         return itemsByExtractor;
+    }
+
+    public Map<File, PDFInputFile> getFailedInputFiles()
+    {
+        return failedInputFiles;
     }
 }
